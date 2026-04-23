@@ -1,4 +1,5 @@
 # Fades & Facials 2.0 — Learning Roadmap
+> **Phase 1 Status:** In progress — Terminal & Git complete.
 > Britton's full-stack rebuild. Built the right way, from scratch.
 
 ---
