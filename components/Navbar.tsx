@@ -8,25 +8,82 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
+  // ─────────────────────────────────────────
+  // iOS FIX: Scroll on documentElement + body as scroll container
+  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
+  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
+  // ─────────────────────────────────────────
   useEffect(() => {
+    const getScrollY = (): number =>
+      window.scrollY ??
+      window.pageYOffset ??
+      document.documentElement.scrollTop ??
+      document.body.scrollTop ??
+      0
+
     const handleScroll = () => {
-      setScrolled(window.scrollY > 80)
+      const y = getScrollY()
+      setScrolled(y > 80)
+      const debugEl = document.getElementById('debug-scroll')
+      if (debugEl) debugEl.textContent = String(y)
+      // DEBUG: remove before production
+      console.log("[Navbar Debug] scrollY:", y, "| scrolled:", y > 80)
     }
 
-    window.addEventListener("scroll", handleScroll)
+    // iOS Safari fires scroll on documentElement, not window
+    // All four targets are registered to cover every browser
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    document.addEventListener("scroll", handleScroll, { passive: true })
+    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
+    document.body.addEventListener("scroll", handleScroll, { passive: true })
     handleScroll()
 
     return () => {
       window.removeEventListener("scroll", handleScroll)
+      document.removeEventListener("scroll", handleScroll)
+      document.documentElement.removeEventListener("scroll", handleScroll)
+      document.body.removeEventListener("scroll", handleScroll)
     }
   }, [])
 
+  // ─────────────────────────────────────────
+  // iOS FIX: Scrolled bar background (no backdrop-blur)
+  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
+  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
+  // ─────────────────────────────────────────
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Hamburger touch target
+  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
+  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
+  // ─────────────────────────────────────────
+  const mobileMenuButton = (
+    <button
+      type="button"
+      aria-label={menuOpen ? "Close menu" : "Open menu"}
+      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
+      onClick={() => setMenuOpen((prev) => !prev)}
+      onTouchEnd={(e) => {
+        e.preventDefault()
+        setMenuOpen((prev) => !prev)
+      }}
+    >
+      <span className="text-2xl text-white select-none">
+        {menuOpen ? "✕" : "☰"}
+      </span>
+    </button>
+  )
+
   return (
     <nav
-      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+      }}
+      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
         scrolled
-          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
-          : "mx-0 bg-transparent py-4 border-b border-white/25"
+          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
+          : "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25 will-change-transform"
       }`}
     >
       <div className="flex items-center justify-between">
@@ -50,12 +107,7 @@ export default function Navbar() {
         </div>
 
         {/* Hamburger — visible on mobile only */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
+        {mobileMenuButton}
       </div>
 
       {/* Mobile dropdown */}
@@ -64,6 +116,21 @@ export default function Navbar() {
           <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
           <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────
+          DEBUG OVERLAY — iOS testing only
+          Remove this entire block before production deployment
+          Shows real-time scroll position and state on device screen
+          ───────────────────────────────────────── */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="fixed bottom-4 left-4 z-[9999] rounded-xl bg-black/80 px-4 py-3 font-mono text-xs text-white pointer-events-none">
+          <div>
+            scrollY: <span id="debug-scroll">—</span>
+          </div>
+          <div>scrolled state: {scrolled ? "TRUE ✅" : "FALSE ❌"}</div>
+          <div>menuOpen: {menuOpen ? "TRUE ✅" : "FALSE ❌"}</div>
         </div>
       )}
     </nav>

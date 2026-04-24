@@ -8,7 +8,16 @@
   --color-brand-accent: #c9a96e;
 }
 
+html,
 body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-y: auto;
   background-color: #0f1e2e;
   color: #f8fafc;
 }
