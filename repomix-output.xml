@@ -57,6 +57,7 @@ CRASH_COURSE_README.md
 eslint.config.mjs
 hero-homepage.png
 lessonPlan.md
+lib/services.ts
 next.config.ts
 package.json
 postcss.config.mjs
@@ -79,6 +80,47 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="lib/services.ts">
+// ─────────────────────────────────────────
+// SECTION: Service Data Contract
+// WHAT: Defines the shared TypeScript shape for every service record.
+// WHY: Keeps homepage previews and the full services page consistent with one typed model.
+// PHASE 4: Replace static typing source with generated types from Supabase queries if preferred.
+// ─────────────────────────────────────────
+export type Service = {
+  id: number;
+  category: "Cuts" | "Beard Care" | "Hair Care";
+  name: string;
+  price: number;
+  description: string;
+  image: string; // path to gif or jpg in /public/images/
+};
+
+// ─────────────────────────────────────────
+// SECTION: All Services Source of Truth
+// WHAT: Exposes the complete service catalog used by multiple routes.
+// WHY: Centralizing this list makes migration to database-backed reads straightforward.
+// PHASE 4: Replace this exported array with API/database calls that return the same Service shape.
+// ─────────────────────────────────────────
+export const allServices: Service[] = [
+  { id: 1, category: "Cuts", name: "Fade Cut", price: 42, description: "Clean, precise fades tailored to your style.", image: "/images/services/fade.gif" },
+  { id: 2, category: "Cuts", name: "Specialty Fade Cut", price: 42, description: "Advanced fade techniques for a signature look.", image: "/images/services/fade.gif" },
+  { id: 3, category: "Cuts", name: "Children's Fade", price: 32, description: "Kid-friendly cuts with the same precision.", image: "/images/services/fade.gif" },
+  { id: 4, category: "Beard Care", name: "Beard Care", price: 35, description: "Shape and condition your beard to perfection.", image: "/images/services/facial.gif" },
+  { id: 5, category: "Beard Care", name: "Fade and Shave", price: 60, description: "Full fade paired with a clean straight razor shave.", image: "/images/services/fade.gif" },
+  { id: 6, category: "Beard Care", name: "Hot Shave", price: 35, description: "Classic hot towel straight razor shave.", image: "/images/lele2.gif"},
+  { id: 7, category: "Hair Care", name: "Shampoo", price: 12, description: "Deep cleanse and scalp treatment.", image: "/images/services/fade.gif" },
+  { id: 8, category: "Hair Care", name: "Line Up", price: 26, description: "Sharp, defined edges for a clean finish.", image: "/images/services/barbergif1.gif" },
+  { id: 9, category: "Hair Care", name: "Enhancement", price: 12, description: "Color and texture enhancements.", image: "/images/services/fade.gif" },
+  { id: 10, category: "Hair Care", name: "Bald Fade", price: 40, description: "Seamless fade down to skin.", image: "/images/services/fade.gif" },
+];
+
+// NOTE: This array is the single source of truth for all service data.
+// When the admin dashboard and database are implemented in Phase 4,
+// replace this file with API calls to fetch services from Supabase.
+// The Service type above maps directly to the database schema.
+</file>
 
 <file path=".cursorrules">
 # Project Architecture & Workflow Rules
@@ -172,87 +214,79 @@ export default function Home() {
 </file>
 
 <file path="app/services/page.tsx">
-export default function Home() {
-  return <h1>Services</h1>;
+import { allServices } from "@/lib/services";
+
+// ─────────────────────────────────────────
+// SECTION: Category Derivation
+// WHAT: Builds the ordered list of unique service categories from the shared service data.
+// WHY: Deriving categories prevents duplicated category constants and stays synced with catalog changes.
+// PHASE 4: Keep this logic, but derive from database results returned by API/server actions.
+// ─────────────────────────────────────────
+const serviceCategories = Array.from(new Set(allServices.map((s) => s.category)));
+
+// ─────────────────────────────────────────
+// SECTION: Services Page Rendering
+// WHAT: Renders category sections with responsive service card grids and booking CTAs.
+// WHY: Grouping by category improves scanning while cards keep details and actions consistent.
+// PHASE 4: Swap allServices for database-fetched rows without changing card layout components.
+// ─────────────────────────────────────────
+export default function ServicesPage() {
+  return (
+    <main className="bg-[#081220] px-6 py-24 md:px-10">
+      <div className="mx-auto max-w-7xl">
+        {serviceCategories.map((category) => {
+          const categoryServices = allServices.filter(
+            (service) => service.category === category,
+          );
+
+          return (
+            <section key={category} className="mb-14 last:mb-0">
+              <h2 className="mb-6 text-3xl font-bold text-white md:text-4xl">
+                {category}
+              </h2>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {categoryServices.map((service) => (
+                  <article
+                    key={service.id}
+                    className="overflow-hidden rounded-xl bg-[#0a1628]"
+                  >
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      className="h-52 w-full object-cover"
+                    />
+                    <div className="p-6">
+                      <h3 className="text-2xl font-semibold text-white">
+                        {service.name}
+                      </h3>
+                      <p className="mt-2 text-lg font-semibold text-[#c9a96e]">
+                        ${service.price}
+                      </p>
+                      <p className="mt-3 text-base text-slate-200">
+                        {service.description}
+                      </p>
+                      <a
+                        href="/booking"
+                        className="mt-6 inline-block rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-amber-400"
+                      >
+                        Book Now
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </main>
+  );
 }
 </file>
 
 <file path="CLAUDE.md">
 @AGENTS.md
-</file>
-
-<file path="components/Navbar.tsx">
-"use client"
-
-import { useEffect, useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-
-export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 80)
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    handleScroll()
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll)
-    }
-  }, [])
-
-  return (
-    <nav
-      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
-        scrolled
-          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
-          : "mx-0 bg-transparent py-4 border-b border-white/25"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        
-        {/* Logo */}
-        <Link href="/">
-          <Image
-            src="/images/logo.png"
-            alt="Fades & Facials"
-            quality={100}
-            width={50}
-            height={30}
-          />
-        </Link>
-
-        {/* Desktop links — hidden on mobile */}
-        <div className="hidden md:flex gap-8">
-          <Link href="/" className="text-white">Home</Link>
-          <Link href="/services" className="text-white">Services</Link>
-          <Link href="/booking" className="text-white">Book Now</Link>
-        </div>
-
-        {/* Hamburger — visible on mobile only */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
-      </div>
-
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="flex flex-col gap-4 mt-4 md:hidden">
-          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
-          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
-        </div>
-      )}
-    </nav>
-  )
-}
 </file>
 
 <file path="CRASH_COURSE_README.md">
@@ -471,48 +505,111 @@ export default config;
 }
 </file>
 
+<file path="components/Navbar.tsx">
+"use client"
+
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  return (
+    <nav
+      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+        scrolled
+          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
+          : "mx-0 bg-transparent py-4 border-b border-white/25"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        
+        {/* Logo */}
+        <Link href="/">
+          <Image
+            src="/images/logo.png"
+            alt="Fades & Facials"
+            quality={100}
+            width={50}
+            height={30}
+          />
+        </Link>
+
+        {/* Desktop links — hidden on mobile */}
+        <div className="hidden md:flex gap-8">
+          <Link href="/" className="text-white">Home</Link>
+          <Link href="/services" className="text-white">Services</Link>
+          <Link href="/booking" className="text-white">Book Now</Link>
+        </div>
+
+        {/* Hamburger — visible on mobile only */}
+        <button
+          className="md:hidden"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="flex flex-col gap-4 mt-4 md:hidden">
+          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+        </div>
+      )}
+    </nav>
+  )
+}
+</file>
+
 <file path="app/page.tsx">
-type Service = {
-  id: number;
-  name: string;
-  description: string;
-  gif: string;
-  reversed: boolean;
-};
+import { allServices } from "@/lib/services";
 
-const services: Service[] = [
-  {
-    id: 1,
-    name: "Fades",
-    description: "Clean, precise fades tailored to your style.",
-    gif: "/images/services/fade.gif",
-    reversed: false,
-  },
-  {
-    id: 2,
-    name: "Facials",
-    description: "Skin treatments that refresh and restore.",
-    gif: "/images/services/facial.gif",
-    reversed: true,
-  },
-  {
-    id: 3,
-    name: "Straight Razor Shave",
-    description: "A classic hot towel shave experience.",
-    gif: "/images/services/barbergif1.gif",
-    reversed: false,
-  },
-];
+// ─────────────────────────────────────────
+// SECTION: Homepage Service Preview Selection
+// WHAT: Picks three featured services and adds alternating layout direction metadata.
+// WHY: Keeps the homepage lightweight while reusing the shared service catalog.
+// PHASE 4: Keep this selector logic, but source allServices from database-backed fetches.
+// ─────────────────────────────────────────
+const previewServices = allServices
+  .filter((s) => [1, 6, 4].includes(s.id))
+  .map((service, index) => ({ ...service, reversed: index % 2 !== 0 }));
 
+// ─────────────────────────────────────────
+// SECTION: Home Page Composition
+// WHAT: Renders the hero section followed by alternating featured service cards.
+// WHY: Combines brand-first messaging with quick access to key bookable services.
+// PHASE 4: Keep this UI structure and feed it with live service records from Supabase.
+// ─────────────────────────────────────────
 export default function Home() {
   return (
     <>
+      {/* Full-screen hero with animated GIF background */}
       <section
         className="relative flex min-h-screen items-center justify-center bg-cover bg-center"
         style={{ backgroundImage: "url('/images/lele1.gif')" }}
       >
+        {/* Dark overlay for readability over the GIF */}
         <div className="absolute inset-0 z-0 bg-black/50" />
 
+        {/* Foreground hero content layered above overlay */}
         <div className="relative z-10 mx-auto max-w-3xl px-6 text-center text-white">
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
             Fades &amp; Facials
@@ -529,20 +626,23 @@ export default function Home() {
         </div>
       </section>
 
-      {services.map((service, index) => (
+      {/* Services preview cards rendered from shared data with alternating layout */}
+      {previewServices.map((service, index) => (
         <section
           key={service.id}
           className={`flex w-full flex-col ${
             service.reversed ? "md:flex-row-reverse" : "md:flex-row"
           } ${index % 2 === 0 ? "bg-[#0f1e2e]" : "bg-[#0a1628]"}`}
         >
+          {/* GIF column */}
           <div className="w-full md:w-1/2">
             <img
-              src={service.gif}
+              src={service.image}
               alt={service.name}
               className="h-72 w-full object-cover md:h-full"
             />
           </div>
+          {/* Text and CTA column */}
           <div className="flex w-full items-center px-8 py-12 md:w-1/2 md:px-16">
             <div className="max-w-xl">
               <h2 className="text-3xl font-bold text-white md:text-4xl">
@@ -562,46 +662,6 @@ export default function Home() {
         </section>
       ))}
     </>
-  );
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navbar from '../components/Navbar'
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-          <Navbar/>
-        {children}
-        </body>
-    </html>
   );
 }
 </file>
@@ -706,6 +766,46 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 body {
   background-color: #0f1e2e;
   color: #f8fafc;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import Navbar from '../components/Navbar'
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Fades and Facials",
+  description: "It's an experience",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+          <Navbar/>
+        {children}
+        </body>
+    </html>
+  );
 }
 </file>
 
