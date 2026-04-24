@@ -1,14 +1,34 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
 
   return (
-    <nav className="bg-[#1e3a5f] text-white px-6 py-4">
+    <nav
+      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+        scrolled
+          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
+          : "mx-0 bg-transparent py-4 border-b border-white/25"
+      }`}
+    >
       <div className="flex items-center justify-between">
         
         {/* Logo */}
@@ -16,16 +36,17 @@ export default function Navbar() {
           <Image
             src="/images/logo.png"
             alt="Fades & Facials"
-            width={120}
-            height={40}
+            quality={100}
+            width={50}
+            height={30}
           />
         </Link>
 
         {/* Desktop links — hidden on mobile */}
         <div className="hidden md:flex gap-8">
-          <Link href="/">Home</Link>
-          <Link href="/services">Services</Link>
-          <Link href="/booking">Book Now</Link>
+          <Link href="/" className="text-white">Home</Link>
+          <Link href="/services" className="text-white">Services</Link>
+          <Link href="/booking" className="text-white">Book Now</Link>
         </div>
 
         {/* Hamburger — visible on mobile only */}
@@ -40,9 +61,9 @@ export default function Navbar() {
       {/* Mobile dropdown */}
       {menuOpen && (
         <div className="flex flex-col gap-4 mt-4 md:hidden">
-          <Link href="/" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link href="/services" onClick={() => setMenuOpen(false)}>Services</Link>
-          <Link href="/booking" onClick={() => setMenuOpen(false)}>Book Now</Link>
+          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
         </div>
       )}
     </nav>

@@ -40,23 +40,39 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.cursorrules
 .gitignore
 AGENTS.md
+app/admin/gallery/page.tsx
+app/admin/page.tsx
+app/admin/services/page.tsx
 app/favicon.ico
 app/globals.css
 app/layout.tsx
 app/page.tsx
+app/services/page.tsx
 CLAUDE.md
+components/Navbar.tsx
+CRASH_COURSE_README.md
 eslint.config.mjs
+hero-homepage.png
 lessonPlan.md
 next.config.ts
 package.json
 postcss.config.mjs
-public/file.svg
-public/globe.svg
-public/next.svg
-public/vercel.svg
-public/window.svg
+public/images/cuts/cut1.jpg
+public/images/cuts/cut2.jpg
+public/images/cuts/cut3.jpg
+public/images/hair/hair1.jpg
+public/images/hair/hair2.jpg
+public/images/hair/hair3.jpg
+public/images/lele1.gif
+public/images/lele2.gif
+public/images/logo.ico
+public/images/logo.png
+public/images/services/barbergif1.gif
+public/images/services/facial.gif
+public/images/services/fade.gif
 README.md
 tsconfig.json
 </directory_structure>
@@ -64,11 +80,25 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="lessonPlan.md">
-Q: In your own words, what is layout.tsx doing that page.tsx isn't?
-the page.tsx is what the user sees and layout is the root shell.
+<file path=".cursorrules">
+# Project Architecture & Workflow Rules
 
-the dev scripts is how to stat a development enviroment
+## Coding Standards
+- Break features into the smallest possible modular components. Never write monolithic files.
+- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
+- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
+- Build robust error handling on every feature. Fail gracefully.
+
+## Workflow Automation (CRITICAL)
+- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
+- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
+- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+
+## Tech Stack Constraints
+- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
+- Mobile-first approach.
+- No external CSS files. All styling via Tailwind classes.
+- Do not invent dependencies. Ask before running npm install.
 </file>
 
 <file path=".gitignore">
@@ -123,57 +153,208 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- END:nextjs-agent-rules -->
 </file>
 
-<file path="app/globals.css">
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+<file path="app/admin/gallery/page.tsx">
+export default function Home() {
+  return <h1>Admin Gallery</h1>;
 }
 </file>
 
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
-    </html>
-  );
+<file path="app/admin/page.tsx">
+export default function Home() {
+  return <h1>Admin</h1>;
 }
 </file>
 
-<file path="app/page.tsx">
-<h1>Fades anbd Facisl</h1>
+<file path="app/admin/services/page.tsx">
+export default function Home() {
+  return <h1>Admin Services</h1>;
+}
+</file>
+
+<file path="app/services/page.tsx">
+export default function Home() {
+  return <h1>Services</h1>;
+}
 </file>
 
 <file path="CLAUDE.md">
 @AGENTS.md
+</file>
+
+<file path="components/Navbar.tsx">
+"use client"
+
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 80)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  return (
+    <nav
+      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+        scrolled
+          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
+          : "mx-0 bg-transparent py-4 border-b border-white/25"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        
+        {/* Logo */}
+        <Link href="/">
+          <Image
+            src="/images/logo.png"
+            alt="Fades & Facials"
+            quality={100}
+            width={50}
+            height={30}
+          />
+        </Link>
+
+        {/* Desktop links — hidden on mobile */}
+        <div className="hidden md:flex gap-8">
+          <Link href="/" className="text-white">Home</Link>
+          <Link href="/services" className="text-white">Services</Link>
+          <Link href="/booking" className="text-white">Book Now</Link>
+        </div>
+
+        {/* Hamburger — visible on mobile only */}
+        <button
+          className="md:hidden"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="flex flex-col gap-4 mt-4 md:hidden">
+          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+        </div>
+      )}
+    </nav>
+  )
+}
+</file>
+
+<file path="CRASH_COURSE_README.md">
+# Fades & Facials 2.0 — Learning Roadmap
+> Britton's full-stack rebuild. Built the right way, from scratch.
+> Background: Bachelor's in web dev, refreshing after ~5 years. Calibrated to move fast through fundamentals.
+
+---
+
+## Phase 1: Coding Fundamentals ✅ COMPLETE
+
+- [x] Terminal basics, Linux commands, Git Bash navigation
+- [x] Git workflows — init, add, commit, branch, merge, push, delete
+- [x] Conventional Commits (feat:, fix:, docs:, chore:)
+- [x] Reading error messages — SyntaxError vs TypeError vs ReferenceError
+- [x] Variables & Data Types — const vs let, String, Number, Boolean, Null
+- [x] Template literals and string concatenation
+- [x] Conditionals — if, else if, else, === vs ==
+- [x] Functions — declarations, expressions, arrow functions
+- [x] Arrays & Loops — for, forEach, index awareness
+- [x] Iterators — map, filter, chaining
+- [x] Objects — key/value pairs, dot notation, destructuring
+- [x] Scope & Closures — variable lifetime, closure pattern
+- [x] Promises & Async/Await — event loop, concurrent execution
+- [x] Error Handling — try/catch/throw, null returns vs thrown errors
+
+**Key files built:** `functions.js`, `arrays.js`, `objects.js`, `scope.js`, `async.js`, `errors.js`
+
+---
+
+## Phase 2: Project Architecture & Setup ← CURRENT
+
+- [ ] Initialize Fades & Facials as a real Next.js 15 project
+- [ ] File/folder architecture — why files go where they go
+- [ ] Configure Tailwind CSS with brand design tokens
+- [ ] Set up ESLint + Prettier for professional code formatting
+- [ ] First commit of the real project to GitHub
+- [ ] Deploy a blank shell to Vercel to establish the live URL early
+
+---
+
+## Phase 3: Frontend (Mobile-First)
+
+- [ ] Low-fidelity wireframes — plan before you build
+- [ ] Component architecture — breaking the UI into reusable pieces
+- [ ] Home page — hero, services preview, gallery, testimonials, footer
+- [ ] Services page — full list, prices, category filters
+- [ ] Mobile nav — hamburger menu, iOS/Android touch optimization
+- [ ] Vagaro booking widget integration
+- [ ] UI polish — lifetime.life inspired aesthetic
+
+---
+
+## Phase 4: Admin Backend
+
+- [ ] Data structure planned for services and images
+- [ ] Authentication — barber login, protected routes
+- [ ] Admin dashboard — upload photos, edit services, toggle availability
+- [ ] Database setup (Supabase)
+
+---
+
+## Phase 5: Advanced Engineering
+
+- [ ] Docker / Containerization (The Magic Backpack) — NetworkChuck + TechWorld with Nana
+- [ ] Advanced TypeScript (The Strict Spellchecker) — Fireship + Matt Pocock
+- [ ] React Architecture & Zustand (Organizing the Brain) — Jack Herrington + Cosden Solutions
+- [ ] Ubuntu Linux (Building the Treehouse) — LearnLinuxTV + Techno Tim
+
+---
+
+## Phase 6: AI Systems & Deployment
+
+- [ ] SEO optimization and metadata
+- [ ] Performance audit — Lighthouse 90+
+- [ ] Live deployment to custom domain
+- [ ] Maintenance best practices
+- [ ] AI deep dive — prompting, models, agents, agentic patterns
+
+---
+
+## Concepts Proven in Code
+
+| Concept | File | Status |
+|---|---|---|
+| Git branch workflow | fades-and-facials repo | ✅ |
+| Arrow functions | functions.js | ✅ |
+| Array chaining (filter + map) | arrays.js | ✅ |
+| Closures | scope.js | ✅ |
+| Async/concurrent execution | async.js | ✅ |
+| try/catch/throw | errors.js | ✅ |
+
+---
+
+## Resources Bookmarked
+
+- **Async/Await:** "JavaScript Promises in 10 Minutes" — Web Dev Simplified
+- **Async errors:** "Async Error Handling JavaScript" — Web Dev Simplified  
+- **Event loop visual:** search "loupe Philip Roberts" — animated event loop tool
+- **TypeScript intro:** "TypeScript in 100 Seconds" — Fireship
+- **Docker intro:** "you need to learn Docker RIGHT NOW" — NetworkChuck
+- **Linux basics:** "Linux Commands for Beginners" — LearnLinuxTV
 </file>
 
 <file path="eslint.config.mjs">
@@ -195,6 +376,13 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
+</file>
+
+<file path="lessonPlan.md">
+Q: In your own words, what is layout.tsx doing that page.tsx isn't?
+the page.tsx is what the user sees and layout is the root shell.
+
+the dev scripts is how to stat a development enviroment
 </file>
 
 <file path="next.config.ts">
@@ -246,27 +434,180 @@ const config = {
 export default config;
 </file>
 
-<file path="public/file.svg">
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
 </file>
 
-<file path="public/globe.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+<file path="app/page.tsx">
+type Service = {
+  id: number;
+  name: string;
+  description: string;
+  gif: string;
+  reversed: boolean;
+};
+
+const services: Service[] = [
+  {
+    id: 1,
+    name: "Fades",
+    description: "Clean, precise fades tailored to your style.",
+    gif: "/images/services/fade.gif",
+    reversed: false,
+  },
+  {
+    id: 2,
+    name: "Facials",
+    description: "Skin treatments that refresh and restore.",
+    gif: "/images/services/facial.gif",
+    reversed: true,
+  },
+  {
+    id: 3,
+    name: "Straight Razor Shave",
+    description: "A classic hot towel shave experience.",
+    gif: "/images/services/barbergif1.gif",
+    reversed: false,
+  },
+];
+
+export default function Home() {
+  return (
+    <>
+      <section
+        className="relative flex min-h-screen items-center justify-center bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/lele1.gif')" }}
+      >
+        <div className="absolute inset-0 z-0 bg-black/50" />
+
+        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center text-white">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+            Fades &amp; Facials
+          </h1>
+          <p className="mt-4 text-lg text-gray-100 sm:text-xl">
+            Premium cuts, clean fades, and self-care that hits different.
+          </p>
+          <button
+            type="button"
+            className="mt-8 rounded-md bg-amber-500 px-7 py-3 text-base font-semibold text-black shadow-lg transition hover:bg-amber-400"
+          >
+            Book Now
+          </button>
+        </div>
+      </section>
+
+      {services.map((service, index) => (
+        <section
+          key={service.id}
+          className={`flex w-full flex-col ${
+            service.reversed ? "md:flex-row-reverse" : "md:flex-row"
+          } ${index % 2 === 0 ? "bg-[#0f1e2e]" : "bg-[#0a1628]"}`}
+        >
+          <div className="w-full md:w-1/2">
+            <img
+              src={service.gif}
+              alt={service.name}
+              className="h-72 w-full object-cover md:h-full"
+            />
+          </div>
+          <div className="flex w-full items-center px-8 py-12 md:w-1/2 md:px-16">
+            <div className="max-w-xl">
+              <h2 className="text-3xl font-bold text-white md:text-4xl">
+                {service.name}
+              </h2>
+              <p className="mt-4 text-lg font-light text-slate-200">
+                {service.description}
+              </p>
+              <a
+                href="/booking"
+                className="mt-8 inline-block rounded-md bg-amber-500 px-6 py-3 text-base font-semibold text-black transition hover:bg-amber-400"
+              >
+                Book This Service
+              </a>
+            </div>
+          </div>
+        </section>
+      ))}
+    </>
+  );
+}
 </file>
 
-<file path="public/next.svg">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import Navbar from '../components/Navbar'
 
-<file path="public/vercel.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
-</file>
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
-<file path="public/window.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Fades and Facials",
+  description: "It's an experience",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+          <Navbar/>
+        {children}
+        </body>
+    </html>
+  );
+}
 </file>
 
 <file path="README.md">
+<<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -303,42 +644,68 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+=======
+# Fades & Facials 2.0 — Learning Roadmap
+> **Phase 1 Status:** In progress — Terminal & Git complete.
+> Britton's full-stack rebuild. Built the right way, from scratch.
+
+---
+
+## Phase 1: Coding Fundamentals
+- [ ] Terminal basics, Linux commands, Markdown, Git workflows
+- [ ] Variables & Data Types (let vs const, memory concepts)
+- [ ] Conditionals (if/else, switch, ternary)
+- [ ] Functions (declarations, expressions, arrow functions, scope, closures)
+- [ ] Arrays & Loops (for, while, do-while, nested)
+- [ ] Iterators (map, filter, reduce, forEach)
+- [ ] Objects (properties, methods, `this`, destructuring)
+- [ ] Classes & OOP (constructors, inheritance)
+- [ ] Modules (import/export)
+- [ ] Promises & Async/Await (event loop)
+- [ ] Error Handling & Debugging Mindset
+
+## Phase 2: Project Architecture & Setup
+- [ ] Project initialized in terminal with correct structure
+- [ ] File/folder architecture explained and implemented
+- [ ] Teaching UI scaffold built
+
+## Phase 3: Frontend (Mobile-First)
+- [ ] Low-fidelity planning & component architecture
+- [ ] UI built (Lifetime.life inspired)
+- [ ] Vagaro booking integration
+
+## Phase 4: Admin Backend
+- [ ] Data structure planned for services & images
+- [ ] Authentication implemented
+- [ ] Admin dashboard built
+
+## Phase 5: Advanced Engineering
+- [ ] Docker / Containerization (The Magic Backpack)
+- [ ] Advanced TypeScript (The Strict Spellchecker)
+- [ ] React Architecture & Zustand (Organizing the Brain)
+- [ ] Ubuntu Linux (Building the Treehouse)
+
+## Phase 6: AI Systems & Deployment
+- [ ] SEO optimization & polish
+- [ ] Live deployment
+- [ ] AI architecture deep dive (prompting, agents, agentic patterns)
+>>>>>>> 7b383ae1b632149e3ae9d5ae8ac1f77b497ecc37
 </file>
 
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
+<file path="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #1e3a5f;
+  --color-brand-white: #f8fafc;
+  --color-brand-bg: #0f1e2e;
+  --color-brand-text: #f8fafc;
+  --color-brand-accent: #c9a96e;
+}
+
+body {
+  background-color: #0f1e2e;
+  color: #f8fafc;
 }
 </file>
 

@@ -1,0 +1,18 @@
+# Project Architecture & Workflow Rules
+
+## Coding Standards
+- Break features into the smallest possible modular components. Never write monolithic files.
+- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
+- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
+- Build robust error handling on every feature. Fail gracefully.
+
+## Workflow Automation (CRITICAL)
+- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
+- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
+- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+
+## Tech Stack Constraints
+- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
+- Mobile-first approach.
+- No external CSS files. All styling via Tailwind classes.
+- Do not invent dependencies. Ask before running npm install.
