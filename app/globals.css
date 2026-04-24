@@ -7,3 +7,8 @@
   --color-brand-text: #f8fafc;
   --color-brand-accent: #c9a96e;
 }
+
+body {
+  background-color: #0f1e2e;
+  color: #f8fafc;
+}
