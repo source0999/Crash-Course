@@ -46,6 +46,7 @@ export type DbGalleryItem = {
   file_type: "image" | "video";
   category: string | null;
   sort_order: number;
+  show_bg: boolean;
   is_active: boolean;
   created_at: string;
 };

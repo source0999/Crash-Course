@@ -43,20 +43,29 @@ fades-and-facials/
 │   ├── page.tsx            ← homepage (async Server Component, fetches from Supabase)
 │   ├── globals.css         ← Tailwind v4 @import + @theme tokens + body styles
 │   ├── admin/
-│   │   └── page.tsx        ← stub only, NOT built yet
+│   │   ├── page.tsx              ← magic link login form (use client)
+│   │   ├── callback/
+│   │   │   └── route.ts          ← exchanges magic link code for session, redirects to dashboard
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx          ← protected hub, links to Gallery + Services admin
+│   │   │   └── LogoutButton.tsx  ← use client, calls supabase.auth.signOut()
 │   │   ├── services/
-│   │   │   └── page.tsx    ← stub only
+│   │   │   └── page.tsx          ← stub only
 │   │   └── gallery/
-│   │       └── page.tsx    ← stub only
+│   │       └── page.tsx          ← full client CRUD manager (upload/replace/toggle/delete)
 │   ├── booking/
 │   │   └── page.tsx        ← Vagaro iframe (production) / placeholder (localhost)
+│   ├── gallery/
+│   │   ├── page.tsx              ← async Server Component, fetches gallery table, revalidate=60
+│   │   └── GalleryGrid.tsx       ← use client, masonry CSS columns, stagger animation
 │   └── services/
 │       └── page.tsx        ← async Server Component, fetches from Supabase
 ├── components/
 │   └── Navbar.tsx          ← "use client", scroll-aware floating navbar, iOS-fixed
 ├── lib/
 │   ├── services.ts         ← hardcoded fallback data (used if Supabase fails)
-│   └── supabase.ts         ← Supabase client + DbService type
+│   └── supabase.ts         ← Supabase client + DbService + DbGalleryItem + server/middleware helpers
+├── middleware.ts           ← protects /admin/* routes, allows /admin and /admin/callback through
 ├── public/
 │   └── images/
 │       ├── logo.png
@@ -84,6 +93,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 
 `.gitignore` has `.env*` — all env files are safe.
 
+Note: @supabase/ssr is installed. createBrowserClient used in client components, createServerSupabaseClient used in server components and route handlers, createMiddlewareSupabaseClient used in middleware.ts.
+
 ---
 
 ## SUPABASE STATE
@@ -102,7 +113,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 - Auto-populated via trigger on_auth_user_created
 - RLS: authenticated read/write
 
-`gallery` (created, empty)
+`gallery` (created, live with uploaded rows)
 - id, title, file_url, file_type ('image'|'video'), category, sort_order, is_active, created_at
 - RLS: public read (is_active=true), authenticated write
 
@@ -111,16 +122,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 - Seeded: hero_media_url='/images/lele1.gif', hero_media_type='gif', featured_service_ids='1,4,6'
 - RLS: public read, authenticated write
 
-**Storage buckets:** NOT yet created — Britton still needs to do this:
+**Storage buckets:** CREATED ✅
 - `gallery` bucket (public)
 - `hero` bucket (public)
-Both need policies: public read + authenticated upload/delete
+- Policies set: public read + authenticated upload/delete
 
 **Auth:**
 - Magic link only (no passwords)
 - Site URL: set to Vercel URL ✅
-- Redirect URLs: need `/admin/callback` added for both Vercel and localhost
-- Britton's user: created (id: d3bfa8f4-7f48-419e-b6c5-ba52cba1e4aa), NOT yet confirmed (hasn't clicked magic link)
+- Redirect URLs: `/admin/callback` working ✅
+- Britton's user: confirmed and working ✅
+- Magic link flow tested end-to-end ✅
 - Barber's user: NOT yet created (no email yet)
 
 ---
@@ -132,7 +144,14 @@ Both need policies: public read + authenticated upload/delete
 ✅ Homepage — hero GIF background with overlay, services preview (3 cards zigzag)
 ✅ Services page — live Supabase data, grouped by category, responsive grid
 ✅ Booking page — Vagaro iframe on production (HTTPS), placeholder on localhost
+✅ Public gallery page (/gallery) — masonry grid, staggered entrance animation, live Supabase data
+✅ Admin auth — magic link login, callback route, middleware protection, session-aware dashboard
+✅ Admin gallery manager — upload (multi-file), delete (with confirm), replace/swap, toggle visibility (show/hide)
 ✅ Supabase connection — live data pipeline working
+✅ Supabase Storage — gallery + hero buckets created, public read + authenticated write policies set
+✅ DbGalleryItem type — added to lib/supabase.ts
+✅ createServerSupabaseClient + createMiddlewareSupabaseClient — added to lib/supabase.ts
+✅ @supabase/ssr installed — cookie-aware auth for App Router
 ✅ Vercel deployment — live and working
 ✅ allowedDevOrigins — mobile dev testing works on local network
 ✅ lib/services.ts — fallback data if Supabase fails
@@ -167,81 +186,30 @@ Both need policies: public read + authenticated upload/delete
 
 ## WHAT'S NOT BUILT YET — PRIORITY ORDER
 
-### 1. Supabase Storage Buckets (Britton does manually)
-- Create `gallery` and `hero` buckets in Supabase Storage
-- Set policies: public read, authenticated upload/delete
+### 1. Gallery Ordering + Layout Presets (Admin)
+- Drag-to-reorder updates sort_order in gallery table
+- Layout preset picker: Masonry / Grid / Fullwidth
+- Layout choice persists to site_config table (key: gallery_layout)
+- Public /gallery page reads layout from site_config and renders accordingly
 
-### 2. Auth Callback Route
-Create `app/admin/callback/route.ts` — handles magic link redirect from Supabase.
-
-### 3. Admin Login Page (`/admin`)
-- Magic link form — email input + send button
-- On submit: call `supabase.auth.signInWithOtp({ email })`
-- Show "Check your email" confirmation state
-- Clean dark design matching site aesthetic
-
-### 4. Admin Middleware (route protection)
-Create `middleware.ts` at project root:
-- Checks Supabase session on every `/admin/*` route
-- Redirects to `/admin` login if no session
-- Allows `/admin/callback` through unauthenticated
-
-### 5. Admin Dashboard Hub (`/admin/dashboard`)
-- Landing page after login
-- Links to: Services, Gallery, Homepage Controls
-- Shows who's logged in
-- Logout button
-
-### 6. Services CRUD (`/admin/services`)
+### 2. Services CRUD (/admin/services)
 - List all services from Supabase
-- Edit name, price, description, image inline
-- Toggle is_active (show/hide on public site)
+- List all services, inline edit name/price/description
+- Toggle is_active per service
 - Add new service
 - Delete service (with confirmation)
 
-### 7. Gallery Management (`/admin/gallery`)
-- Upload images AND videos directly from device
-- Display uploaded media in masonry grid (Pinterest style)
-- Delete media
-- Files go to Supabase Storage `gallery` bucket
-- Public gallery page at `/gallery` (add to Navbar)
-- Gallery page: masonry grid, mix of `<video>` and `<img>` tags
-
-### 8. Homepage Controls (`/admin/homepage`)
+### 3. Homepage Controls (/admin/homepage)
 - Change hero background: upload new video/gif → saves URL to site_config
 - Select which 3 services appear in the preview section
-- Live preview of changes
 
-### 9. Hero Video Migration
-Current hero uses `lele1.gif` (large file). Should be `<video autoPlay muted loop playsInline>`.
-- Add `hero` Supabase storage bucket
-- Admin can upload MP4/WebM
-- Homepage reads `hero_media_url` and `hero_media_type` from site_config
-- Render as `<video>` or `<img>` based on type
+### 4. Mobile-First Admin Pass (after all features functional)
+- Full /admin/* mobile redesign for iPhone use
+- Bottom-sheet controls, thumb-friendly layout, camera roll optimized
 
-### 10. Gallery Public Page
-- Route: `/gallery`
-- Add "Gallery" to Navbar
-- Masonry grid layout (CSS columns or Masonry library)
-- Mix of `<img>` and `<video autoPlay muted loop playsInline>` 
-- Fetch from Supabase gallery table (is_active = true)
-
-### 11. Invite System (Admin Panel)
-- In admin dashboard: "Invite Admin" button
-- Email input → calls `supabase.auth.admin.inviteUserByEmail()`
-- Requires SERVICE ROLE KEY (not anon key — create separate server-only client)
-- List current admins from profiles table
-- Revoke access button (deletes from auth.users)
-- NOTE: Service role key is SECRET — never expose to client. Must be in Server Action or Route Handler only.
-
-### 12. Design Overhaul (Phase 3 polish — do LAST)
-Britton wants the full lifetime.life aesthetic applied after all features work.
-Use Cursor section by section:
-- Full-bleed layouts, cinematic spacing
-- Bold oversized typography
-- Smooth scroll sections
-- Premium button styles
-- Keep all the scroll navbar behavior already built
+### 5. Public Site Design Overhaul (Phase 3 polish — do LAST)
+- lifetime.life aesthetic applied section by section
+- Full-bleed cinematic layouts, bold typography, scroll animations
 
 ---
 

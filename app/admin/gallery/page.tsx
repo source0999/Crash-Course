@@ -44,6 +44,10 @@ export default function AdminGalleryPage() {
   } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [replacing, setReplacing] = useState<number | null>(null);
+  const [layout, setLayout] = useState<"masonry" | "grid" | "fullwidth">("masonry");
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -69,9 +73,76 @@ export default function AdminGalleryPage() {
     setLoading(false);
   }
 
+  async function fetchLayout() {
+    const { data } = await supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "gallery_layout")
+      .single();
+    if (data?.value) setLayout(data.value as "masonry" | "grid" | "fullwidth");
+  }
+
+  async function saveLayout(newLayout: "masonry" | "grid" | "fullwidth") {
+    setLayoutSaving(true);
+    setLayout(newLayout);
+    await supabase.from("site_config").upsert({
+      key: "gallery_layout",
+      value: newLayout,
+      updated_at: new Date().toISOString(),
+    });
+    setLayoutSaving(false);
+    setFeedback({ type: "success", msg: `Layout set to ${newLayout}` });
+  }
+
   useEffect(() => {
     fetchItems();
+    fetchLayout();
   }, []);
+
+  function handleDragStart(id: number) {
+    setDraggedId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    setDragOverId(id);
+  }
+
+  async function handleDrop(targetId: number) {
+    if (draggedId === null || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const oldIndex = items.findIndex((i) => i.id === draggedId);
+    const newIndex = items.findIndex((i) => i.id === targetId);
+    const reordered = [...items];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+
+    // Optimistic update
+    const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    setItems(withNewOrder);
+    setDraggedId(null);
+    setDragOverId(null);
+
+    // Persist to Supabase
+    const updates = withNewOrder.map((item) =>
+      supabase.from("gallery").update({ sort_order: item.sort_order }).eq("id", item.id),
+    );
+    const results = await Promise.all(updates);
+    const anyError = results.find((r) => r.error);
+    if (anyError) {
+      setFeedback({ type: "error", msg: "Failed to save order. Try again." });
+      fetchItems();
+    }
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
 
   // ── Upload new media ──
   async function handleUpload(files: FileList | null) {
@@ -131,6 +202,22 @@ export default function AdminGalleryPage() {
     } else {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, is_active: !i.is_active } : i)),
+      );
+    }
+  }
+
+  // ── Toggle background transparency ──
+  async function handleToggleBg(item: DbGalleryItem) {
+    const nextShowBg = !item.show_bg;
+    const { error } = await supabase
+      .from("gallery")
+      .update({ show_bg: nextShowBg })
+      .eq("id", item.id);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to update background mode." });
+    } else {
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, show_bg: nextShowBg } : i)),
       );
     }
   }
@@ -233,6 +320,43 @@ export default function AdminGalleryPage() {
           </div>
         )}
 
+        {/* ── Layout Preset Picker ── */}
+        <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
+          <p className="text-white font-semibold mb-1">Gallery Layout</p>
+          <p className="text-white/40 text-xs mb-4">Choose how your gallery looks to visitors</p>
+          <div className="flex gap-3 flex-wrap">
+            {([
+              { key: "masonry", label: "⬡ Masonry", desc: "Pinterest style" },
+              { key: "grid", label: "⊞ Grid", desc: "Equal squares" },
+              { key: "fullwidth", label: "▬ Fullwidth", desc: "Cinematic rows" },
+            ] as const).map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => saveLayout(preset.key)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  saveLayout(preset.key);
+                }}
+                disabled={layoutSaving}
+                className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
+                  layout === preset.key
+                    ? "bg-brand-accent text-black border-brand-accent"
+                    : "bg-white/5 text-white border-white/10 hover:bg-white/10"
+                }`}
+              >
+                <div>{preset.label}</div>
+                <div
+                  className={`text-xs font-normal mt-0.5 ${
+                    layout === preset.key ? "text-black/60" : "text-white/40"
+                  }`}
+                >
+                  {preset.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* ── Upload zone ── */}
         <div
           onClick={() => uploadRef.current?.click()}
@@ -267,16 +391,25 @@ export default function AdminGalleryPage() {
             No media yet. Upload your first photo or video above.
           </p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">
+              Drag cards to reorder gallery
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((item) => (
               <div
                 key={item.id}
+                draggable
+                onDragStart={() => handleDragStart(item.id)}
+                onDragOver={(e) => handleDragOver(e, item.id)}
+                onDrop={() => handleDrop(item.id)}
+                onDragEnd={handleDragEnd}
                 className={`relative rounded-xl overflow-hidden border ${
                   item.is_active ? "border-white/10" : "border-white/5 opacity-50"
-                } bg-white/5`}
+                } bg-white/5 ${dragOverId === item.id ? "ring-2 ring-brand-accent" : ""}`}
               >
                 {/* Media preview */}
-                <div className="aspect-square overflow-hidden bg-black">
+                <div className={`aspect-square overflow-hidden ${item.show_bg ? "bg-black" : "bg-transparent"}`}>
                   {item.file_type === "video" ? (
                     <video
                       src={item.file_url}
@@ -303,6 +436,18 @@ export default function AdminGalleryPage() {
 
                 {/* Action buttons */}
                 <div className="p-2 flex flex-col gap-2">
+                  {/* Toggle background */}
+                  <button
+                    onClick={() => handleToggleBg(item)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleToggleBg(item);
+                    }}
+                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                  >
+                    {item.show_bg ? "BG: ON" : "BG: OFF"}
+                  </button>
+
                   {/* Toggle visibility */}
                   <button
                     onClick={() => handleToggle(item)}
@@ -376,7 +521,8 @@ export default function AdminGalleryPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </main>

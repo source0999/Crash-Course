@@ -115,11 +115,41 @@ This section contains the contents of the repository's files.
 </file>
 
 <file path="AGENTS.md">
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Agent Instructions — Fades & Facials
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+## Identity
+You are Lead Architect on this project. Britton is Director.
+Britton gives raw ideas. You write precise Cursor prompts.
+Always give architecture plan BEFORE writing code prompts.
+Calibrate to senior speed — skip conceptual basics.
+
+## Current Phase
+Phase A: Admin functionality (all features working, desktop-ok)
+- Gallery ordering + layout presets — NEXT
+- Services CRUD — after gallery ordering
+- Homepage controls — after services
+Phase B: Mobile-first admin pass (after all Phase A features done)
+Phase C: Public site design overhaul (last)
+
+## What's Working
+- Full auth flow (magic link → callback → dashboard → logout)
+- Admin gallery manager (upload, delete, replace, toggle visibility)
+- Public gallery page with masonry + stagger animation
+- Services page (live Supabase data)
+- Booking page (Vagaro iframe)
+- Navbar (scroll-aware, floating, mobile hamburger)
+
+## Never Do
+- backdrop-filter / backdrop-blur
+- translateX or scaleX in animations (use translate3d/scale3d)
+- Add packages without instruction
+- Edit tailwind.config.ts (doesn't exist — use globals.css @theme)
+- Commit directly to main
+- Skip the architecture plan before a prompt
+
+## Branch Naming
+feature/, fix/, docs/, chore/
+Current branch: feature/admin-auth (commit and branch to feature/admin-gallery-ordering next)
 </file>
 
 <file path="app/admin/callback/route.ts">
@@ -261,393 +291,6 @@ export default async function AdminDashboard() {
 }
 </file>
 
-<file path="app/admin/gallery/page.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: Admin Gallery Manager
-// WHAT: Full CRUD interface for gallery media — upload, delete, replace, and toggle visibility.
-// WHY: Lets the barber manage the public gallery without touching code or the database directly.
-// PHASE 4: No changes needed — already wired to live Supabase Storage and gallery table.
-// ─────────────────────────────────────────
-
-import { useEffect, useRef, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import type { DbGalleryItem } from "@/lib/supabase";
-
-// ── Supabase client (browser) ──
-function useSupabase() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-}
-
-// ── Helper: get public URL from storage path ──
-function getPublicUrl(supabase: ReturnType<typeof createBrowserClient>, path: string) {
-  const { data } = supabase.storage.from("gallery").getPublicUrl(path);
-  return data.publicUrl;
-}
-
-// ── Helper: extract storage path from full URL ──
-function extractStoragePath(url: string): string {
-  // URL format: .../storage/v1/object/public/gallery/FILENAME
-  const marker = "/gallery/";
-  const idx = url.indexOf(marker);
-  return idx !== -1 ? url.slice(idx + marker.length) : url;
-}
-
-export default function AdminGalleryPage() {
-  const supabase = useSupabase();
-  const [items, setItems] = useState<DbGalleryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    msg: string;
-  } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [replacing, setReplacing] = useState<number | null>(null);
-  const uploadRef = useRef<HTMLInputElement>(null);
-  const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
-
-  // ── Feedback auto-clear ──
-  useEffect(() => {
-    if (!feedback) return;
-    const t = setTimeout(() => setFeedback(null), 4000);
-    return () => clearTimeout(t);
-  }, [feedback]);
-
-  // ── Fetch all gallery items (admin sees all, including hidden) ──
-  async function fetchItems() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("gallery")
-      .select("*")
-      .order("sort_order", { ascending: true });
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to load gallery." });
-    } else {
-      setItems(data ?? []);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  // ── Upload new media ──
-  async function handleUpload(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setUploading(true);
-    setFeedback(null);
-
-    for (const file of Array.from(files)) {
-      const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const fileType = file.type.startsWith("video") ? "video" : "image";
-
-      // Upload to Storage
-      const { error: storageError } = await supabase.storage
-        .from("gallery")
-        .upload(fileName, file, { upsert: false });
-
-      if (storageError) {
-        setFeedback({ type: "error", msg: `Upload failed: ${storageError.message}` });
-        continue;
-      }
-
-      const publicUrl = getPublicUrl(supabase, fileName);
-
-      // Insert row into gallery table
-      const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) : 0;
-      const { error: dbError } = await supabase.from("gallery").insert({
-        file_url: publicUrl,
-        file_type: fileType,
-        sort_order: maxOrder + 1,
-        is_active: true,
-        title: null,
-        category: null,
-      });
-
-      if (dbError) {
-        setFeedback({
-          type: "error",
-          msg: `Saved to storage but DB insert failed: ${dbError.message}`,
-        });
-      }
-    }
-
-    setFeedback({ type: "success", msg: "Upload complete!" });
-    setUploading(false);
-    fetchItems();
-  }
-
-  // ── Toggle visibility ──
-  async function handleToggle(item: DbGalleryItem) {
-    const { error } = await supabase
-      .from("gallery")
-      .update({ is_active: !item.is_active })
-      .eq("id", item.id);
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to update visibility." });
-    } else {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_active: !i.is_active } : i)),
-      );
-    }
-  }
-
-  // ── Replace media (swap file, keep row) ──
-  async function handleReplace(item: DbGalleryItem, files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setReplacing(item.id);
-    setFeedback(null);
-    const file = files[0];
-    const ext = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const fileType = file.type.startsWith("video") ? "video" : "image";
-
-    // Upload new file
-    const { error: storageError } = await supabase.storage
-      .from("gallery")
-      .upload(fileName, file, { upsert: false });
-
-    if (storageError) {
-      setFeedback({ type: "error", msg: `Replace failed: ${storageError.message}` });
-      setReplacing(null);
-      return;
-    }
-
-    const newUrl = getPublicUrl(supabase, fileName);
-
-    // Update DB row with new URL and type
-    const { error: dbError } = await supabase
-      .from("gallery")
-      .update({ file_url: newUrl, file_type: fileType })
-      .eq("id", item.id);
-
-    if (dbError) {
-      setFeedback({
-        type: "error",
-        msg: `File uploaded but DB update failed: ${dbError.message}`,
-      });
-      setReplacing(null);
-      return;
-    }
-
-    // Delete old file from storage
-    const oldPath = extractStoragePath(item.file_url);
-    await supabase.storage.from("gallery").remove([oldPath]);
-
-    setFeedback({ type: "success", msg: "Media replaced successfully!" });
-    setReplacing(null);
-    fetchItems();
-  }
-
-  // ── Delete ──
-  async function handleDelete(item: DbGalleryItem) {
-    const path = extractStoragePath(item.file_url);
-    const { error: storageError } = await supabase.storage.from("gallery").remove([path]);
-    if (storageError) {
-      setFeedback({ type: "error", msg: `Storage delete failed: ${storageError.message}` });
-      setConfirmDelete(null);
-      return;
-    }
-    const { error: dbError } = await supabase.from("gallery").delete().eq("id", item.id);
-    if (dbError) {
-      setFeedback({ type: "error", msg: `File deleted but DB row failed: ${dbError.message}` });
-    } else {
-      setFeedback({ type: "success", msg: "Deleted successfully." });
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
-    }
-    setConfirmDelete(null);
-  }
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
-      <div className="max-w-5xl mx-auto">
-        {/* ── Header ── */}
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">
-              Admin
-            </p>
-            <h1 className="text-3xl font-bold text-white">Gallery Manager</h1>
-          </div>
-          <a
-            href="/admin/dashboard"
-            className="text-white/40 text-sm hover:text-white transition"
-          >
-            ← Back to Dashboard
-          </a>
-        </div>
-
-        {/* ── Feedback banner ── */}
-        {feedback && (
-          <div
-            className={`mb-6 rounded-lg px-4 py-3 text-sm font-medium ${
-              feedback.type === "success"
-                ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                : "bg-red-500/20 text-red-300 border border-red-500/30"
-            }`}
-          >
-            {feedback.msg}
-          </div>
-        )}
-
-        {/* ── Upload zone ── */}
-        <div
-          onClick={() => uploadRef.current?.click()}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            uploadRef.current?.click();
-          }}
-          className="mb-10 rounded-2xl border-2 border-dashed border-white/20 hover:border-brand-accent transition cursor-pointer flex flex-col items-center justify-center py-12 px-6 text-center touch-manipulation"
-        >
-          <p className="text-4xl mb-3">📷</p>
-          <p className="text-white font-semibold text-lg">
-            {uploading ? "Uploading..." : "Tap to Upload Photos or Videos"}
-          </p>
-          <p className="text-white/40 text-sm mt-1">
-            JPG, PNG, MP4, MOV supported. Multiple files OK.
-          </p>
-          <input
-            ref={uploadRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="hidden"
-            onChange={(e) => handleUpload(e.target.files)}
-          />
-        </div>
-
-        {/* ── Gallery grid ── */}
-        {loading ? (
-          <p className="text-white/40 text-center py-20">Loading gallery...</p>
-        ) : items.length === 0 ? (
-          <p className="text-white/40 text-center py-20">
-            No media yet. Upload your first photo or video above.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`relative rounded-xl overflow-hidden border ${
-                  item.is_active ? "border-white/10" : "border-white/5 opacity-50"
-                } bg-white/5`}
-              >
-                {/* Media preview */}
-                <div className="aspect-square overflow-hidden bg-black">
-                  {item.file_type === "video" ? (
-                    <video
-                      src={item.file_url}
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={item.file_url}
-                      alt={item.title ?? "Gallery item"}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-
-                {/* Hidden badge */}
-                {!item.is_active && (
-                  <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
-                    Hidden
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="p-2 flex flex-col gap-2">
-                  {/* Toggle visibility */}
-                  <button
-                    onClick={() => handleToggle(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleToggle(item);
-                    }}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
-                  </button>
-
-                  {/* Replace */}
-                  <button
-                    onClick={() => replaceRefs.current[item.id]?.click()}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      replaceRefs.current[item.id]?.click();
-                    }}
-                    disabled={replacing === item.id}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
-                  >
-                    {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
-                  </button>
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    ref={(el) => {
-                      replaceRefs.current[item.id] = el;
-                    }}
-                    onChange={(e) => handleReplace(item, e.target.files)}
-                  />
-
-                  {/* Delete with confirm */}
-                  {confirmDelete === item.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDelete(item)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          handleDelete(item);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
-                      >
-                        Yes, Delete
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(null)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setConfirmDelete(null);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDelete(item.id)}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        setConfirmDelete(item.id);
-                      }}
-                      className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
-                    >
-                      🗑 Delete
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </main>
-  );
-}
-</file>
-
 <file path="app/admin/services/page.tsx">
 export default function Home() {
   return <h1>Admin Services</h1>;
@@ -659,31 +302,118 @@ export default function Home() {
 
 // ─────────────────────────────────────────
 // SECTION: GalleryGrid
-// WHAT: Client component that renders the masonry grid with staggered entrance animations.
-// WHY: Animations require client context; data fetching stays in the Server Component parent.
-// PHASE 4: No changes needed — already wired to live Supabase data via props.
+// WHAT: Renders gallery media in masonry, grid, or fullwidth layout with stagger animation.
+// WHY: Layout is chosen by the barber in admin and passed from the server page.
+// PHASE 4: No changes needed.
 // ─────────────────────────────────────────
-
-import type { DbGalleryItem } from "@/lib/supabase";
+import { DbGalleryItem } from "@/lib/supabase";
 
 type Props = {
   items: DbGalleryItem[];
+  layout?: "masonry" | "grid" | "fullwidth";
 };
 
-export default function GalleryGrid({ items }: Props) {
+function MediaItem({ item, index }: { item: DbGalleryItem; index: number }) {
+  const style = {
+    animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+    animationDelay: `${index * 80}ms`,
+    transform: "translateZ(0)",
+    WebkitTransform: "translateZ(0)",
+  };
+  const media =
+    item.file_type === "video" ? (
+      <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+    ) : (
+      <img
+        src={item.file_url}
+        alt={item.title ?? "Gallery image"}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+    );
+  return { style, media };
+}
+
+export default function GalleryGrid({ items, layout = "masonry" }: Props) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-40 text-center">
-        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">
-          Coming Soon
-        </p>
-        <p className="mt-3 text-sm text-white/25 tracking-wider">
-          The portfolio is being built. Check back soon.
-        </p>
+        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">Coming Soon</p>
+        <p className="mt-3 text-sm text-white/25 tracking-wider">The portfolio is being built. Check back soon.</p>
       </div>
     );
   }
 
+  if (layout === "grid") {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`aspect-square overflow-hidden rounded-lg ${item.show_bg ? "bg-black" : "bg-transparent"}`}
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+            }}
+          >
+            {item.file_type === "video" ? (
+              <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+            ) : (
+              <img
+                src={item.file_url}
+                alt={item.title ?? "Gallery image"}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (layout === "fullwidth") {
+    return (
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="w-full overflow-hidden rounded-xl"
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+            }}
+          >
+            {item.file_type === "video" ? (
+              <video
+                src={item.file_url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full h-auto block"
+                style={{ maxHeight: "80vh" }}
+              />
+            ) : (
+              <img
+                src={item.file_url}
+                alt={item.title ?? "Gallery image"}
+                className="w-full h-auto block"
+                style={{ maxHeight: "80vh", objectFit: "cover" }}
+                loading="lazy"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default: masonry
   return (
     <div
       style={{ columns: "var(--gallery-cols)", columnGap: "12px" }}
@@ -701,19 +431,12 @@ export default function GalleryGrid({ items }: Props) {
           }}
         >
           {item.file_type === "video" ? (
-            <video
-              src={item.file_url}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="block h-auto w-full object-cover"
-            />
+            <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block" />
           ) : (
             <img
               src={item.file_url}
               alt={item.title ?? "Gallery image"}
-              className="block h-auto w-full object-cover"
+              className="w-full h-auto block"
               loading="lazy"
             />
           )}
@@ -727,45 +450,43 @@ export default function GalleryGrid({ items }: Props) {
 <file path="app/gallery/page.tsx">
 // ─────────────────────────────────────────
 // SECTION: Gallery Page
-// WHAT: Async Server Component — fetches all active gallery items from Supabase and passes them to GalleryGrid.
-// WHY: Server-side fetch keeps credentials off the client and enables ISR caching.
-// PHASE 4: No changes needed — already live Supabase data.
+// WHAT: Fetches gallery items AND layout preference from Supabase, passes both to GalleryGrid.
+// WHY: Layout is barber-controlled via admin — public page must respect that choice.
+// PHASE 4: No changes needed.
 // ─────────────────────────────────────────
-
 import { supabase, type DbGalleryItem } from "@/lib/supabase";
 import GalleryGrid from "./GalleryGrid";
 
-export const revalidate = 60; // ISR: re-fetch at most once per minute
+export const revalidate = 30;
 
 export default async function GalleryPage() {
   let items: DbGalleryItem[] = [];
+  let layout: "masonry" | "grid" | "fullwidth" = "masonry";
 
   try {
-    const { data, error } = await supabase
-      .from("gallery")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
-    if (error) throw error;
-    items = data ?? [];
+    const [galleryResult, configResult] = await Promise.all([
+      supabase
+        .from("gallery")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      supabase.from("site_config").select("value").eq("key", "gallery_layout").single(),
+    ]);
+    if (!galleryResult.error) items = galleryResult.data ?? [];
+    if (!configResult.error && configResult.data?.value) {
+      layout = configResult.data.value as "masonry" | "grid" | "fullwidth";
+    }
   } catch (err) {
-    console.error("[Gallery] Supabase fetch failed:", err);
+    console.error("[Gallery] Fetch failed:", err);
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] px-4 pt-28 pb-20 md:px-8 lg:px-12">
-      {/* ── Page Header ── */}
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
       <div className="mb-12 text-center">
-        <p className="mb-3 text-xs uppercase tracking-[0.3em] text-brand-accent">
-          Fades & Facials
-        </p>
-        <h1 className="text-4xl font-bold tracking-tight text-white md:text-6xl">
-          The Work
-        </h1>
+        <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-3">Fades & Facials</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">The Work</h1>
       </div>
-
-      {/* ── Masonry Grid ── */}
-      <GalleryGrid items={items} />
+      <GalleryGrid items={items} layout={layout} />
     </main>
   );
 }
@@ -817,20 +538,29 @@ fades-and-facials/
 │   ├── page.tsx            ← homepage (async Server Component, fetches from Supabase)
 │   ├── globals.css         ← Tailwind v4 @import + @theme tokens + body styles
 │   ├── admin/
-│   │   └── page.tsx        ← stub only, NOT built yet
+│   │   ├── page.tsx              ← magic link login form (use client)
+│   │   ├── callback/
+│   │   │   └── route.ts          ← exchanges magic link code for session, redirects to dashboard
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx          ← protected hub, links to Gallery + Services admin
+│   │   │   └── LogoutButton.tsx  ← use client, calls supabase.auth.signOut()
 │   │   ├── services/
-│   │   │   └── page.tsx    ← stub only
+│   │   │   └── page.tsx          ← stub only
 │   │   └── gallery/
-│   │       └── page.tsx    ← stub only
+│   │       └── page.tsx          ← full client CRUD manager (upload/replace/toggle/delete)
 │   ├── booking/
 │   │   └── page.tsx        ← Vagaro iframe (production) / placeholder (localhost)
+│   ├── gallery/
+│   │   ├── page.tsx              ← async Server Component, fetches gallery table, revalidate=60
+│   │   └── GalleryGrid.tsx       ← use client, masonry CSS columns, stagger animation
 │   └── services/
 │       └── page.tsx        ← async Server Component, fetches from Supabase
 ├── components/
 │   └── Navbar.tsx          ← "use client", scroll-aware floating navbar, iOS-fixed
 ├── lib/
 │   ├── services.ts         ← hardcoded fallback data (used if Supabase fails)
-│   └── supabase.ts         ← Supabase client + DbService type
+│   └── supabase.ts         ← Supabase client + DbService + DbGalleryItem + server/middleware helpers
+├── middleware.ts           ← protects /admin/* routes, allows /admin and /admin/callback through
 ├── public/
 │   └── images/
 │       ├── logo.png
@@ -858,6 +588,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 
 `.gitignore` has `.env*` — all env files are safe.
 
+Note: @supabase/ssr is installed. createBrowserClient used in client components, createServerSupabaseClient used in server components and route handlers, createMiddlewareSupabaseClient used in middleware.ts.
+
 ---
 
 ## SUPABASE STATE
@@ -876,7 +608,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 - Auto-populated via trigger on_auth_user_created
 - RLS: authenticated read/write
 
-`gallery` (created, empty)
+`gallery` (created, live with uploaded rows)
 - id, title, file_url, file_type ('image'|'video'), category, sort_order, is_active, created_at
 - RLS: public read (is_active=true), authenticated write
 
@@ -885,16 +617,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
 - Seeded: hero_media_url='/images/lele1.gif', hero_media_type='gif', featured_service_ids='1,4,6'
 - RLS: public read, authenticated write
 
-**Storage buckets:** NOT yet created — Britton still needs to do this:
+**Storage buckets:** CREATED ✅
 - `gallery` bucket (public)
 - `hero` bucket (public)
-Both need policies: public read + authenticated upload/delete
+- Policies set: public read + authenticated upload/delete
 
 **Auth:**
 - Magic link only (no passwords)
 - Site URL: set to Vercel URL ✅
-- Redirect URLs: need `/admin/callback` added for both Vercel and localhost
-- Britton's user: created (id: d3bfa8f4-7f48-419e-b6c5-ba52cba1e4aa), NOT yet confirmed (hasn't clicked magic link)
+- Redirect URLs: `/admin/callback` working ✅
+- Britton's user: confirmed and working ✅
+- Magic link flow tested end-to-end ✅
 - Barber's user: NOT yet created (no email yet)
 
 ---
@@ -906,7 +639,14 @@ Both need policies: public read + authenticated upload/delete
 ✅ Homepage — hero GIF background with overlay, services preview (3 cards zigzag)
 ✅ Services page — live Supabase data, grouped by category, responsive grid
 ✅ Booking page — Vagaro iframe on production (HTTPS), placeholder on localhost
+✅ Public gallery page (/gallery) — masonry grid, staggered entrance animation, live Supabase data
+✅ Admin auth — magic link login, callback route, middleware protection, session-aware dashboard
+✅ Admin gallery manager — upload (multi-file), delete (with confirm), replace/swap, toggle visibility (show/hide)
 ✅ Supabase connection — live data pipeline working
+✅ Supabase Storage — gallery + hero buckets created, public read + authenticated write policies set
+✅ DbGalleryItem type — added to lib/supabase.ts
+✅ createServerSupabaseClient + createMiddlewareSupabaseClient — added to lib/supabase.ts
+✅ @supabase/ssr installed — cookie-aware auth for App Router
 ✅ Vercel deployment — live and working
 ✅ allowedDevOrigins — mobile dev testing works on local network
 ✅ lib/services.ts — fallback data if Supabase fails
@@ -941,81 +681,30 @@ Both need policies: public read + authenticated upload/delete
 
 ## WHAT'S NOT BUILT YET — PRIORITY ORDER
 
-### 1. Supabase Storage Buckets (Britton does manually)
-- Create `gallery` and `hero` buckets in Supabase Storage
-- Set policies: public read, authenticated upload/delete
+### 1. Gallery Ordering + Layout Presets (Admin)
+- Drag-to-reorder updates sort_order in gallery table
+- Layout preset picker: Masonry / Grid / Fullwidth
+- Layout choice persists to site_config table (key: gallery_layout)
+- Public /gallery page reads layout from site_config and renders accordingly
 
-### 2. Auth Callback Route
-Create `app/admin/callback/route.ts` — handles magic link redirect from Supabase.
-
-### 3. Admin Login Page (`/admin`)
-- Magic link form — email input + send button
-- On submit: call `supabase.auth.signInWithOtp({ email })`
-- Show "Check your email" confirmation state
-- Clean dark design matching site aesthetic
-
-### 4. Admin Middleware (route protection)
-Create `middleware.ts` at project root:
-- Checks Supabase session on every `/admin/*` route
-- Redirects to `/admin` login if no session
-- Allows `/admin/callback` through unauthenticated
-
-### 5. Admin Dashboard Hub (`/admin/dashboard`)
-- Landing page after login
-- Links to: Services, Gallery, Homepage Controls
-- Shows who's logged in
-- Logout button
-
-### 6. Services CRUD (`/admin/services`)
+### 2. Services CRUD (/admin/services)
 - List all services from Supabase
-- Edit name, price, description, image inline
-- Toggle is_active (show/hide on public site)
+- List all services, inline edit name/price/description
+- Toggle is_active per service
 - Add new service
 - Delete service (with confirmation)
 
-### 7. Gallery Management (`/admin/gallery`)
-- Upload images AND videos directly from device
-- Display uploaded media in masonry grid (Pinterest style)
-- Delete media
-- Files go to Supabase Storage `gallery` bucket
-- Public gallery page at `/gallery` (add to Navbar)
-- Gallery page: masonry grid, mix of `<video>` and `<img>` tags
-
-### 8. Homepage Controls (`/admin/homepage`)
+### 3. Homepage Controls (/admin/homepage)
 - Change hero background: upload new video/gif → saves URL to site_config
 - Select which 3 services appear in the preview section
-- Live preview of changes
 
-### 9. Hero Video Migration
-Current hero uses `lele1.gif` (large file). Should be `<video autoPlay muted loop playsInline>`.
-- Add `hero` Supabase storage bucket
-- Admin can upload MP4/WebM
-- Homepage reads `hero_media_url` and `hero_media_type` from site_config
-- Render as `<video>` or `<img>` based on type
+### 4. Mobile-First Admin Pass (after all features functional)
+- Full /admin/* mobile redesign for iPhone use
+- Bottom-sheet controls, thumb-friendly layout, camera roll optimized
 
-### 10. Gallery Public Page
-- Route: `/gallery`
-- Add "Gallery" to Navbar
-- Masonry grid layout (CSS columns or Masonry library)
-- Mix of `<img>` and `<video autoPlay muted loop playsInline>` 
-- Fetch from Supabase gallery table (is_active = true)
-
-### 11. Invite System (Admin Panel)
-- In admin dashboard: "Invite Admin" button
-- Email input → calls `supabase.auth.admin.inviteUserByEmail()`
-- Requires SERVICE ROLE KEY (not anon key — create separate server-only client)
-- List current admins from profiles table
-- Revoke access button (deletes from auth.users)
-- NOTE: Service role key is SECRET — never expose to client. Must be in Server Action or Route Handler only.
-
-### 12. Design Overhaul (Phase 3 polish — do LAST)
-Britton wants the full lifetime.life aesthetic applied after all features work.
-Use Cursor section by section:
-- Full-bleed layouts, cinematic spacing
-- Bold oversized typography
-- Smooth scroll sections
-- Premium button styles
-- Keep all the scroll navbar behavior already built
+### 5. Public Site Design Overhaul (Phase 3 polish — do LAST)
+- lifetime.life aesthetic applied section by section
+- Full-bleed cinematic layouts, bold typography, scroll animations
 
 ---
 
@@ -1119,7 +808,50 @@ Phase 6 (AI + Deployment) — Vercel deployed ✅, rest not started.
 </file>
 
 <file path="CLAUDE.md">
-@AGENTS.md
+# Fades & Facials — AI Agent Guide
+
+## Project
+Barbershop site for Fades & Facials, Suwanee GA. Real client. Deployed on Vercel.
+Repo: https://github.com/source0999/Crash-Course
+
+## Stack
+- Next.js 16.2.4 (App Router, Turbopack)
+- TypeScript strict
+- Tailwind CSS v4 (no tailwind.config.ts — @theme in globals.css only)
+- Supabase (PostgreSQL + Auth + Storage)
+- @supabase/ssr for cookie-aware auth
+- Vercel deployment
+
+## Critical Rules — Never Violate
+1. No backdrop-filter or backdrop-blur anywhere — breaks iOS WebKit silently
+2. All animations use translate3d/scale3d — never translateX/scaleX
+3. Every interactive element needs onTouchEnd with e.preventDefault()
+4. Minimum 44x44px touch targets on all clickable elements
+5. touch-manipulation class on all buttons/links
+6. No opacity-0 for hidden — use conditional DOM mounting
+7. No new packages without explicit instruction
+8. Server Components by default — use client only when state/interactivity needed
+9. No tailwind.config.ts — all tokens in globals.css @theme block
+10. No src/ directory — files at root of their directories
+11. Comment block required above every major section (see format below)
+
+## Comment Format (required in all files)
+// ─────────────────────────────────────────
+// SECTION: [name]
+// WHAT: [one sentence]
+// WHY: [one sentence]
+// PHASE 4: [what changes when database is connected]
+// ─────────────────────────────────────────
+
+## Auth Pattern
+- Browser client: createBrowserClient from @supabase/ssr (in use client components)
+- Server client: createServerSupabaseClient() from @/lib/supabase (in server components/route handlers)
+- Middleware client: createMiddlewareSupabaseClient() from @/lib/supabase (in middleware.ts only)
+- Magic link only — no passwords
+
+## Cursor Prompt Footer (always append to prompts)
+Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
+Mobile-first. No external CSS files. All styling via Tailwind classes.
 </file>
 
 <file path="components/Eruda.tsx">
@@ -5323,10 +5055,597 @@ When you open the new chat, paste the contents of CLAUDE_HANDOFF.md as your firs
 </file>
 
 <file path="lessonPlan.md">
-Q: In your own words, what is layout.tsx doing that page.tsx isn't?
-the page.tsx is what the user sees and layout is the root shell.
+Architecture Plan — Gallery Ordering + Layout Presets
+Two features, one page update + one public page update:
+app/admin/gallery/page.tsx — add to existing page:
 
-the dev scripts is how to stat a development enviroment
+Drag to reorder — each card gets a drag handle. On drop, recalculates sort_order for all affected items and batch-updates Supabase. Uses native HTML5 drag-and-drop (no new packages — draggable, onDragStart, onDragOver, onDrop). iOS touch drag handled via onTouchStart/Move/End.
+Layout preset picker — 3 buttons at top: Masonry / Grid / Fullwidth. Selecting one saves gallery_layout key to site_config table. Reads current value on load to show active preset.
+
+app/gallery/page.tsx + app/gallery/GalleryGrid.tsx — update public side:
+
+Page fetches gallery_layout from site_config alongside gallery items
+Passes layout prop to GalleryGrid
+GalleryGrid switches CSS based on layout:
+
+masonry — current CSS columns (already built)
+grid — equal aspect-square CSS grid
+fullwidth — single column, wide images, cinematic
+
+
+
+Files touched:
+
+app/admin/gallery/page.tsx — add drag reorder + layout picker
+app/gallery/GalleryGrid.tsx — add layout prop + conditional rendering
+app/gallery/page.tsx — fetch gallery_layout from site_config, pass to grid
+
+Files NOT touched: Navbar, globals.css, any auth files, services, middleware.
+
+Here's the Cursor prompt:
+
+We are adding two features to the gallery system: drag-to-reorder and layout presets.
+
+## STEP 1 — Update app/admin/gallery/page.tsx
+
+Add these two features to the existing admin gallery page. Do not remove any existing functionality (upload, delete, replace, toggle all stay).
+
+### Feature 1: Layout Preset Picker
+
+Add to the top of the component, after existing state declarations:
+```typescript
+const [layout, setLayout] = useState<'masonry' | 'grid' | 'fullwidth'>('masonry')
+const [layoutSaving, setLayoutSaving] = useState(false)
+```
+
+Add a fetchLayout function and call it in the existing useEffect alongside fetchItems:
+```typescript
+async function fetchLayout() {
+  const { data } = await supabase
+    .from('site_config')
+    .select('value')
+    .eq('key', 'gallery_layout')
+    .single()
+  if (data?.value) setLayout(data.value as 'masonry' | 'grid' | 'fullwidth')
+}
+```
+
+Add a saveLayout function:
+```typescript
+async function saveLayout(newLayout: 'masonry' | 'grid' | 'fullwidth') {
+  setLayoutSaving(true)
+  setLayout(newLayout)
+  await supabase
+    .from('site_config')
+    .upsert({ key: 'gallery_layout', value: newLayout, updated_at: new Date().toISOString() })
+  setLayoutSaving(false)
+  setFeedback({ type: 'success', msg: `Layout set to ${newLayout}` })
+}
+```
+
+Add this layout picker UI block between the header and the upload zone:
+```tsx
+{/* ── Layout Preset Picker ── */}
+<div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
+  <p className="text-white font-semibold mb-1">Gallery Layout</p>
+  <p className="text-white/40 text-xs mb-4">Choose how your gallery looks to visitors</p>
+  <div className="flex gap-3 flex-wrap">
+    {([
+      { key: 'masonry', label: '⬡ Masonry', desc: 'Pinterest style' },
+      { key: 'grid', label: '⊞ Grid', desc: 'Equal squares' },
+      { key: 'fullwidth', label: '▬ Fullwidth', desc: 'Cinematic rows' },
+    ] as const).map((preset) => (
+      <button
+        key={preset.key}
+        onClick={() => saveLayout(preset.key)}
+        onTouchEnd={(e) => { e.preventDefault(); saveLayout(preset.key) }}
+        disabled={layoutSaving}
+        className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
+          layout === preset.key
+            ? 'bg-brand-accent text-black border-brand-accent'
+            : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+        }`}
+      >
+        <div>{preset.label}</div>
+        <div className={`text-xs font-normal mt-0.5 ${layout === preset.key ? 'text-black/60' : 'text-white/40'}`}>
+          {preset.desc}
+        </div>
+      </button>
+    ))}
+  </div>
+</div>
+```
+
+### Feature 2: Drag to Reorder
+
+Add to state declarations:
+```typescript
+const [draggedId, setDraggedId] = useState<number | null>(null)
+const [dragOverId, setDragOverId] = useState<number | null>(null)
+```
+
+Add these drag handler functions:
+```typescript
+function handleDragStart(id: number) {
+  setDraggedId(id)
+}
+
+function handleDragOver(e: React.DragEvent, id: number) {
+  e.preventDefault()
+  setDragOverId(id)
+}
+
+async function handleDrop(targetId: number) {
+  if (draggedId === null || draggedId === targetId) {
+    setDraggedId(null)
+    setDragOverId(null)
+    return
+  }
+
+  const oldIndex = items.findIndex(i => i.id === draggedId)
+  const newIndex = items.findIndex(i => i.id === targetId)
+  const reordered = [...items]
+  const [moved] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, moved)
+
+  // Optimistic update
+  const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx + 1 }))
+  setItems(withNewOrder)
+  setDraggedId(null)
+  setDragOverId(null)
+
+  // Persist to Supabase
+  const updates = withNewOrder.map(item =>
+    supabase.from('gallery').update({ sort_order: item.sort_order }).eq('id', item.id)
+  )
+  const results = await Promise.all(updates)
+  const anyError = results.find(r => r.error)
+  if (anyError) {
+    setFeedback({ type: 'error', msg: 'Failed to save order. Try again.' })
+    fetchItems()
+  }
+}
+
+function handleDragEnd() {
+  setDraggedId(null)
+  setDragOverId(null)
+}
+```
+
+Update the grid container div to show a drag-hint label:
+Find the existing grid div that starts with:
+<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+````
+Add above it:
+```tsx
+<p className="text-white/30 text-xs mb-3 text-center tracking-wider">DRAG CARDS TO REORDER</p>
+```
+Update each item card div (the one with key={item.id}) to add drag props:
+tsx<div
+  key={item.id}
+  draggable
+  onDragStart={() => handleDragStart(item.id)}
+  onDragOver={(e) => handleDragOver(e, item.id)}
+  onDrop={() => handleDrop(item.id)}
+  onDragEnd={handleDragEnd}
+  className={`relative rounded-xl overflow-hidden border transition-all ${
+    draggedId === item.id ? 'opacity-40 scale-95' : ''
+  } ${
+    dragOverId === item.id && draggedId !== item.id ? 'border-brand-accent' : 
+    item.is_active ? 'border-white/10' : 'border-white/5 opacity-50'
+  } bg-white/5 cursor-grab active:cursor-grabbing`}
+>
+
+STEP 2 — Update app/gallery/GalleryGrid.tsx
+Add layout prop support. Replace the existing Props type and component signature:
+typescripttype Props = {
+  items: DbGalleryItem[]
+  layout?: 'masonry' | 'grid' | 'fullwidth'
+}
+
+export default function GalleryGrid({ items, layout = 'masonry' }: Props) {
+Replace the existing return statement's outer div with a layout-conditional wrapper:
+tsxif (items.length === 0) {
+  return (
+    <div className="flex flex-col items-center justify-center py-40 text-center">
+      <p className="text-2xl font-light text-white/40 tracking-widest uppercase">Coming Soon</p>
+      <p className="mt-3 text-sm text-white/25 tracking-wider">The portfolio is being built. Check back soon.</p>
+    </div>
+  )
+}
+
+// Masonry layout
+if (layout === 'masonry') {
+  return (
+    <div
+      style={{ columns: 'var(--gallery-cols)', columnGap: '12px' }}
+      className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className="mb-3 break-inside-avoid overflow-hidden rounded-lg"
+          style={{
+            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animationDelay: `${index * 80}ms`,
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+          }}
+        >
+          {item.file_type === 'video' ? (
+            <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block object-cover" />
+          ) : (
+            <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-auto block object-cover" loading="lazy" />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Grid layout
+if (layout === 'grid') {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className="aspect-square overflow-hidden rounded-lg bg-black"
+          style={{
+            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animationDelay: `${index * 80}ms`,
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+          }}
+        >
+          {item.file_type === 'video' ? (
+            <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+          ) : (
+            <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-full object-cover" loading="lazy" />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Fullwidth layout
+return (
+  <div className="flex flex-col gap-4">
+    {items.map((item, index) => (
+      <div
+        key={item.id}
+        className="w-full overflow-hidden rounded-xl"
+        style={{
+          animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+          animationDelay: `${index * 80}ms`,
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+        }}
+      >
+        {item.file_type === 'video' ? (
+          <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block max-h-[80vh] object-cover" />
+        ) : (
+          <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-auto block max-h-[80vh] object-cover" loading="lazy" />
+        )}
+      </div>
+    ))}
+  </div>
+)
+
+STEP 3 — Update app/gallery/page.tsx
+Fetch gallery_layout from site_config alongside gallery items, pass to GalleryGrid.
+Replace the entire file:
+typescript// ─────────────────────────────────────────
+// SECTION: Gallery Page
+// WHAT: Async Server Component — fetches gallery items and layout preference from Supabase.
+// WHY: Server-side fetch keeps credentials off the client and enables ISR caching.
+// PHASE 4: No changes needed — already live Supabase data.
+// ─────────────────────────────────────────
+
+import { supabase, type DbGalleryItem } from '@/lib/supabase'
+import GalleryGrid from './GalleryGrid'
+
+export const revalidate = 60
+
+export default async function GalleryPage() {
+  let items: DbGalleryItem[] = []
+  let layout: 'masonry' | 'grid' | 'fullwidth' = 'masonry'
+
+  try {
+    const [galleryResult, configResult] = await Promise.all([
+      supabase
+        .from('gallery')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true }),
+      supabase
+        .from('site_config')
+        .select('value')
+        .eq('key', 'gallery_layout')
+        .single()
+    ])
+
+    if (galleryResult.error) throw galleryResult.error
+    items = galleryResult.data ?? []
+
+    if (configResult.data?.value) {
+      layout = configResult.data.value as 'masonry' | 'grid' | 'fullwidth'
+    }
+  } catch (err) {
+    console.error('[Gallery] Fetch failed:', err)
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
+      <div className="mb-12 text-center">
+        <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-3">Fades & Facials</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">The Work</h1>
+      </div>
+      <GalleryGrid items={items} layout={layout} />
+    </main>
+  )
+}
+
+VERIFICATION CHECKLIST
+
+ Layout picker shows 3 buttons, active one is gold
+ Selecting a layout saves to site_config and shows feedback banner
+ Gallery cards are draggable, dragged card goes semi-transparent
+ Drop target card gets gold border highlight
+ After drop, order updates optimistically then persists to Supabase
+ Public /gallery page receives layout prop and renders correct layout
+ npx tsc --noEmit passes
+
+Do not touch: Navbar, globals.css, middleware, auth files, services page, lib/supabase.ts.
+Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
+Mobile-first. No external CSS files. All styling via Tailwind classes.
+You said: -i can pick betwen masnory, grid and fullwidth the style on hte uer side doesnt actually change tho-i can pick betwen masnory, grid and fullwidth the style on hte uer side doesnt actually change tho
+-not sure how to check if it giets saved to ite setting on refresh i will se it on the default setting adn flash back into the one i cbhosse from previous sessioncant drag gallery cards8cards do not get bgger on hovering
+cursor output:
+Implemented both features in app/admin/gallery/page.tsx while keeping all existing CRUD behavior intact.
+AddedLayout presets
+ New state:
+ layoutlayoutSavingNew functions:
+ fetchLayout() reads site_config key gallery_layoutsaveLayout() upserts site_config and shows success feedbackCalled fetchLayout() alongside fetchItems() in the existing useEffect.Added the Layout Preset Picker UI block between header/feedback and upload zone.Drag-to-reorder
+ New state:
+ draggedIddragOverIdNew handlers:
+ handleDragStarthandleDragOverhandleDrop (optimistic reorder + persist sort_order updates)handleDragEndEach gallery card is now draggable and wired to drag/drop handlers.Added a visible drag-hint label above the grid.Added drag-over highlight (ring-brand-accent) for better UX.
+ValidationRan npx tsc --noEmit ✅ passes.
+If you want, I can also wire the public /gallery page to read site_config.gallery_layout next so these presets immediately affect visitor layout.
+-------------Show more11:08 AMClaude responded: Good progress — layout picker UI works, cards show.Good progress — layout picker UI works, cards show. Three bugs to fix:
+
+Public gallery not reading site_config — Cursor didn't update GalleryGrid.tsx or gallery/page.tsx even though the prompt asked for it
+Drag not working — likely a CSS conflict, overflow-hidden on the card wrapper blocks drag events on some browsers
+Layout flashes on load — need to read from site_config before first render
+
+All three fixed in one prompt:
+
+Fix three bugs in the gallery system. Touch only the files specified.
+
+## BUG 1 — Public gallery page not reflecting layout choice
+The app/gallery/page.tsx and app/gallery/GalleryGrid.tsx were not updated. Fix both now.
+
+Replace entire app/gallery/page.tsx:
+```typescript
+// ─────────────────────────────────────────
+// SECTION: Gallery Page
+// WHAT: Fetches gallery items AND layout preference from Supabase, passes both to GalleryGrid.
+// WHY: Layout is barber-controlled via admin — public page must respect that choice.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { supabase, type DbGalleryItem } from '@/lib/supabase'
+import GalleryGrid from './GalleryGrid'
+
+export const revalidate = 30
+
+export default async function GalleryPage() {
+  let items: DbGalleryItem[] = []
+  let layout: 'masonry' | 'grid' | 'fullwidth' = 'masonry'
+
+  try {
+    const [galleryResult, configResult] = await Promise.all([
+      supabase
+        .from('gallery')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true }),
+      supabase
+        .from('site_config')
+        .select('value')
+        .eq('key', 'gallery_layout')
+        .single()
+    ])
+    if (!galleryResult.error) items = galleryResult.data ?? []
+    if (!configResult.error && configResult.data?.value) {
+      layout = configResult.data.value as 'masonry' | 'grid' | 'fullwidth'
+    }
+  } catch (err) {
+    console.error('[Gallery] Fetch failed:', err)
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
+      <div className="mb-12 text-center">
+        <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-3">Fades & Facials</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">The Work</h1>
+      </div>
+      <GalleryGrid items={items} layout={layout} />
+    </main>
+  )
+}
+```
+
+Replace entire app/gallery/GalleryGrid.tsx:
+```typescript
+'use client'
+
+// ─────────────────────────────────────────
+// SECTION: GalleryGrid
+// WHAT: Renders gallery media in masonry, grid, or fullwidth layout with stagger animation.
+// WHY: Layout is chosen by the barber in admin and passed from the server page.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { DbGalleryItem } from '@/lib/supabase'
+
+type Props = {
+  items: DbGalleryItem[]
+  layout?: 'masonry' | 'grid' | 'fullwidth'
+}
+
+function MediaItem({ item, index }: { item: DbGalleryItem; index: number }) {
+  const style = {
+    animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+    animationDelay: `${index * 80}ms`,
+    transform: 'translateZ(0)',
+    WebkitTransform: 'translateZ(0)',
+  }
+  const media = item.file_type === 'video'
+    ? <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+    : <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-full object-cover" loading="lazy" />
+  return { style, media }
+}
+
+export default function GalleryGrid({ items, layout = 'masonry' }: Props) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 text-center">
+        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">Coming Soon</p>
+        <p className="mt-3 text-sm text-white/25 tracking-wider">The portfolio is being built. Check back soon.</p>
+      </div>
+    )
+  }
+
+  if (layout === 'grid') {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="aspect-square overflow-hidden rounded-lg bg-black"
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: 'translateZ(0)',
+              WebkitTransform: 'translateZ(0)',
+            }}
+          >
+            {item.file_type === 'video'
+              ? <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+              : <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-full object-cover" loading="lazy" />
+            }
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (layout === 'fullwidth') {
+    return (
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="w-full overflow-hidden rounded-xl"
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: 'translateZ(0)',
+              WebkitTransform: 'translateZ(0)',
+            }}
+          >
+            {item.file_type === 'video'
+              ? <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block" style={{ maxHeight: '80vh' }} />
+              : <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-auto block" style={{ maxHeight: '80vh', objectFit: 'cover' }} loading="lazy" />
+            }
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Default: masonry
+  return (
+    <div
+      style={{ columns: 'var(--gallery-cols)', columnGap: '12px' }}
+      className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className="mb-3 break-inside-avoid overflow-hidden rounded-lg"
+          style={{
+            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animationDelay: `${index * 80}ms`,
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+          }}
+        >
+          {item.file_type === 'video'
+            ? <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block" />
+            : <img src={item.file_url} alt={item.title ?? 'Gallery image'} className="w-full h-auto block" loading="lazy" />
+          }
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+## BUG 2 — Drag not working on cards
+In app/admin/gallery/page.tsx, find the grid item card div. The issue is overflow-hidden on the outer card clips drag ghost image and some browsers block drag on elements inside overflow-hidden containers.
+
+Find this className on the card wrapper div:
+className={`relative rounded-xl overflow-hidden border transition-all ${
+Change overflow-hidden to overflow-visible and add a separate inner div for the media that has overflow-hidden:
+
+Replace the card wrapper and media preview section with:
+```tsx
+<div
+  key={item.id}
+  draggable
+  onDragStart={() => handleDragStart(item.id)}
+  onDragOver={(e) => handleDragOver(e, item.id)}
+  onDrop={() => handleDrop(item.id)}
+  onDragEnd={handleDragEnd}
+  className={`relative rounded-xl border transition-all select-none ${
+    draggedId === item.id ? 'opacity-40 scale-95' : 'hover:scale-[1.02]'
+  } ${
+    dragOverId === item.id && draggedId !== item.id
+      ? 'border-brand-accent shadow-lg shadow-brand-accent/20'
+      : item.is_active ? 'border-white/10' : 'border-white/5 opacity-50'
+  } bg-white/5 cursor-grab active:cursor-grabbing`}
+>
+  {/* Media preview — overflow-hidden scoped here only */}
+  <div className="aspect-square overflow-hidden rounded-t-xl bg-black">
+    {item.file_type === 'video' ? (
+      <video src={item.file_url} muted loop playsInline className="w-full h-full object-cover" />
+    ) : (
+      <img src={item.file_url} alt={item.title ?? 'Gallery item'} className="w-full h-full object-cover" />
+    )}
+  </div>
+```
+
+## BUG 3 — Layout flashes to default on load before site_config loads
+In app/admin/gallery/page.tsx, find the fetchLayout and fetchItems calls in useEffect. Make sure BOTH are called together and layout state is set before the loading spinner clears.
+
+Find the useEffect that calls fetchItems and update it to:
+```typescript
+useEffect(() => {
+  async function init() {
+    await Promise.all([fetchItems(), fetchLayout()])
+  }
+  init()
+}, [])
+```
+
+This ensures layout is loaded in parallel with items so there's no flash.
+
+Do not touch: Navbar, globals.css, middleware, auth files, services page, lib/supabase.ts.
+Run npx tsc --noEmit after.
+
+Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
+Mobile-first. No external CSS files. All styling via Tailwind classes.
 </file>
 
 <file path="lib/services.ts">
@@ -5504,6 +5823,539 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+</file>
+
+<file path="app/admin/gallery/page.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Admin Gallery Manager
+// WHAT: Full CRUD interface for gallery media — upload, delete, replace, and toggle visibility.
+// WHY: Lets the barber manage the public gallery without touching code or the database directly.
+// PHASE 4: No changes needed — already wired to live Supabase Storage and gallery table.
+// ─────────────────────────────────────────
+
+import { useEffect, useRef, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import type { DbGalleryItem } from "@/lib/supabase";
+
+// ── Supabase client (browser) ──
+function useSupabase() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+}
+
+// ── Helper: get public URL from storage path ──
+function getPublicUrl(supabase: ReturnType<typeof createBrowserClient>, path: string) {
+  const { data } = supabase.storage.from("gallery").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// ── Helper: extract storage path from full URL ──
+function extractStoragePath(url: string): string {
+  // URL format: .../storage/v1/object/public/gallery/FILENAME
+  const marker = "/gallery/";
+  const idx = url.indexOf(marker);
+  return idx !== -1 ? url.slice(idx + marker.length) : url;
+}
+
+export default function AdminGalleryPage() {
+  const supabase = useSupabase();
+  const [items, setItems] = useState<DbGalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    msg: string;
+  } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [replacing, setReplacing] = useState<number | null>(null);
+  const [layout, setLayout] = useState<"masonry" | "grid" | "fullwidth">("masonry");
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  // ── Feedback auto-clear ──
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+
+  // ── Fetch all gallery items (admin sees all, including hidden) ──
+  async function fetchItems() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("gallery")
+      .select("*")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to load gallery." });
+    } else {
+      setItems(data ?? []);
+    }
+    setLoading(false);
+  }
+
+  async function fetchLayout() {
+    const { data } = await supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "gallery_layout")
+      .single();
+    if (data?.value) setLayout(data.value as "masonry" | "grid" | "fullwidth");
+  }
+
+  async function saveLayout(newLayout: "masonry" | "grid" | "fullwidth") {
+    setLayoutSaving(true);
+    setLayout(newLayout);
+    await supabase.from("site_config").upsert({
+      key: "gallery_layout",
+      value: newLayout,
+      updated_at: new Date().toISOString(),
+    });
+    setLayoutSaving(false);
+    setFeedback({ type: "success", msg: `Layout set to ${newLayout}` });
+  }
+
+  useEffect(() => {
+    fetchItems();
+    fetchLayout();
+  }, []);
+
+  function handleDragStart(id: number) {
+    setDraggedId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    setDragOverId(id);
+  }
+
+  async function handleDrop(targetId: number) {
+    if (draggedId === null || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const oldIndex = items.findIndex((i) => i.id === draggedId);
+    const newIndex = items.findIndex((i) => i.id === targetId);
+    const reordered = [...items];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+
+    // Optimistic update
+    const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
+    setItems(withNewOrder);
+    setDraggedId(null);
+    setDragOverId(null);
+
+    // Persist to Supabase
+    const updates = withNewOrder.map((item) =>
+      supabase.from("gallery").update({ sort_order: item.sort_order }).eq("id", item.id),
+    );
+    const results = await Promise.all(updates);
+    const anyError = results.find((r) => r.error);
+    if (anyError) {
+      setFeedback({ type: "error", msg: "Failed to save order. Try again." });
+      fetchItems();
+    }
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  // ── Upload new media ──
+  async function handleUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setFeedback(null);
+
+    for (const file of Array.from(files)) {
+      const ext = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const fileType = file.type.startsWith("video") ? "video" : "image";
+
+      // Upload to Storage
+      const { error: storageError } = await supabase.storage
+        .from("gallery")
+        .upload(fileName, file, { upsert: false });
+
+      if (storageError) {
+        setFeedback({ type: "error", msg: `Upload failed: ${storageError.message}` });
+        continue;
+      }
+
+      const publicUrl = getPublicUrl(supabase, fileName);
+
+      // Insert row into gallery table
+      const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) : 0;
+      const { error: dbError } = await supabase.from("gallery").insert({
+        file_url: publicUrl,
+        file_type: fileType,
+        sort_order: maxOrder + 1,
+        is_active: true,
+        title: null,
+        category: null,
+      });
+
+      if (dbError) {
+        setFeedback({
+          type: "error",
+          msg: `Saved to storage but DB insert failed: ${dbError.message}`,
+        });
+      }
+    }
+
+    setFeedback({ type: "success", msg: "Upload complete!" });
+    setUploading(false);
+    fetchItems();
+  }
+
+  // ── Toggle visibility ──
+  async function handleToggle(item: DbGalleryItem) {
+    const { error } = await supabase
+      .from("gallery")
+      .update({ is_active: !item.is_active })
+      .eq("id", item.id);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to update visibility." });
+    } else {
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, is_active: !i.is_active } : i)),
+      );
+    }
+  }
+
+  // ── Toggle background transparency ──
+  async function handleToggleBg(item: DbGalleryItem) {
+    const nextShowBg = !item.show_bg;
+    const { error } = await supabase
+      .from("gallery")
+      .update({ show_bg: nextShowBg })
+      .eq("id", item.id);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to update background mode." });
+    } else {
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, show_bg: nextShowBg } : i)),
+      );
+    }
+  }
+
+  // ── Replace media (swap file, keep row) ──
+  async function handleReplace(item: DbGalleryItem, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setReplacing(item.id);
+    setFeedback(null);
+    const file = files[0];
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const fileType = file.type.startsWith("video") ? "video" : "image";
+
+    // Upload new file
+    const { error: storageError } = await supabase.storage
+      .from("gallery")
+      .upload(fileName, file, { upsert: false });
+
+    if (storageError) {
+      setFeedback({ type: "error", msg: `Replace failed: ${storageError.message}` });
+      setReplacing(null);
+      return;
+    }
+
+    const newUrl = getPublicUrl(supabase, fileName);
+
+    // Update DB row with new URL and type
+    const { error: dbError } = await supabase
+      .from("gallery")
+      .update({ file_url: newUrl, file_type: fileType })
+      .eq("id", item.id);
+
+    if (dbError) {
+      setFeedback({
+        type: "error",
+        msg: `File uploaded but DB update failed: ${dbError.message}`,
+      });
+      setReplacing(null);
+      return;
+    }
+
+    // Delete old file from storage
+    const oldPath = extractStoragePath(item.file_url);
+    await supabase.storage.from("gallery").remove([oldPath]);
+
+    setFeedback({ type: "success", msg: "Media replaced successfully!" });
+    setReplacing(null);
+    fetchItems();
+  }
+
+  // ── Delete ──
+  async function handleDelete(item: DbGalleryItem) {
+    const path = extractStoragePath(item.file_url);
+    const { error: storageError } = await supabase.storage.from("gallery").remove([path]);
+    if (storageError) {
+      setFeedback({ type: "error", msg: `Storage delete failed: ${storageError.message}` });
+      setConfirmDelete(null);
+      return;
+    }
+    const { error: dbError } = await supabase.from("gallery").delete().eq("id", item.id);
+    if (dbError) {
+      setFeedback({ type: "error", msg: `File deleted but DB row failed: ${dbError.message}` });
+    } else {
+      setFeedback({ type: "success", msg: "Deleted successfully." });
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+    }
+    setConfirmDelete(null);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* ── Header ── */}
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">
+              Admin
+            </p>
+            <h1 className="text-3xl font-bold text-white">Gallery Manager</h1>
+          </div>
+          <a
+            href="/admin/dashboard"
+            className="text-white/40 text-sm hover:text-white transition"
+          >
+            ← Back to Dashboard
+          </a>
+        </div>
+
+        {/* ── Feedback banner ── */}
+        {feedback && (
+          <div
+            className={`mb-6 rounded-lg px-4 py-3 text-sm font-medium ${
+              feedback.type === "success"
+                ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                : "bg-red-500/20 text-red-300 border border-red-500/30"
+            }`}
+          >
+            {feedback.msg}
+          </div>
+        )}
+
+        {/* ── Layout Preset Picker ── */}
+        <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
+          <p className="text-white font-semibold mb-1">Gallery Layout</p>
+          <p className="text-white/40 text-xs mb-4">Choose how your gallery looks to visitors</p>
+          <div className="flex gap-3 flex-wrap">
+            {([
+              { key: "masonry", label: "⬡ Masonry", desc: "Pinterest style" },
+              { key: "grid", label: "⊞ Grid", desc: "Equal squares" },
+              { key: "fullwidth", label: "▬ Fullwidth", desc: "Cinematic rows" },
+            ] as const).map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => saveLayout(preset.key)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  saveLayout(preset.key);
+                }}
+                disabled={layoutSaving}
+                className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
+                  layout === preset.key
+                    ? "bg-brand-accent text-black border-brand-accent"
+                    : "bg-white/5 text-white border-white/10 hover:bg-white/10"
+                }`}
+              >
+                <div>{preset.label}</div>
+                <div
+                  className={`text-xs font-normal mt-0.5 ${
+                    layout === preset.key ? "text-black/60" : "text-white/40"
+                  }`}
+                >
+                  {preset.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Upload zone ── */}
+        <div
+          onClick={() => uploadRef.current?.click()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            uploadRef.current?.click();
+          }}
+          className="mb-10 rounded-2xl border-2 border-dashed border-white/20 hover:border-brand-accent transition cursor-pointer flex flex-col items-center justify-center py-12 px-6 text-center touch-manipulation"
+        >
+          <p className="text-4xl mb-3">📷</p>
+          <p className="text-white font-semibold text-lg">
+            {uploading ? "Uploading..." : "Tap to Upload Photos or Videos"}
+          </p>
+          <p className="text-white/40 text-sm mt-1">
+            JPG, PNG, MP4, MOV supported. Multiple files OK.
+          </p>
+          <input
+            ref={uploadRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={(e) => handleUpload(e.target.files)}
+          />
+        </div>
+
+        {/* ── Gallery grid ── */}
+        {loading ? (
+          <p className="text-white/40 text-center py-20">Loading gallery...</p>
+        ) : items.length === 0 ? (
+          <p className="text-white/40 text-center py-20">
+            No media yet. Upload your first photo or video above.
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">
+              Drag cards to reorder gallery
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                draggable
+                onDragStart={() => handleDragStart(item.id)}
+                onDragOver={(e) => handleDragOver(e, item.id)}
+                onDrop={() => handleDrop(item.id)}
+                onDragEnd={handleDragEnd}
+                className={`relative rounded-xl overflow-hidden border ${
+                  item.is_active ? "border-white/10" : "border-white/5 opacity-50"
+                } bg-white/5 ${dragOverId === item.id ? "ring-2 ring-brand-accent" : ""}`}
+              >
+                {/* Media preview */}
+                <div className={`aspect-square overflow-hidden ${item.show_bg ? "bg-black" : "bg-transparent"}`}>
+                  {item.file_type === "video" ? (
+                    <video
+                      src={item.file_url}
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={item.file_url}
+                      alt={item.title ?? "Gallery item"}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+
+                {/* Hidden badge */}
+                {!item.is_active && (
+                  <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
+                    Hidden
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="p-2 flex flex-col gap-2">
+                  {/* Toggle background */}
+                  <button
+                    onClick={() => handleToggleBg(item)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleToggleBg(item);
+                    }}
+                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                  >
+                    {item.show_bg ? "BG: ON" : "BG: OFF"}
+                  </button>
+
+                  {/* Toggle visibility */}
+                  <button
+                    onClick={() => handleToggle(item)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleToggle(item);
+                    }}
+                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                  >
+                    {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
+                  </button>
+
+                  {/* Replace */}
+                  <button
+                    onClick={() => replaceRefs.current[item.id]?.click()}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      replaceRefs.current[item.id]?.click();
+                    }}
+                    disabled={replacing === item.id}
+                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
+                  >
+                    {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    ref={(el) => {
+                      replaceRefs.current[item.id] = el;
+                    }}
+                    onChange={(e) => handleReplace(item, e.target.files)}
+                  />
+
+                  {/* Delete with confirm */}
+                  {confirmDelete === item.id ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDelete(item)}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          handleDelete(item);
+                        }}
+                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
+                      >
+                        Yes, Delete
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          setConfirmDelete(null);
+                        }}
+                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(item.id)}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        setConfirmDelete(item.id);
+                      }}
+                      className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
+                    >
+                      🗑 Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="app/admin/page.tsx">
@@ -5866,6 +6718,7 @@ export type DbGalleryItem = {
   file_type: "image" | "video";
   category: string | null;
   sort_order: number;
+  show_bg: boolean;
   is_active: boolean;
   created_at: string;
 };
