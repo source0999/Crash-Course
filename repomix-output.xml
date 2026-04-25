@@ -43,11 +43,16 @@ The content is organized as follows:
 .cursorrules
 .gitignore
 AGENTS.md
+app/admin/callback/route.ts
+app/admin/dashboard/LogoutButton.tsx
+app/admin/dashboard/page.tsx
 app/admin/gallery/page.tsx
 app/admin/page.tsx
 app/admin/services/page.tsx
 app/booking/page.tsx
 app/favicon.ico
+app/gallery/GalleryGrid.tsx
+app/gallery/page.tsx
 app/globals.css
 app/layout.tsx
 app/page.tsx
@@ -59,10 +64,12 @@ components/Navbar.tsx
 CRASH_COURSE_README.md
 eslint.config.mjs
 eval.md
+galleryEx.mp4
 hero-homepage.png
 lessonPlan.md
 lib/services.ts
 lib/supabase.ts
+middleware.ts
 next.config.ts
 package.json
 postcss.config.mjs
@@ -85,6 +92,459 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="app/admin/callback/route.ts">
+// ─────────────────────────────────────────
+// SECTION: Auth Callback Route Handler
+// WHAT: Exchanges the Supabase magic link code for a user session.
+// WHY: Supabase OTP links send a ?code= param via PKCE flow — this exchanges it for a session cookie.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase";
+
+export async function GET(request: NextRequest) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const error = searchParams.get("error");
+
+  // If Supabase returned an error (expired link, etc), send back to login with message
+  if (error) {
+    return NextResponse.redirect(`${origin}/admin?error=${error}`);
+  }
+
+  if (code) {
+    const supabase = await createServerSupabaseClient();
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (!exchangeError) {
+      return NextResponse.redirect(`${origin}/admin/dashboard`);
+    }
+    return NextResponse.redirect(`${origin}/admin?error=exchange_failed`);
+  }
+
+  return NextResponse.redirect(`${origin}/admin?error=no_code`);
+}
+</file>
+
+<file path="app/admin/dashboard/LogoutButton.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Logout Button
+// WHAT: Client component that calls Supabase signOut and redirects to login.
+// WHY: signOut must run on the client — can't call it in a Server Component.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { createBrowserClient } from "@supabase/ssr";
+import { useRouter } from "next/navigation";
+
+export default function LogoutButton() {
+  const router = useRouter();
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/admin");
+    router.refresh();
+  }
+
+  return (
+    <button
+      onClick={handleLogout}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        handleLogout();
+      }}
+      className="rounded-lg border border-white/20 px-6 py-3 text-white/60 text-sm hover:text-white hover:border-white/40 transition touch-manipulation min-h-[44px]"
+    >
+      Sign Out
+    </button>
+  );
+}
+</file>
+
+<file path="app/admin/dashboard/page.tsx">
+// ─────────────────────────────────────────
+// SECTION: Admin Dashboard Hub
+// WHAT: Protected landing page after login — shows session info and nav to admin sections.
+// WHY: Central control panel for the barber to manage site content.
+// PHASE 4: No changes needed — session check is live.
+// ─────────────────────────────────────────
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase";
+import LogoutButton from "./LogoutButton";
+
+export default async function AdminDashboard() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect("/admin");
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-6">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="mb-10">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Admin Panel
+          </p>
+          <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+          <p className="mt-2 text-white/50 text-sm">
+            Signed in as <span className="text-brand-accent">{session.user.email}</span>
+          </p>
+        </div>
+
+        {/* Nav cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Link
+            href="/admin/gallery"
+            className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition touch-manipulation min-h-[44px]"
+          >
+            <p className="text-white font-semibold text-lg">Gallery</p>
+            <p className="text-white/40 text-sm mt-1">Upload and manage media</p>
+          </Link>
+
+          <Link
+            href="/admin/services"
+            className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition touch-manipulation min-h-[44px]"
+          >
+            <p className="text-white font-semibold text-lg">Services</p>
+            <p className="text-white/40 text-sm mt-1">Edit service listings</p>
+          </Link>
+        </div>
+
+        {/* Logout */}
+        <div className="mt-10">
+          <LogoutButton />
+        </div>
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="middleware.ts">
+// ─────────────────────────────────────────
+// SECTION: Admin Route Protection Middleware
+// WHAT: Guards all /admin/* routes — redirects to /admin login if no session.
+// WHY: Prevents unauthenticated access to admin dashboard and sub-pages.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { NextRequest, NextResponse } from "next/server";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase";
+
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  // Always allow the callback route through — it sets the session
+  if (pathname === "/admin/callback") {
+    return response;
+  }
+
+  // Allow the login page itself through unauthenticated
+  if (pathname === "/admin") {
+    return response;
+  }
+
+  // For all other /admin/* routes, check session
+  const supabase = createMiddlewareSupabaseClient(request, response);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    const loginUrl = new URL("/admin", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/admin/:path*"],
+};
+</file>
+
+<file path=".cursorrules">
+# Project Architecture & Workflow Rules
+
+## Coding Standards
+- Break features into the smallest possible modular components. Never write monolithic files.
+- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
+- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
+- Build robust error handling on every feature. Fail gracefully.
+
+## Workflow Automation (CRITICAL)
+- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
+- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
+- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+
+## Tech Stack Constraints
+- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
+- Mobile-first approach.
+- No external CSS files. All styling via Tailwind classes.
+- Do not invent dependencies. Ask before running npm install.
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="app/admin/gallery/page.tsx">
+export default function Home() {
+  return <h1>Admin Gallery</h1>;
+}
+</file>
+
+<file path="app/admin/page.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Admin Login Page
+// WHAT: Magic link email form — sends OTP via Supabase Auth.
+// WHY: Password-free auth. Barber enters email, clicks link, session is created.
+// PHASE 4: No changes needed — already wired to Supabase Auth.
+// ─────────────────────────────────────────
+import { Suspense, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  async function handleSubmit() {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/admin/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    setSubmitted(true);
+    setLoading(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Fades & Facials
+          </p>
+          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+        </div>
+
+        {!submitted ? (
+          <div className="flex flex-col gap-4">
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+            />
+
+            {(error || urlError) && (
+              <p className="text-red-400 text-sm text-center">
+                {error ??
+                  (urlError === "otp_expired"
+                    ? "Link expired — request a new one."
+                    : "Auth failed — try again.")}
+              </p>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                handleSubmit();
+              }}
+              disabled={loading}
+              className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+            >
+              {loading ? "Sending..." : "Send Magic Link"}
+            </button>
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="text-white text-lg font-light">Check your email.</p>
+            <p className="mt-2 text-white/50 text-sm">
+              Click the link we sent to{" "}
+              <span className="text-brand-accent">{email}</span> to sign in.
+            </p>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
+}
+</file>
+
+<file path="app/admin/services/page.tsx">
+export default function Home() {
+  return <h1>Admin Services</h1>;
+}
+</file>
+
+<file path="app/gallery/GalleryGrid.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: GalleryGrid
+// WHAT: Client component that renders the masonry grid with staggered entrance animations.
+// WHY: Animations require client context; data fetching stays in the Server Component parent.
+// PHASE 4: No changes needed — already wired to live Supabase data via props.
+// ─────────────────────────────────────────
+
+import type { DbGalleryItem } from "@/lib/supabase";
+
+type Props = {
+  items: DbGalleryItem[];
+};
+
+export default function GalleryGrid({ items }: Props) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 text-center">
+        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">
+          Coming Soon
+        </p>
+        <p className="mt-3 text-sm text-white/25 tracking-wider">
+          The portfolio is being built. Check back soon.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ columns: "var(--gallery-cols)", columnGap: "12px" }}
+      className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className="mb-3 break-inside-avoid overflow-hidden rounded-lg"
+          style={{
+            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animationDelay: `${index * 80}ms`,
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
+          }}
+        >
+          {item.file_type === "video" ? (
+            <video
+              src={item.file_url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="block h-auto w-full object-cover"
+            />
+          ) : (
+            <img
+              src={item.file_url}
+              alt={item.title ?? "Gallery image"}
+              className="block h-auto w-full object-cover"
+              loading="lazy"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+</file>
+
+<file path="app/gallery/page.tsx">
+// ─────────────────────────────────────────
+// SECTION: Gallery Page
+// WHAT: Async Server Component — fetches all active gallery items from Supabase and passes them to GalleryGrid.
+// WHY: Server-side fetch keeps credentials off the client and enables ISR caching.
+// PHASE 4: No changes needed — already live Supabase data.
+// ─────────────────────────────────────────
+
+import { supabase, type DbGalleryItem } from "@/lib/supabase";
+import GalleryGrid from "./GalleryGrid";
+
+export const revalidate = 60; // ISR: re-fetch at most once per minute
+
+export default async function GalleryPage() {
+  let items: DbGalleryItem[] = [];
+
+  try {
+    const { data, error } = await supabase
+      .from("gallery")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    items = data ?? [];
+  } catch (err) {
+    console.error("[Gallery] Supabase fetch failed:", err);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] px-4 pt-28 pb-20 md:px-8 lg:px-12">
+      {/* ── Page Header ── */}
+      <div className="mb-12 text-center">
+        <p className="mb-3 text-xs uppercase tracking-[0.3em] text-brand-accent">
+          Fades & Facials
+        </p>
+        <h1 className="text-4xl font-bold tracking-tight text-white md:text-6xl">
+          The Work
+        </h1>
+      </div>
+
+      {/* ── Masonry Grid ── */}
+      <GalleryGrid items={items} />
+    </main>
+  );
+}
+</file>
 
 <file path="CLAUDE_HANDOFF.md">
 # Fades & Facials 2.0 — Claude Handoff Document
@@ -431,6 +891,161 @@ Phase 2 (Architecture) and Phase 3 (Frontend) are COMPLETE via the actual projec
 Phase 4 (Admin Backend) is IN PROGRESS — Supabase set up, auth not yet built.
 Phase 5 (Advanced — Docker, TypeScript, Zustand, Linux) — NOT started.
 Phase 6 (AI + Deployment) — Vercel deployed ✅, rest not started.
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="components/Eruda.tsx">
+"use client";
+
+import { useEffect } from "react";
+
+export default function Eruda() {
+  useEffect(() => {
+    const w = window as typeof window & { eruda?: { init: () => void } };
+    if (w.eruda) {
+      w.eruda.init();
+      return;
+    }
+    if (document.querySelector("script[data-eruda-loader]")) return;
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/eruda";
+    script.async = true;
+    script.dataset.erudaLoader = "";
+    script.onload = () => {
+      w.eruda?.init();
+    };
+    document.body.appendChild(script);
+  }, []);
+
+  return null;
+}
+</file>
+
+<file path="CRASH_COURSE_README.md">
+# Fades & Facials 2.0 — Learning Roadmap
+> Britton's full-stack rebuild. Built the right way, from scratch.
+> Background: Bachelor's in web dev, refreshing after ~5 years. Calibrated to move fast through fundamentals.
+
+---
+
+## Phase 1: Coding Fundamentals ✅ COMPLETE
+
+- [x] Terminal basics, Linux commands, Git Bash navigation
+- [x] Git workflows — init, add, commit, branch, merge, push, delete
+- [x] Conventional Commits (feat:, fix:, docs:, chore:)
+- [x] Reading error messages — SyntaxError vs TypeError vs ReferenceError
+- [x] Variables & Data Types — const vs let, String, Number, Boolean, Null
+- [x] Template literals and string concatenation
+- [x] Conditionals — if, else if, else, === vs ==
+- [x] Functions — declarations, expressions, arrow functions
+- [x] Arrays & Loops — for, forEach, index awareness
+- [x] Iterators — map, filter, chaining
+- [x] Objects — key/value pairs, dot notation, destructuring
+- [x] Scope & Closures — variable lifetime, closure pattern
+- [x] Promises & Async/Await — event loop, concurrent execution
+- [x] Error Handling — try/catch/throw, null returns vs thrown errors
+
+**Key files built:** `functions.js`, `arrays.js`, `objects.js`, `scope.js`, `async.js`, `errors.js`
+
+---
+
+## Phase 2: Project Architecture & Setup ← CURRENT
+
+- [ ] Initialize Fades & Facials as a real Next.js 15 project
+- [ ] File/folder architecture — why files go where they go
+- [ ] Configure Tailwind CSS with brand design tokens
+- [ ] Set up ESLint + Prettier for professional code formatting
+- [ ] First commit of the real project to GitHub
+- [ ] Deploy a blank shell to Vercel to establish the live URL early
+
+---
+
+## Phase 3: Frontend (Mobile-First)
+
+- [ ] Low-fidelity wireframes — plan before you build
+- [ ] Component architecture — breaking the UI into reusable pieces
+- [ ] Home page — hero, services preview, gallery, testimonials, footer
+- [ ] Services page — full list, prices, category filters
+- [ ] Mobile nav — hamburger menu, iOS/Android touch optimization
+- [ ] Vagaro booking widget integration
+- [ ] UI polish — lifetime.life inspired aesthetic
+
+---
+
+## Phase 4: Admin Backend
+
+- [ ] Data structure planned for services and images
+- [ ] Authentication — barber login, protected routes
+- [ ] Admin dashboard — upload photos, edit services, toggle availability
+- [ ] Database setup (Supabase)
+
+---
+
+## Phase 5: Advanced Engineering
+
+- [ ] Docker / Containerization (The Magic Backpack) — NetworkChuck + TechWorld with Nana
+- [ ] Advanced TypeScript (The Strict Spellchecker) — Fireship + Matt Pocock
+- [ ] React Architecture & Zustand (Organizing the Brain) — Jack Herrington + Cosden Solutions
+- [ ] Ubuntu Linux (Building the Treehouse) — LearnLinuxTV + Techno Tim
+
+---
+
+## Phase 6: AI Systems & Deployment
+
+- [ ] SEO optimization and metadata
+- [ ] Performance audit — Lighthouse 90+
+- [ ] Live deployment to custom domain
+- [ ] Maintenance best practices
+- [ ] AI deep dive — prompting, models, agents, agentic patterns
+
+---
+
+## Concepts Proven in Code
+
+| Concept | File | Status |
+|---|---|---|
+| Git branch workflow | fades-and-facials repo | ✅ |
+| Arrow functions | functions.js | ✅ |
+| Array chaining (filter + map) | arrays.js | ✅ |
+| Closures | scope.js | ✅ |
+| Async/concurrent execution | async.js | ✅ |
+| try/catch/throw | errors.js | ✅ |
+
+---
+
+## Resources Bookmarked
+
+- **Async/Await:** "JavaScript Promises in 10 Minutes" — Web Dev Simplified
+- **Async errors:** "Async Error Handling JavaScript" — Web Dev Simplified  
+- **Event loop visual:** search "loupe Philip Roberts" — animated event loop tool
+- **TypeScript intro:** "TypeScript in 100 Seconds" — Fireship
+- **Docker intro:** "you need to learn Docker RIGHT NOW" — NetworkChuck
+- **Linux basics:** "Linux Commands for Beginners" — LearnLinuxTV
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
 </file>
 
 <file path="eval.md">
@@ -4482,208 +5097,6 @@ http://localhost:3000/admin/callback
 When you open the new chat, paste the contents of CLAUDE_HANDOFF.md as your first message. The next Claude will have everything it needs to continue without re-explaining the whole project. Good work today — you went from zero to a live deployed site with a real database in one session.
 </file>
 
-<file path=".cursorrules">
-# Project Architecture & Workflow Rules
-
-## Coding Standards
-- Break features into the smallest possible modular components. Never write monolithic files.
-- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
-- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
-- Build robust error handling on every feature. Fail gracefully.
-
-## Workflow Automation (CRITICAL)
-- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
-- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
-- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
-
-## Tech Stack Constraints
-- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
-- Mobile-first approach.
-- No external CSS files. All styling via Tailwind classes.
-- Do not invent dependencies. Ask before running npm install.
-</file>
-
-<file path="AGENTS.md">
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
-</file>
-
-<file path="app/admin/gallery/page.tsx">
-export default function Home() {
-  return <h1>Admin Gallery</h1>;
-}
-</file>
-
-<file path="app/admin/page.tsx">
-export default function Home() {
-  return <h1>Admin</h1>;
-}
-</file>
-
-<file path="app/admin/services/page.tsx">
-export default function Home() {
-  return <h1>Admin Services</h1>;
-}
-</file>
-
-<file path="CLAUDE.md">
-@AGENTS.md
-</file>
-
-<file path="components/Eruda.tsx">
-"use client";
-
-import { useEffect } from "react";
-
-export default function Eruda() {
-  useEffect(() => {
-    const w = window as typeof window & { eruda?: { init: () => void } };
-    if (w.eruda) {
-      w.eruda.init();
-      return;
-    }
-    if (document.querySelector("script[data-eruda-loader]")) return;
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/eruda";
-    script.async = true;
-    script.dataset.erudaLoader = "";
-    script.onload = () => {
-      w.eruda?.init();
-    };
-    document.body.appendChild(script);
-  }, []);
-
-  return null;
-}
-</file>
-
-<file path="CRASH_COURSE_README.md">
-# Fades & Facials 2.0 — Learning Roadmap
-> Britton's full-stack rebuild. Built the right way, from scratch.
-> Background: Bachelor's in web dev, refreshing after ~5 years. Calibrated to move fast through fundamentals.
-
----
-
-## Phase 1: Coding Fundamentals ✅ COMPLETE
-
-- [x] Terminal basics, Linux commands, Git Bash navigation
-- [x] Git workflows — init, add, commit, branch, merge, push, delete
-- [x] Conventional Commits (feat:, fix:, docs:, chore:)
-- [x] Reading error messages — SyntaxError vs TypeError vs ReferenceError
-- [x] Variables & Data Types — const vs let, String, Number, Boolean, Null
-- [x] Template literals and string concatenation
-- [x] Conditionals — if, else if, else, === vs ==
-- [x] Functions — declarations, expressions, arrow functions
-- [x] Arrays & Loops — for, forEach, index awareness
-- [x] Iterators — map, filter, chaining
-- [x] Objects — key/value pairs, dot notation, destructuring
-- [x] Scope & Closures — variable lifetime, closure pattern
-- [x] Promises & Async/Await — event loop, concurrent execution
-- [x] Error Handling — try/catch/throw, null returns vs thrown errors
-
-**Key files built:** `functions.js`, `arrays.js`, `objects.js`, `scope.js`, `async.js`, `errors.js`
-
----
-
-## Phase 2: Project Architecture & Setup ← CURRENT
-
-- [ ] Initialize Fades & Facials as a real Next.js 15 project
-- [ ] File/folder architecture — why files go where they go
-- [ ] Configure Tailwind CSS with brand design tokens
-- [ ] Set up ESLint + Prettier for professional code formatting
-- [ ] First commit of the real project to GitHub
-- [ ] Deploy a blank shell to Vercel to establish the live URL early
-
----
-
-## Phase 3: Frontend (Mobile-First)
-
-- [ ] Low-fidelity wireframes — plan before you build
-- [ ] Component architecture — breaking the UI into reusable pieces
-- [ ] Home page — hero, services preview, gallery, testimonials, footer
-- [ ] Services page — full list, prices, category filters
-- [ ] Mobile nav — hamburger menu, iOS/Android touch optimization
-- [ ] Vagaro booking widget integration
-- [ ] UI polish — lifetime.life inspired aesthetic
-
----
-
-## Phase 4: Admin Backend
-
-- [ ] Data structure planned for services and images
-- [ ] Authentication — barber login, protected routes
-- [ ] Admin dashboard — upload photos, edit services, toggle availability
-- [ ] Database setup (Supabase)
-
----
-
-## Phase 5: Advanced Engineering
-
-- [ ] Docker / Containerization (The Magic Backpack) — NetworkChuck + TechWorld with Nana
-- [ ] Advanced TypeScript (The Strict Spellchecker) — Fireship + Matt Pocock
-- [ ] React Architecture & Zustand (Organizing the Brain) — Jack Herrington + Cosden Solutions
-- [ ] Ubuntu Linux (Building the Treehouse) — LearnLinuxTV + Techno Tim
-
----
-
-## Phase 6: AI Systems & Deployment
-
-- [ ] SEO optimization and metadata
-- [ ] Performance audit — Lighthouse 90+
-- [ ] Live deployment to custom domain
-- [ ] Maintenance best practices
-- [ ] AI deep dive — prompting, models, agents, agentic patterns
-
----
-
-## Concepts Proven in Code
-
-| Concept | File | Status |
-|---|---|---|
-| Git branch workflow | fades-and-facials repo | ✅ |
-| Arrow functions | functions.js | ✅ |
-| Array chaining (filter + map) | arrays.js | ✅ |
-| Closures | scope.js | ✅ |
-| Async/concurrent execution | async.js | ✅ |
-| try/catch/throw | errors.js | ✅ |
-
----
-
-## Resources Bookmarked
-
-- **Async/Await:** "JavaScript Promises in 10 Minutes" — Web Dev Simplified
-- **Async errors:** "Async Error Handling JavaScript" — Web Dev Simplified  
-- **Event loop visual:** search "loupe Philip Roberts" — animated event loop tool
-- **TypeScript intro:** "TypeScript in 100 Seconds" — Fireship
-- **Docker intro:** "you need to learn Docker RIGHT NOW" — NetworkChuck
-- **Linux basics:** "Linux Commands for Beginners" — LearnLinuxTV
-</file>
-
-<file path="eslint.config.mjs">
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
-
-export default eslintConfig;
-</file>
-
 <file path="lessonPlan.md">
 Q: In your own words, what is layout.tsx doing that page.tsx isn't?
 the page.tsx is what the user sees and layout is the root shell.
@@ -4730,40 +5143,6 @@ export const allServices: Service[] = [
 // When the admin dashboard and database are implemented in Phase 4,
 // replace this file with API calls to fetch services from Supabase.
 // The Service type above maps directly to the database schema.
-</file>
-
-<file path="lib/supabase.ts">
-import { createClient } from "@supabase/supabase-js";
-
-// ─────────────────────────────────────────
-// SECTION: Supabase Client
-// WHAT: Creates a single reusable Supabase client instance.
-// WHY: One client shared across the app prevents multiple connections.
-// PHASE 4: This client is already configured for admin auth —
-//   the service role key will be added in a separate server-only client
-//   when the admin dashboard is built.
-// ─────────────────────────────────────────
-
-const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
-
-// createClient throws if the URL is empty or not http(s) — use a dummy URL so
-// import succeeds when env is unset (e.g. CI); queries fail and pages use fallback data.
-const supabaseUrl =
-  envUrl && /^https?:\/\//i.test(envUrl) ? envUrl : "https://invalid.invalid";
-
-export const supabase = createClient(supabaseUrl, envKey);
-
-export type DbService = {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  description: string | null;
-  image: string | null;
-  is_active: boolean;
-  created_at: string;
-};
 </file>
 
 <file path="postcss.config.mjs">
@@ -4926,6 +5305,119 @@ export default function BookingPage() {
 }
 </file>
 
+<file path="lib/supabase.ts">
+import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+
+// ─────────────────────────────────────────
+// SECTION: Supabase Client
+// WHAT: Creates a single reusable Supabase client instance.
+// WHY: One client shared across the app prevents multiple connections.
+// PHASE 4: This client is already configured for admin auth —
+//   the service role key will be added in a separate server-only client
+//   when the admin dashboard is built.
+// ─────────────────────────────────────────
+
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
+// createClient throws if the URL is empty or not http(s) — use a dummy URL so
+// import succeeds when env is unset (e.g. CI); queries fail and pages use fallback data.
+const supabaseUrl =
+  envUrl && /^https?:\/\//i.test(envUrl) ? envUrl : "https://invalid.invalid";
+
+export const supabase = createClient(supabaseUrl, envKey);
+
+export type DbService = {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  description: string | null;
+  image: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+// ─────────────────────────────────────────
+// SECTION: Gallery Type
+// WHAT: Mirrors the gallery table schema in Supabase.
+// WHY: Provides type safety for all gallery data fetched from the database.
+// PHASE 4: No changes needed — this IS the Phase 4 shape.
+// ─────────────────────────────────────────
+export type DbGalleryItem = {
+  id: number;
+  title: string | null;
+  file_url: string;
+  file_type: "image" | "video";
+  category: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+// ─────────────────────────────────────────
+// SECTION: Server Supabase Client (App Router)
+// WHAT: Creates a cookie-aware Supabase client for Server Components and Route Handlers.
+// WHY: The default anon client has no cookie access — auth sessions require cookies.
+// PHASE 4: No changes needed — this IS the Phase 4 auth client.
+// ─────────────────────────────────────────
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options),
+            );
+          } catch {}
+        },
+      },
+    },
+  );
+}
+
+// ─────────────────────────────────────────
+// SECTION: Middleware Supabase Client
+// WHAT: Creates a Supabase client that works inside Next.js middleware (no cookies() API).
+// WHY: Middleware runs on the Edge — needs request/response objects to read/write cookies.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+export function createMiddlewareSupabaseClient(
+  request: NextRequest,
+  response: NextResponse,
+) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+}
+</file>
+
 <file path="package.json">
 {
   "name": "fades-and-facials",
@@ -4938,6 +5430,7 @@ export default function BookingPage() {
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "next": "16.2.4",
     "react": "19.2.4",
@@ -5197,159 +5690,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 >>>>>>> 7b383ae1b632149e3ae9d5ae8ac1f77b497ecc37
 </file>
 
-<file path="components/Navbar.tsx">
-"use client"
-
-import { useEffect, useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-
-export default function Navbar() {
-  const pathname = usePathname()
-  const isHomePage = pathname === "/"
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-
-  // ─────────────────────────────────────────
-  // iOS FIX: Scroll on documentElement + body as scroll container
-  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
-  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
-  // ─────────────────────────────────────────
-  useEffect(() => {
-    const getScrollY = (): number =>
-      window.scrollY ??
-      window.pageYOffset ??
-      document.documentElement.scrollTop ??
-      document.body.scrollTop ??
-      0
-
-    const handleScroll = () => {
-      const y = getScrollY()
-      setScrolled(y > 80)
-    }
-
-    // iOS Safari fires scroll on documentElement, not window
-    // All four targets are registered to cover every browser
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    document.addEventListener("scroll", handleScroll, { passive: true })
-    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
-    document.body.addEventListener("scroll", handleScroll, { passive: true })
-    handleScroll()
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll)
-      document.removeEventListener("scroll", handleScroll)
-      document.documentElement.removeEventListener("scroll", handleScroll)
-      document.body.removeEventListener("scroll", handleScroll)
-    }
-  }, [])
-
-  // ─────────────────────────────────────────
-  // iOS FIX: Scrolled bar background (no backdrop-blur)
-  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
-  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
-  // ─────────────────────────────────────────
-
-  // ─────────────────────────────────────────
-  // iOS FIX: Hamburger touch target
-  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
-  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
-  // ─────────────────────────────────────────
-  const mobileMenuButton = (
-    <button
-      type="button"
-      aria-label={menuOpen ? "Close menu" : "Open menu"}
-      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
-      onClick={() => setMenuOpen((prev) => !prev)}
-      onTouchEnd={(e) => {
-        e.preventDefault()
-        setMenuOpen((prev) => !prev)
-      }}
-    >
-      <span className="text-2xl text-white select-none">
-        {menuOpen ? "✕" : "☰"}
-      </span>
-    </button>
-  )
-
-  return (
-    <nav
-      style={{
-        transform: "translateZ(0)",
-        WebkitTransform: "translateZ(0)",
-      }}
-      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 will-change-transform ${
-        scrolled
-          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
-          : isHomePage
-            ? "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25"
-            : "pt-4 mx-0 bg-[#1e3a5f] pb-4"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        
-        {/* Logo */}
-        <Link href="/">
-          <Image
-            src="/images/logo.png"
-            alt="Fades & Facials"
-            quality={100}
-            width={50}
-            height={30}
-          />
-        </Link>
-
-        {/* Desktop links — hidden on mobile */}
-        <div className="hidden md:flex gap-8">
-          <Link href="/" className="text-white">Home</Link>
-          <Link href="/services" className="text-white">Services</Link>
-          <Link href="/booking" className="text-white">Book Now</Link>
-        </div>
-
-        {/* Hamburger — visible on mobile only */}
-        {mobileMenuButton}
-      </div>
-
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="flex flex-col gap-4 mt-4 md:hidden">
-          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
-          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
-        </div>
-      )}
-    </nav>
-  )
-}
-</file>
-
-<file path="app/globals.css">
-@import "tailwindcss";
-
-@theme {
-  --color-brand-navy: #1e3a5f;
-  --color-brand-white: #f8fafc;
-  --color-brand-bg: #0f1e2e;
-  --color-brand-text: #f8fafc;
-  --color-brand-accent: #c9a96e;
-}
-
-html,
-body {
-  height: auto;
-  min-height: 100%;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-body {
-  overflow-y: auto;
-  background-color: #0f1e2e;
-  color: #f8fafc;
-}
-</file>
-
 <file path="app/page.tsx">
 import { allServices, type Service } from "@/lib/services";
 import { supabase, type DbService } from "@/lib/supabase";
@@ -5478,6 +5818,173 @@ export default async function Home() {
       ))}
     </>
   );
+}
+</file>
+
+<file path="components/Navbar.tsx">
+"use client"
+
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+
+export default function Navbar() {
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Scroll on documentElement + body as scroll container
+  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
+  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    const getScrollY = (): number =>
+      window.scrollY ??
+      window.pageYOffset ??
+      document.documentElement.scrollTop ??
+      document.body.scrollTop ??
+      0
+
+    const handleScroll = () => {
+      const y = getScrollY()
+      setScrolled(y > 80)
+    }
+
+    // iOS Safari fires scroll on documentElement, not window
+    // All four targets are registered to cover every browser
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    document.addEventListener("scroll", handleScroll, { passive: true })
+    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
+    document.body.addEventListener("scroll", handleScroll, { passive: true })
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      document.removeEventListener("scroll", handleScroll)
+      document.documentElement.removeEventListener("scroll", handleScroll)
+      document.body.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Scrolled bar background (no backdrop-blur)
+  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
+  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
+  // ─────────────────────────────────────────
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Hamburger touch target
+  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
+  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
+  // ─────────────────────────────────────────
+  const mobileMenuButton = (
+    <button
+      type="button"
+      aria-label={menuOpen ? "Close menu" : "Open menu"}
+      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
+      onClick={() => setMenuOpen((prev) => !prev)}
+      onTouchEnd={(e) => {
+        e.preventDefault()
+        setMenuOpen((prev) => !prev)
+      }}
+    >
+      <span className="text-2xl text-white select-none">
+        {menuOpen ? "✕" : "☰"}
+      </span>
+    </button>
+  )
+
+  return (
+    <nav
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+      }}
+      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 will-change-transform ${
+        scrolled
+          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
+          : isHomePage
+            ? "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25"
+            : "pt-4 mx-0 bg-[#1e3a5f] pb-4"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        
+        {/* Logo */}
+        <Link href="/">
+          <Image
+            src="/images/logo.png"
+            alt="Fades & Facials"
+            quality={100}
+            width={50}
+            height={30}
+          />
+        </Link>
+
+        {/* Desktop links — hidden on mobile */}
+        <div className="hidden md:flex gap-8">
+          <Link href="/" className="text-white">Home</Link>
+          <Link href="/services" className="text-white">Services</Link>
+          <Link href="/gallery" className="text-white">Gallery</Link>
+          <Link href="/booking" className="text-white">Book Now</Link>
+        </div>
+
+        {/* Hamburger — visible on mobile only */}
+        {mobileMenuButton}
+      </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="flex flex-col gap-4 mt-4 md:hidden">
+          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/gallery" className="text-white" onClick={() => setMenuOpen(false)}>Gallery</Link>
+          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+        </div>
+      )}
+    </nav>
+  )
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #1e3a5f;
+  --color-brand-white: #f8fafc;
+  --color-brand-bg: #0f1e2e;
+  --color-brand-text: #f8fafc;
+  --color-brand-accent: #c9a96e;
+}
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-y: auto;
+  background-color: #0f1e2e;
+  color: #f8fafc;
+}
+
+/* ─── Gallery entrance animation ─── */
+@keyframes gallery-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(1.18, 1.18, 1);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
 }
 </file>
 
