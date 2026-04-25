@@ -33,6 +33,40 @@
 
 ---
 
+## Phase 1: Coding Fundamentals ✅
+
+- [x] Terminal basics, Linux commands, Markdown, Git workflows
+- [x] Variables & Data Types (let vs const, memory concepts)
+- [x] Conditionals (if/else, switch, ternary)
+- [x] Functions (declarations, expressions, arrow functions, scope, closures)
+- [x] Arrays & Loops (for, while, do-while, nested)
+- [x] Iterators (map, filter, reduce, forEach)
+- [x] Objects (properties, methods, `this`, destructuring)
+- [x] Classes & OOP (constructors, inheritance)
+- [x] Modules (import/export)
+- [x] Promises & Async/Await (event loop)
+- [x] Error Handling & Debugging Mindset
+
+## Phase 2: Project Architecture & Setup ✅
+
+- [x] Project initialized in terminal with correct structure
+- [x] File/folder architecture explained and implemented
+- [x] Teaching UI scaffold built
+
+## Phase 3: Frontend (Mobile-First) ✅
+
+- [x] Low-fidelity planning & component architecture
+- [x] UI built (Lifetime.life inspired)
+- [x] Vagaro booking integration
+
+## Phase 4: Admin Backend ✅
+
+- [x] Data structure planned for services & images
+- [x] Authentication implemented
+- [x] Admin dashboard built
+
+---
+
 ## Phase 5: Luxury Aesthetic Overhaul (Design Systems Pass)
 
 - [ ] Implement a **LifeTime.life premium aesthetic** (cinematic spacing, bold typography, full-bleed layouts)
