@@ -7,8 +7,25 @@
 // PHASE 4: No changes needed — already wired to live Supabase Storage and gallery table.
 // ─────────────────────────────────────────
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { DbGalleryItem } from "@/lib/supabase";
 
 // ── Supabase client (browser) ──
@@ -19,18 +36,38 @@ function useSupabase() {
   );
 }
 
-// ── Helper: get public URL from storage path ──
 function getPublicUrl(supabase: ReturnType<typeof createBrowserClient>, path: string) {
   const { data } = supabase.storage.from("gallery").getPublicUrl(path);
   return data.publicUrl;
 }
 
-// ── Helper: extract storage path from full URL ──
 function extractStoragePath(url: string): string {
-  // URL format: .../storage/v1/object/public/gallery/FILENAME
   const marker = "/gallery/";
   const idx = url.indexOf(marker);
   return idx !== -1 ? url.slice(idx + marker.length) : url;
+}
+
+// ── Sortable wrapper — applies dnd-kit transform and passes listeners/isDragging to children ──
+type DndListeners = ReturnType<typeof useSortable>["listeners"];
+
+function SortableItem({
+  id,
+  children,
+}: {
+  id: UniqueIdentifier;
+  children: (listeners: DndListeners, isDragging: boolean) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+    >
+      {children(listeners, isDragging)}
+    </div>
+  );
 }
 
 export default function AdminGalleryPage() {
@@ -38,27 +75,26 @@ export default function AdminGalleryPage() {
   const [items, setItems] = useState<DbGalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    msg: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [replacing, setReplacing] = useState<number | null>(null);
   const [layout, setLayout] = useState<"masonry" | "grid" | "fullwidth">("masonry");
   const [layoutSaving, setLayoutSaving] = useState(false);
-  const [draggedId, setDraggedId] = useState<number | null>(null);
-  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // ── Feedback auto-clear ──
+  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+  );
+
   useEffect(() => {
     if (!feedback) return;
     const t = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(t);
   }, [feedback]);
 
-  // ── Fetch all gallery items (admin sees all, including hidden) ──
   async function fetchItems() {
     setLoading(true);
     const { data, error } = await supabase
@@ -99,52 +135,26 @@ export default function AdminGalleryPage() {
     fetchLayout();
   }, []);
 
-  function handleDragStart(id: number) {
-    setDraggedId(id);
-  }
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  function handleDragOver(e: React.DragEvent, id: number) {
-    e.preventDefault();
-    setDragOverId(id);
-  }
-
-  async function handleDrop(targetId: number) {
-    if (draggedId === null || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
-
-    const oldIndex = items.findIndex((i) => i.id === draggedId);
-    const newIndex = items.findIndex((i) => i.id === targetId);
-    const reordered = [...items];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-
-    // Optimistic update
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    const reordered = arrayMove(items, oldIndex, newIndex);
     const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
     setItems(withNewOrder);
-    setDraggedId(null);
-    setDragOverId(null);
 
-    // Persist to Supabase
     const updates = withNewOrder.map((item) =>
       supabase.from("gallery").update({ sort_order: item.sort_order }).eq("id", item.id),
     );
     const results = await Promise.all(updates);
-    const anyError = results.find((r) => r.error);
-    if (anyError) {
+    if (results.some((r) => r.error)) {
       setFeedback({ type: "error", msg: "Failed to save order. Try again." });
       fetchItems();
     }
   }
 
-  function handleDragEnd() {
-    setDraggedId(null);
-    setDragOverId(null);
-  }
-
-  // ── Upload new media ──
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -155,7 +165,6 @@ export default function AdminGalleryPage() {
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const fileType = file.type.startsWith("video") ? "video" : "image";
 
-      // Upload to Storage
       const { error: storageError } = await supabase.storage
         .from("gallery")
         .upload(fileName, file, { upsert: false });
@@ -166,8 +175,6 @@ export default function AdminGalleryPage() {
       }
 
       const publicUrl = getPublicUrl(supabase, fileName);
-
-      // Insert row into gallery table
       const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) : 0;
       const { error: dbError } = await supabase.from("gallery").insert({
         file_url: publicUrl,
@@ -191,7 +198,6 @@ export default function AdminGalleryPage() {
     fetchItems();
   }
 
-  // ── Toggle visibility ──
   async function handleToggle(item: DbGalleryItem) {
     const { error } = await supabase
       .from("gallery")
@@ -206,7 +212,6 @@ export default function AdminGalleryPage() {
     }
   }
 
-  // ── Toggle background transparency ──
   async function handleToggleBg(item: DbGalleryItem) {
     const nextShowBg = !item.show_bg;
     const { error } = await supabase
@@ -222,7 +227,6 @@ export default function AdminGalleryPage() {
     }
   }
 
-  // ── Replace media (swap file, keep row) ──
   async function handleReplace(item: DbGalleryItem, files: FileList | null) {
     if (!files || files.length === 0) return;
     setReplacing(item.id);
@@ -232,7 +236,6 @@ export default function AdminGalleryPage() {
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const fileType = file.type.startsWith("video") ? "video" : "image";
 
-    // Upload new file
     const { error: storageError } = await supabase.storage
       .from("gallery")
       .upload(fileName, file, { upsert: false });
@@ -245,7 +248,6 @@ export default function AdminGalleryPage() {
 
     const newUrl = getPublicUrl(supabase, fileName);
 
-    // Update DB row with new URL and type
     const { error: dbError } = await supabase
       .from("gallery")
       .update({ file_url: newUrl, file_type: fileType })
@@ -260,7 +262,6 @@ export default function AdminGalleryPage() {
       return;
     }
 
-    // Delete old file from storage
     const oldPath = extractStoragePath(item.file_url);
     await supabase.storage.from("gallery").remove([oldPath]);
 
@@ -269,7 +270,6 @@ export default function AdminGalleryPage() {
     fetchItems();
   }
 
-  // ── Delete ──
   async function handleDelete(item: DbGalleryItem) {
     const path = extractStoragePath(item.file_url);
     const { error: storageError } = await supabase.storage.from("gallery").remove([path]);
@@ -294,15 +294,10 @@ export default function AdminGalleryPage() {
         {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">
-              Admin
-            </p>
+            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">Admin</p>
             <h1 className="text-3xl font-bold text-white">Gallery Manager</h1>
           </div>
-          <a
-            href="/admin/dashboard"
-            className="text-white/40 text-sm hover:text-white transition"
-          >
+          <a href="/admin/dashboard" className="text-white/40 text-sm hover:text-white transition">
             ← Back to Dashboard
           </a>
         </div>
@@ -393,135 +388,149 @@ export default function AdminGalleryPage() {
         ) : (
           <>
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">
-              Drag cards to reorder gallery
+              Drag grip to reorder gallery
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(item.id)}
-                onDragOver={(e) => handleDragOver(e, item.id)}
-                onDrop={() => handleDrop(item.id)}
-                onDragEnd={handleDragEnd}
-                className={`relative rounded-xl overflow-hidden border ${
-                  item.is_active ? "border-white/10" : "border-white/5 opacity-50"
-                } bg-white/5 ${dragOverId === item.id ? "ring-2 ring-brand-accent" : ""}`}
-              >
-                {/* Media preview */}
-                <div className={`aspect-square overflow-hidden ${item.show_bg ? "bg-black" : "bg-transparent"}`}>
-                  {item.file_type === "video" ? (
-                    <video
-                      src={item.file_url}
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={item.file_url}
-                      alt={item.title ?? "Gallery item"}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {items.map((item) => (
+                    <SortableItem key={item.id} id={item.id}>
+                      {(listeners, isDragging) => (
+                        <div
+                          className={`relative rounded-xl overflow-hidden border ${
+                            item.is_active ? "border-white/10" : "border-white/5 opacity-50"
+                          } bg-white/5 transition-all ${isDragging ? "opacity-40" : ""}`}
+                        >
+                          {/* Drag grip */}
+                          <div
+                            {...listeners}
+                            className="absolute top-2 right-2 z-10 rounded-md border border-cyan-400/40 bg-cyan-500/10 p-1.5 text-cyan-300 cursor-grab active:cursor-grabbing touch-manipulation select-none"
+                          >
+                            ⠿
+                          </div>
+
+                          {/* Media preview */}
+                          <div
+                            className={`aspect-square overflow-hidden ${
+                              item.show_bg ? "bg-black" : "bg-transparent"
+                            }`}
+                          >
+                            {item.file_type === "video" ? (
+                              <video
+                                src={item.file_url}
+                                muted
+                                loop
+                                playsInline
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={item.file_url}
+                                alt={item.title ?? "Gallery item"}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+
+                          {/* Hidden badge */}
+                          {!item.is_active && (
+                            <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
+                              Hidden
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="p-2 flex flex-col gap-2">
+                            <button
+                              onClick={() => handleToggleBg(item)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleToggleBg(item);
+                              }}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              {item.show_bg ? "BG: ON" : "BG: OFF"}
+                            </button>
+
+                            <button
+                              onClick={() => handleToggle(item)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleToggle(item);
+                              }}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
+                            </button>
+
+                            <button
+                              onClick={() => replaceRefs.current[item.id]?.click()}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                replaceRefs.current[item.id]?.click();
+                              }}
+                              disabled={replacing === item.id}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
+                            >
+                              {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*,video/*"
+                              className="hidden"
+                              ref={(el) => {
+                                replaceRefs.current[item.id] = el;
+                              }}
+                              onChange={(e) => handleReplace(item, e.target.files)}
+                            />
+
+                            {confirmDelete === item.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    handleDelete(item);
+                                  }}
+                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
+                                >
+                                  Yes, Delete
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDelete(null)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    setConfirmDelete(null);
+                                  }}
+                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDelete(item.id)}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  setConfirmDelete(item.id);
+                                }}
+                                className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
+                              >
+                                🗑 Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </SortableItem>
+                  ))}
                 </div>
-
-                {/* Hidden badge */}
-                {!item.is_active && (
-                  <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
-                    Hidden
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="p-2 flex flex-col gap-2">
-                  {/* Toggle background */}
-                  <button
-                    onClick={() => handleToggleBg(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleToggleBg(item);
-                    }}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    {item.show_bg ? "BG: ON" : "BG: OFF"}
-                  </button>
-
-                  {/* Toggle visibility */}
-                  <button
-                    onClick={() => handleToggle(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleToggle(item);
-                    }}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
-                  </button>
-
-                  {/* Replace */}
-                  <button
-                    onClick={() => replaceRefs.current[item.id]?.click()}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      replaceRefs.current[item.id]?.click();
-                    }}
-                    disabled={replacing === item.id}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
-                  >
-                    {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
-                  </button>
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    ref={(el) => {
-                      replaceRefs.current[item.id] = el;
-                    }}
-                    onChange={(e) => handleReplace(item, e.target.files)}
-                  />
-
-                  {/* Delete with confirm */}
-                  {confirmDelete === item.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDelete(item)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          handleDelete(item);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
-                      >
-                        Yes, Delete
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(null)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setConfirmDelete(null);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDelete(item.id)}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        setConfirmDelete(item.id);
-                      }}
-                      className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
-                    >
-                      🗑 Delete
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           </>
         )}
       </div>

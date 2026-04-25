@@ -7,8 +7,26 @@
 // PHASE 4: No changes needed — already wired to live Supabase services table.
 // ─────────────────────────────────────────
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { DbService } from "@/lib/supabase";
 
 // ── Module-level Supabase client ──
@@ -20,6 +38,28 @@ const supabase = createBrowserClient(
 // ── Types ──
 type EditingField = { id: number; field: "name" | "price" | "description" | "category" };
 type Layout = "cards" | "list" | "minimal";
+type DndListeners = ReturnType<typeof useSortable>["listeners"];
+
+// ── Reusable sortable wrapper — applies dnd-kit positioning, passes listeners to children ──
+function SortableItem({
+  id,
+  children,
+}: {
+  id: UniqueIdentifier;
+  children: (listeners: DndListeners, isDragging: boolean) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+    >
+      {children(listeners, isDragging)}
+    </div>
+  );
+}
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<DbService[]>([]);
@@ -32,19 +72,19 @@ export default function AdminServicesPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
-  const [draggedServiceId, setDraggedServiceId] = useState<number | null>(null);
-  const dragOverServiceIdRef = useRef<number | null>(null);
-  const [draggedCat, setDraggedCat] = useState<string | null>(null);
-  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
 
-  // ── Feedback auto-clear ──
+  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+  );
+
   useEffect(() => {
     if (!feedback) return;
     const t = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(t);
   }, [feedback]);
 
-  // ── Initial load ──
   useEffect(() => {
     async function init() {
       await Promise.all([fetchServices(), fetchConfig()]);
@@ -54,7 +94,10 @@ export default function AdminServicesPage() {
 
   async function fetchServices() {
     setLoading(true);
-    const { data, error } = await supabase.from("services").select("*").order("sort_order", { ascending: true });
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .order("sort_order", { ascending: true });
     if (error) {
       setFeedback({ type: "error", msg: "Failed to load services." });
     } else {
@@ -83,7 +126,6 @@ export default function AdminServicesPage() {
     ...allCategories.filter((c) => !categoryOrder.includes(c)),
   ];
 
-  // ── Services grouped by category ──
   function servicesInCategory(cat: string) {
     return services.filter((s) => s.category === cat);
   }
@@ -114,7 +156,7 @@ export default function AdminServicesPage() {
       field === "price" ? parseFloat(editValue.replace(/[^0-9.]/g, "")) : editValue;
     const { error } = await supabase
       .from("services")
-      .update({ [field]: valueToSave, ...(field === "category" ? {} : {}) })
+      .update({ [field]: valueToSave })
       .eq("id", id);
     if (error) {
       setFeedback({ type: "error", msg: `Failed to update ${field}.` });
@@ -123,7 +165,6 @@ export default function AdminServicesPage() {
         prev.map((s) => (s.id === id ? { ...s, [field]: valueToSave } : s)),
       );
       if (field === "category") {
-        // Update category order if new category was introduced
         setCategoryOrder((prev) => (prev.includes(editValue) ? prev : [...prev, editValue]));
       }
     }
@@ -234,101 +275,43 @@ export default function AdminServicesPage() {
     }
   }
 
-  // ── Drag: services within category ──
-  function handleServiceDragStart(e: React.DragEvent, id: number) {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("application/x-service-id", String(id));
-    setDraggedServiceId(id);
-  }
-  function handleServiceDragOver(e: React.DragEvent, id: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    dragOverServiceIdRef.current = id;
-  }
-  function handleServiceDragEnd() {
-    setDraggedServiceId(null);
-    dragOverServiceIdRef.current = null;
-    setDraggedCat(null);
-    setDragOverCat(null);
-  }
+  // ── Drag end: reorder services within a category ──
+  async function handleServiceDragEnd(event: DragEndEvent, cat: string) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  async function handleServiceDrop(targetId: number) {
-    const overServiceId = dragOverServiceIdRef.current;
-    dragOverServiceIdRef.current = null;
-    if (draggedServiceId === null) {
-      setDraggedServiceId(null);
-      return;
-    }
-    const actualTargetId = overServiceId ?? targetId;
-    if (draggedServiceId === actualTargetId) {
-      setDraggedServiceId(null);
-      return;
-    }
+    const catServices = servicesInCategory(cat);
+    const oldIndex = catServices.findIndex((s) => s.id === active.id);
+    const newIndex = catServices.findIndex((s) => s.id === over.id);
+    const reorderedCat = arrayMove(catServices, oldIndex, newIndex);
 
-    const dragged = services.find((s) => s.id === draggedServiceId);
-    const target = services.find((s) => s.id === actualTargetId);
+    const newServices = [
+      ...services.filter((s) => s.category !== cat),
+      ...reorderedCat,
+    ].map((s, i) => ({ ...s, sort_order: i + 1 }));
 
-    // Only allow reordering within the same category
-    if (!dragged || !target || dragged.category !== target.category) {
-      setDraggedServiceId(null);
-      return;
-    }
+    setServices(newServices);
 
-    const newServices = [...services];
-    const oldIdx = newServices.findIndex((s) => s.id === dragged.id);
-    newServices.splice(oldIdx, 1);
-    const newIdx = newServices.findIndex((s) => s.id === target.id);
-    newServices.splice(newIdx, 0, dragged);
-
-    // Update sort_order based on the new array positions
-    const withUpdatedOrder = newServices.map((s, i) => ({ ...s, sort_order: i + 1 }));
-
-    setServices(withUpdatedOrder);
-    setDraggedServiceId(null);
-
-    // Update Supabase (use row updates; services.id is identity and rejects upsert inserts)
-    const updates = withUpdatedOrder.map((s) =>
+    const updates = newServices.map((s) =>
       supabase.from("services").update({ sort_order: s.sort_order }).eq("id", s.id),
     );
     const results = await Promise.all(updates);
-    const anyError = results.find((r) => r.error);
-
-    if (anyError?.error) {
+    if (results.some((r) => r.error)) {
       setFeedback({ type: "error", msg: "Failed to sync order to database." });
       fetchServices();
     }
   }
 
-  // ── Drag: categories ──
-  function handleCatDragStart(cat: string) {
-    setDraggedCat(cat);
-  }
-  function handleCatDragOver(e: React.DragEvent, cat: string) {
-    e.preventDefault();
-    setDragOverCat(cat);
-  }
-  function handleCatDragEnd() {
-    setDraggedCat(null);
-    setDragOverCat(null);
-    setDraggedServiceId(null);
-    dragOverServiceIdRef.current = null;
-  }
+  // ── Drag end: reorder categories ──
+  async function handleCategoryDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  async function handleCatDrop(targetCat: string) {
-    if (draggedCat === null || draggedCat === targetCat) {
-      setDraggedCat(null);
-      setDragOverCat(null);
-      return;
-    }
-    const reordered = [...orderedCategories];
-    const fromIdx = reordered.indexOf(draggedCat);
-    const toIdx = reordered.indexOf(targetCat);
-    reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, draggedCat);
+    const oldIndex = orderedCategories.indexOf(active.id as string);
+    const newIndex = orderedCategories.indexOf(over.id as string);
+    const reordered = arrayMove(orderedCategories, oldIndex, newIndex);
     setCategoryOrder(reordered);
-    setDraggedCat(null);
-    setDragOverCat(null);
+
     await supabase.from("site_config").upsert({
       key: "category_order",
       value: JSON.stringify(reordered),
@@ -378,48 +361,42 @@ export default function AdminServicesPage() {
     );
   }
 
-  // ── Service card (cards layout) ──
-  function ServiceCard({ service }: { service: DbService }) {
+  // ── Service card ──
+  function ServiceCard({
+    service,
+    dragListeners,
+    isDragging,
+  }: {
+    service: DbService;
+    dragListeners: DndListeners;
+    isDragging: boolean;
+  }) {
     return (
       <div
-        draggable
-        onDragStart={(e) => {
-          e.stopPropagation();
-          handleServiceDragStart(e, service.id);
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleServiceDragOver(e, service.id);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleServiceDrop(service.id);
-        }}
-        onDragEnd={handleServiceDragEnd}
-        className={`rounded-xl border bg-white/5 p-4 transition-all select-none cursor-grab active:cursor-grabbing ${
-          draggedServiceId === service.id
-            ? "opacity-40 scale-95"
-            : draggedServiceId !== null
-              ? ""
-              : "hover:scale-[1.02]"
-        } ${
-          service.is_active
-            ? "border-white/10"
-            : "border-white/5 opacity-60"
-        }`}
+        className={`rounded-xl border bg-white/5 p-4 transition-all select-none ${
+          isDragging ? "opacity-40" : "hover:scale-[1.02]"
+        } ${service.is_active ? "border-white/10" : "border-white/5 opacity-60"}`}
       >
-        {/* Drag handle hint */}
-        <div className="text-white/20 text-xs mb-2 select-none">⠿ drag to reorder</div>
+        {/* Drag handle */}
+        <div className="mb-3 flex items-center gap-2 text-xs select-none">
+          <span
+            {...dragListeners}
+            className="rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200 cursor-grab active:cursor-grabbing touch-manipulation"
+          >
+            ⠿
+          </span>
+          <span className="text-cyan-300/80">drag to reorder</span>
+        </div>
 
         {/* Name */}
-        <div className="text-white font-semibold text-base mb-1">
+        <div className="mb-1 flex items-center gap-2 text-white font-semibold text-base">
+          <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="name" value={service.name} />
         </div>
 
         {/* Price */}
-        <div className="text-brand-accent font-bold text-sm mb-2">
+        <div className="mb-2 flex items-center gap-2 text-brand-accent font-bold text-sm">
+          <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="price" value={service.price} />
         </div>
 
@@ -540,7 +517,9 @@ export default function AdminServicesPage() {
               >
                 <div>{preset.label}</div>
                 <div
-                  className={`text-xs font-normal mt-0.5 ${layout === preset.key ? "text-black/60" : "text-white/40"}`}
+                  className={`text-xs font-normal mt-0.5 ${
+                    layout === preset.key ? "text-black/60" : "text-white/40"
+                  }`}
                 >
                   {preset.desc}
                 </div>
@@ -567,114 +546,117 @@ export default function AdminServicesPage() {
         {loading ? (
           <p className="text-white/40 text-center py-20">Loading services...</p>
         ) : (
-          <div className="flex flex-col gap-10">
-            {orderedCategories.map((cat) => (
-              <div
-                key={cat}
-                draggable
-                onDragStart={() => handleCatDragStart(cat)}
-                onDragOver={(e) => {
-                  if (
-                    draggedServiceId !== null ||
-                    e.dataTransfer.types.includes("application/x-service-id")
-                  ) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    return;
-                  }
-                  e.preventDefault();
-                  handleCatDragOver(e, cat);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedServiceId !== null) {
-                    if (dragOverServiceIdRef.current !== null) {
-                      handleServiceDrop(dragOverServiceIdRef.current);
-                    } else {
-                      handleServiceDragEnd();
-                    }
-                    return;
-                  }
-                  handleCatDrop(cat);
-                }}
-                onDragEnd={() => {
-                  setDraggedServiceId(null);
-                  dragOverServiceIdRef.current = null;
-                  setDraggedCat(null);
-                  setDragOverCat(null);
-                }}
-                className={`rounded-2xl border p-5 transition-all ${
-                  draggedCat === cat ? "opacity-40" : ""
-                } ${dragOverCat === cat && draggedCat !== cat ? "border-brand-accent" : "border-white/10"} bg-white/3`}
-              >
-                {/* Category header */}
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-white/20 cursor-grab select-none text-lg">⠿</span>
-                    <h2 className="text-xl font-bold text-white">
-                      <EditableField
-                        serviceId={-1}
-                        field="category"
-                        value={cat}
-                        className="text-xl font-bold"
-                      />
-                    </h2>
-                    <span className="text-white/30 text-xs">drag to reorder category</span>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => handleAddService(cat)}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        handleAddService(cat);
-                      }}
-                      className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
-                    >
-                      + Add Service
-                    </button>
-                    {confirmDeleteCat === cat ? (
-                      <>
-                        <button
-                          onClick={() => handleDeleteCategory(cat)}
-                          onTouchEnd={(e) => {
-                            e.preventDefault();
-                            handleDeleteCategory(cat);
-                          }}
-                          className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
-                        >
-                          Delete All
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteCat(null)}
-                          className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDeleteCat(cat)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setConfirmDeleteCat(cat);
-                        }}
-                        className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleCategoryDragEnd}
+          >
+            <SortableContext items={orderedCategories} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-10">
+                {orderedCategories.map((cat) => (
+                  <SortableItem key={cat} id={cat}>
+                    {(catListeners, isCatDragging) => (
+                      <div
+                        className={`rounded-2xl border p-5 transition-all ${
+                          isCatDragging ? "opacity-40" : ""
+                        } border-white/10 bg-white/3`}
                       >
-                        🗑 Category
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        {/* Category header */}
+                        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              {...catListeners}
+                              className="text-white/20 cursor-grab active:cursor-grabbing select-none text-lg touch-manipulation"
+                            >
+                              ⠿
+                            </span>
+                            <h2 className="text-xl font-bold text-white">
+                              <EditableField
+                                serviceId={-1}
+                                field="category"
+                                value={cat}
+                                className="text-xl font-bold"
+                              />
+                            </h2>
+                            <span className="text-white/30 text-xs">drag to reorder category</span>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <button
+                              onClick={() => handleAddService(cat)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleAddService(cat);
+                              }}
+                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                            >
+                              + Add Service
+                            </button>
+                            {confirmDeleteCat === cat ? (
+                              <>
+                                <button
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    handleDeleteCategory(cat);
+                                  }}
+                                  className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                                >
+                                  Delete All
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteCat(null)}
+                                  className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteCat(cat)}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  setConfirmDeleteCat(cat);
+                                }}
+                                className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
+                              >
+                                🗑 Category
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                {/* Services in this category — admin always shows cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {servicesInCategory(cat).map((s) => (
-                    <ServiceCard key={s.id} service={s} />
-                  ))}
-                </div>
+                        {/* Services grid — each category gets its own DndContext */}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(e) => handleServiceDragEnd(e, cat)}
+                        >
+                          <SortableContext
+                            items={servicesInCategory(cat).map((s) => s.id)}
+                            strategy={rectSortingStrategy}
+                          >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {servicesInCategory(cat).map((s) => (
+                                <SortableItem key={s.id} id={s.id}>
+                                  {(svcListeners, isSvcDragging) => (
+                                    <ServiceCard
+                                      service={s}
+                                      dragListeners={svcListeners}
+                                      isDragging={isSvcDragging}
+                                    />
+                                  )}
+                                </SortableItem>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      </div>
+                    )}
+                  </SortableItem>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </main>

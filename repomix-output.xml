@@ -5896,8 +5896,25 @@ Mobile-first. No external CSS files. All styling via Tailwind classes.
 // PHASE 4: No changes needed — already wired to live Supabase Storage and gallery table.
 // ─────────────────────────────────────────
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { DbGalleryItem } from "@/lib/supabase";
 
 // ── Supabase client (browser) ──
@@ -5908,18 +5925,38 @@ function useSupabase() {
   );
 }
 
-// ── Helper: get public URL from storage path ──
 function getPublicUrl(supabase: ReturnType<typeof createBrowserClient>, path: string) {
   const { data } = supabase.storage.from("gallery").getPublicUrl(path);
   return data.publicUrl;
 }
 
-// ── Helper: extract storage path from full URL ──
 function extractStoragePath(url: string): string {
-  // URL format: .../storage/v1/object/public/gallery/FILENAME
   const marker = "/gallery/";
   const idx = url.indexOf(marker);
   return idx !== -1 ? url.slice(idx + marker.length) : url;
+}
+
+// ── Sortable wrapper — applies dnd-kit transform and passes listeners/isDragging to children ──
+type DndListeners = ReturnType<typeof useSortable>["listeners"];
+
+function SortableItem({
+  id,
+  children,
+}: {
+  id: UniqueIdentifier;
+  children: (listeners: DndListeners, isDragging: boolean) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+    >
+      {children(listeners, isDragging)}
+    </div>
+  );
 }
 
 export default function AdminGalleryPage() {
@@ -5927,27 +5964,26 @@ export default function AdminGalleryPage() {
   const [items, setItems] = useState<DbGalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    msg: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [replacing, setReplacing] = useState<number | null>(null);
   const [layout, setLayout] = useState<"masonry" | "grid" | "fullwidth">("masonry");
   const [layoutSaving, setLayoutSaving] = useState(false);
-  const [draggedId, setDraggedId] = useState<number | null>(null);
-  const [dragOverId, setDragOverId] = useState<number | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // ── Feedback auto-clear ──
+  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+  );
+
   useEffect(() => {
     if (!feedback) return;
     const t = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(t);
   }, [feedback]);
 
-  // ── Fetch all gallery items (admin sees all, including hidden) ──
   async function fetchItems() {
     setLoading(true);
     const { data, error } = await supabase
@@ -5988,52 +6024,26 @@ export default function AdminGalleryPage() {
     fetchLayout();
   }, []);
 
-  function handleDragStart(id: number) {
-    setDraggedId(id);
-  }
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  function handleDragOver(e: React.DragEvent, id: number) {
-    e.preventDefault();
-    setDragOverId(id);
-  }
-
-  async function handleDrop(targetId: number) {
-    if (draggedId === null || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
-
-    const oldIndex = items.findIndex((i) => i.id === draggedId);
-    const newIndex = items.findIndex((i) => i.id === targetId);
-    const reordered = [...items];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-
-    // Optimistic update
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    const reordered = arrayMove(items, oldIndex, newIndex);
     const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: idx + 1 }));
     setItems(withNewOrder);
-    setDraggedId(null);
-    setDragOverId(null);
 
-    // Persist to Supabase
     const updates = withNewOrder.map((item) =>
       supabase.from("gallery").update({ sort_order: item.sort_order }).eq("id", item.id),
     );
     const results = await Promise.all(updates);
-    const anyError = results.find((r) => r.error);
-    if (anyError) {
+    if (results.some((r) => r.error)) {
       setFeedback({ type: "error", msg: "Failed to save order. Try again." });
       fetchItems();
     }
   }
 
-  function handleDragEnd() {
-    setDraggedId(null);
-    setDragOverId(null);
-  }
-
-  // ── Upload new media ──
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -6044,7 +6054,6 @@ export default function AdminGalleryPage() {
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const fileType = file.type.startsWith("video") ? "video" : "image";
 
-      // Upload to Storage
       const { error: storageError } = await supabase.storage
         .from("gallery")
         .upload(fileName, file, { upsert: false });
@@ -6055,8 +6064,6 @@ export default function AdminGalleryPage() {
       }
 
       const publicUrl = getPublicUrl(supabase, fileName);
-
-      // Insert row into gallery table
       const maxOrder = items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) : 0;
       const { error: dbError } = await supabase.from("gallery").insert({
         file_url: publicUrl,
@@ -6080,7 +6087,6 @@ export default function AdminGalleryPage() {
     fetchItems();
   }
 
-  // ── Toggle visibility ──
   async function handleToggle(item: DbGalleryItem) {
     const { error } = await supabase
       .from("gallery")
@@ -6095,7 +6101,6 @@ export default function AdminGalleryPage() {
     }
   }
 
-  // ── Toggle background transparency ──
   async function handleToggleBg(item: DbGalleryItem) {
     const nextShowBg = !item.show_bg;
     const { error } = await supabase
@@ -6111,7 +6116,6 @@ export default function AdminGalleryPage() {
     }
   }
 
-  // ── Replace media (swap file, keep row) ──
   async function handleReplace(item: DbGalleryItem, files: FileList | null) {
     if (!files || files.length === 0) return;
     setReplacing(item.id);
@@ -6121,7 +6125,6 @@ export default function AdminGalleryPage() {
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const fileType = file.type.startsWith("video") ? "video" : "image";
 
-    // Upload new file
     const { error: storageError } = await supabase.storage
       .from("gallery")
       .upload(fileName, file, { upsert: false });
@@ -6134,7 +6137,6 @@ export default function AdminGalleryPage() {
 
     const newUrl = getPublicUrl(supabase, fileName);
 
-    // Update DB row with new URL and type
     const { error: dbError } = await supabase
       .from("gallery")
       .update({ file_url: newUrl, file_type: fileType })
@@ -6149,7 +6151,6 @@ export default function AdminGalleryPage() {
       return;
     }
 
-    // Delete old file from storage
     const oldPath = extractStoragePath(item.file_url);
     await supabase.storage.from("gallery").remove([oldPath]);
 
@@ -6158,7 +6159,6 @@ export default function AdminGalleryPage() {
     fetchItems();
   }
 
-  // ── Delete ──
   async function handleDelete(item: DbGalleryItem) {
     const path = extractStoragePath(item.file_url);
     const { error: storageError } = await supabase.storage.from("gallery").remove([path]);
@@ -6183,15 +6183,10 @@ export default function AdminGalleryPage() {
         {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">
-              Admin
-            </p>
+            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">Admin</p>
             <h1 className="text-3xl font-bold text-white">Gallery Manager</h1>
           </div>
-          <a
-            href="/admin/dashboard"
-            className="text-white/40 text-sm hover:text-white transition"
-          >
+          <a href="/admin/dashboard" className="text-white/40 text-sm hover:text-white transition">
             ← Back to Dashboard
           </a>
         </div>
@@ -6282,135 +6277,149 @@ export default function AdminGalleryPage() {
         ) : (
           <>
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">
-              Drag cards to reorder gallery
+              Drag grip to reorder gallery
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(item.id)}
-                onDragOver={(e) => handleDragOver(e, item.id)}
-                onDrop={() => handleDrop(item.id)}
-                onDragEnd={handleDragEnd}
-                className={`relative rounded-xl overflow-hidden border ${
-                  item.is_active ? "border-white/10" : "border-white/5 opacity-50"
-                } bg-white/5 ${dragOverId === item.id ? "ring-2 ring-brand-accent" : ""}`}
-              >
-                {/* Media preview */}
-                <div className={`aspect-square overflow-hidden ${item.show_bg ? "bg-black" : "bg-transparent"}`}>
-                  {item.file_type === "video" ? (
-                    <video
-                      src={item.file_url}
-                      muted
-                      loop
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={item.file_url}
-                      alt={item.title ?? "Gallery item"}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {items.map((item) => (
+                    <SortableItem key={item.id} id={item.id}>
+                      {(listeners, isDragging) => (
+                        <div
+                          className={`relative rounded-xl overflow-hidden border ${
+                            item.is_active ? "border-white/10" : "border-white/5 opacity-50"
+                          } bg-white/5 transition-all ${isDragging ? "opacity-40" : ""}`}
+                        >
+                          {/* Drag grip */}
+                          <div
+                            {...listeners}
+                            className="absolute top-2 right-2 z-10 rounded-md border border-cyan-400/40 bg-cyan-500/10 p-1.5 text-cyan-300 cursor-grab active:cursor-grabbing touch-manipulation select-none"
+                          >
+                            ⠿
+                          </div>
+
+                          {/* Media preview */}
+                          <div
+                            className={`aspect-square overflow-hidden ${
+                              item.show_bg ? "bg-black" : "bg-transparent"
+                            }`}
+                          >
+                            {item.file_type === "video" ? (
+                              <video
+                                src={item.file_url}
+                                muted
+                                loop
+                                playsInline
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={item.file_url}
+                                alt={item.title ?? "Gallery item"}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+
+                          {/* Hidden badge */}
+                          {!item.is_active && (
+                            <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
+                              Hidden
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="p-2 flex flex-col gap-2">
+                            <button
+                              onClick={() => handleToggleBg(item)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleToggleBg(item);
+                              }}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              {item.show_bg ? "BG: ON" : "BG: OFF"}
+                            </button>
+
+                            <button
+                              onClick={() => handleToggle(item)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleToggle(item);
+                              }}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
+                            </button>
+
+                            <button
+                              onClick={() => replaceRefs.current[item.id]?.click()}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                replaceRefs.current[item.id]?.click();
+                              }}
+                              disabled={replacing === item.id}
+                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
+                            >
+                              {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*,video/*"
+                              className="hidden"
+                              ref={(el) => {
+                                replaceRefs.current[item.id] = el;
+                              }}
+                              onChange={(e) => handleReplace(item, e.target.files)}
+                            />
+
+                            {confirmDelete === item.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    handleDelete(item);
+                                  }}
+                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
+                                >
+                                  Yes, Delete
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDelete(null)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    setConfirmDelete(null);
+                                  }}
+                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDelete(item.id)}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  setConfirmDelete(item.id);
+                                }}
+                                className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
+                              >
+                                🗑 Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </SortableItem>
+                  ))}
                 </div>
-
-                {/* Hidden badge */}
-                {!item.is_active && (
-                  <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
-                    Hidden
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="p-2 flex flex-col gap-2">
-                  {/* Toggle background */}
-                  <button
-                    onClick={() => handleToggleBg(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleToggleBg(item);
-                    }}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    {item.show_bg ? "BG: ON" : "BG: OFF"}
-                  </button>
-
-                  {/* Toggle visibility */}
-                  <button
-                    onClick={() => handleToggle(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleToggle(item);
-                    }}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
-                  </button>
-
-                  {/* Replace */}
-                  <button
-                    onClick={() => replaceRefs.current[item.id]?.click()}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      replaceRefs.current[item.id]?.click();
-                    }}
-                    disabled={replacing === item.id}
-                    className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
-                  >
-                    {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
-                  </button>
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    ref={(el) => {
-                      replaceRefs.current[item.id] = el;
-                    }}
-                    onChange={(e) => handleReplace(item, e.target.files)}
-                  />
-
-                  {/* Delete with confirm */}
-                  {confirmDelete === item.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDelete(item)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          handleDelete(item);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
-                      >
-                        Yes, Delete
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(null)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setConfirmDelete(null);
-                        }}
-                        className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDelete(item.id)}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        setConfirmDelete(item.id);
-                      }}
-                      className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
-                    >
-                      🗑 Delete
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           </>
         )}
       </div>
@@ -6429,8 +6438,26 @@ export default function AdminGalleryPage() {
 // PHASE 4: No changes needed — already wired to live Supabase services table.
 // ─────────────────────────────────────────
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type UniqueIdentifier,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { DbService } from "@/lib/supabase";
 
 // ── Module-level Supabase client ──
@@ -6442,6 +6469,28 @@ const supabase = createBrowserClient(
 // ── Types ──
 type EditingField = { id: number; field: "name" | "price" | "description" | "category" };
 type Layout = "cards" | "list" | "minimal";
+type DndListeners = ReturnType<typeof useSortable>["listeners"];
+
+// ── Reusable sortable wrapper — applies dnd-kit positioning, passes listeners to children ──
+function SortableItem({
+  id,
+  children,
+}: {
+  id: UniqueIdentifier;
+  children: (listeners: DndListeners, isDragging: boolean) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+    >
+      {children(listeners, isDragging)}
+    </div>
+  );
+}
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState<DbService[]>([]);
@@ -6454,19 +6503,19 @@ export default function AdminServicesPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
-  const [draggedServiceId, setDraggedServiceId] = useState<number | null>(null);
-  const dragOverServiceIdRef = useRef<number | null>(null);
-  const [draggedCat, setDraggedCat] = useState<string | null>(null);
-  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
 
-  // ── Feedback auto-clear ──
+  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+  );
+
   useEffect(() => {
     if (!feedback) return;
     const t = setTimeout(() => setFeedback(null), 4000);
     return () => clearTimeout(t);
   }, [feedback]);
 
-  // ── Initial load ──
   useEffect(() => {
     async function init() {
       await Promise.all([fetchServices(), fetchConfig()]);
@@ -6476,7 +6525,10 @@ export default function AdminServicesPage() {
 
   async function fetchServices() {
     setLoading(true);
-    const { data, error } = await supabase.from("services").select("*").order("sort_order", { ascending: true });
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .order("sort_order", { ascending: true });
     if (error) {
       setFeedback({ type: "error", msg: "Failed to load services." });
     } else {
@@ -6505,7 +6557,6 @@ export default function AdminServicesPage() {
     ...allCategories.filter((c) => !categoryOrder.includes(c)),
   ];
 
-  // ── Services grouped by category ──
   function servicesInCategory(cat: string) {
     return services.filter((s) => s.category === cat);
   }
@@ -6536,7 +6587,7 @@ export default function AdminServicesPage() {
       field === "price" ? parseFloat(editValue.replace(/[^0-9.]/g, "")) : editValue;
     const { error } = await supabase
       .from("services")
-      .update({ [field]: valueToSave, ...(field === "category" ? {} : {}) })
+      .update({ [field]: valueToSave })
       .eq("id", id);
     if (error) {
       setFeedback({ type: "error", msg: `Failed to update ${field}.` });
@@ -6545,7 +6596,6 @@ export default function AdminServicesPage() {
         prev.map((s) => (s.id === id ? { ...s, [field]: valueToSave } : s)),
       );
       if (field === "category") {
-        // Update category order if new category was introduced
         setCategoryOrder((prev) => (prev.includes(editValue) ? prev : [...prev, editValue]));
       }
     }
@@ -6656,101 +6706,43 @@ export default function AdminServicesPage() {
     }
   }
 
-  // ── Drag: services within category ──
-  function handleServiceDragStart(e: React.DragEvent, id: number) {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("application/x-service-id", String(id));
-    setDraggedServiceId(id);
-  }
-  function handleServiceDragOver(e: React.DragEvent, id: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    dragOverServiceIdRef.current = id;
-  }
-  function handleServiceDragEnd() {
-    setDraggedServiceId(null);
-    dragOverServiceIdRef.current = null;
-    setDraggedCat(null);
-    setDragOverCat(null);
-  }
+  // ── Drag end: reorder services within a category ──
+  async function handleServiceDragEnd(event: DragEndEvent, cat: string) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  async function handleServiceDrop(targetId: number) {
-    const overServiceId = dragOverServiceIdRef.current;
-    dragOverServiceIdRef.current = null;
-    if (draggedServiceId === null) {
-      setDraggedServiceId(null);
-      return;
-    }
-    const actualTargetId = overServiceId ?? targetId;
-    if (draggedServiceId === actualTargetId) {
-      setDraggedServiceId(null);
-      return;
-    }
+    const catServices = servicesInCategory(cat);
+    const oldIndex = catServices.findIndex((s) => s.id === active.id);
+    const newIndex = catServices.findIndex((s) => s.id === over.id);
+    const reorderedCat = arrayMove(catServices, oldIndex, newIndex);
 
-    const dragged = services.find((s) => s.id === draggedServiceId);
-    const target = services.find((s) => s.id === actualTargetId);
+    const newServices = [
+      ...services.filter((s) => s.category !== cat),
+      ...reorderedCat,
+    ].map((s, i) => ({ ...s, sort_order: i + 1 }));
 
-    // Only allow reordering within the same category
-    if (!dragged || !target || dragged.category !== target.category) {
-      setDraggedServiceId(null);
-      return;
-    }
+    setServices(newServices);
 
-    const newServices = [...services];
-    const oldIdx = newServices.findIndex((s) => s.id === dragged.id);
-    newServices.splice(oldIdx, 1);
-    const newIdx = newServices.findIndex((s) => s.id === target.id);
-    newServices.splice(newIdx, 0, dragged);
-
-    // Update sort_order based on the new array positions
-    const withUpdatedOrder = newServices.map((s, i) => ({ ...s, sort_order: i + 1 }));
-
-    setServices(withUpdatedOrder);
-    setDraggedServiceId(null);
-
-    // Update Supabase (use row updates; services.id is identity and rejects upsert inserts)
-    const updates = withUpdatedOrder.map((s) =>
+    const updates = newServices.map((s) =>
       supabase.from("services").update({ sort_order: s.sort_order }).eq("id", s.id),
     );
     const results = await Promise.all(updates);
-    const anyError = results.find((r) => r.error);
-
-    if (anyError?.error) {
+    if (results.some((r) => r.error)) {
       setFeedback({ type: "error", msg: "Failed to sync order to database." });
       fetchServices();
     }
   }
 
-  // ── Drag: categories ──
-  function handleCatDragStart(cat: string) {
-    setDraggedCat(cat);
-  }
-  function handleCatDragOver(e: React.DragEvent, cat: string) {
-    e.preventDefault();
-    setDragOverCat(cat);
-  }
-  function handleCatDragEnd() {
-    setDraggedCat(null);
-    setDragOverCat(null);
-    setDraggedServiceId(null);
-    dragOverServiceIdRef.current = null;
-  }
+  // ── Drag end: reorder categories ──
+  async function handleCategoryDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  async function handleCatDrop(targetCat: string) {
-    if (draggedCat === null || draggedCat === targetCat) {
-      setDraggedCat(null);
-      setDragOverCat(null);
-      return;
-    }
-    const reordered = [...orderedCategories];
-    const fromIdx = reordered.indexOf(draggedCat);
-    const toIdx = reordered.indexOf(targetCat);
-    reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, draggedCat);
+    const oldIndex = orderedCategories.indexOf(active.id as string);
+    const newIndex = orderedCategories.indexOf(over.id as string);
+    const reordered = arrayMove(orderedCategories, oldIndex, newIndex);
     setCategoryOrder(reordered);
-    setDraggedCat(null);
-    setDragOverCat(null);
+
     await supabase.from("site_config").upsert({
       key: "category_order",
       value: JSON.stringify(reordered),
@@ -6800,48 +6792,42 @@ export default function AdminServicesPage() {
     );
   }
 
-  // ── Service card (cards layout) ──
-  function ServiceCard({ service }: { service: DbService }) {
+  // ── Service card ──
+  function ServiceCard({
+    service,
+    dragListeners,
+    isDragging,
+  }: {
+    service: DbService;
+    dragListeners: DndListeners;
+    isDragging: boolean;
+  }) {
     return (
       <div
-        draggable
-        onDragStart={(e) => {
-          e.stopPropagation();
-          handleServiceDragStart(e, service.id);
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleServiceDragOver(e, service.id);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleServiceDrop(service.id);
-        }}
-        onDragEnd={handleServiceDragEnd}
-        className={`rounded-xl border bg-white/5 p-4 transition-all select-none cursor-grab active:cursor-grabbing ${
-          draggedServiceId === service.id
-            ? "opacity-40 scale-95"
-            : draggedServiceId !== null
-              ? ""
-              : "hover:scale-[1.02]"
-        } ${
-          service.is_active
-            ? "border-white/10"
-            : "border-white/5 opacity-60"
-        }`}
+        className={`rounded-xl border bg-white/5 p-4 transition-all select-none ${
+          isDragging ? "opacity-40" : "hover:scale-[1.02]"
+        } ${service.is_active ? "border-white/10" : "border-white/5 opacity-60"}`}
       >
-        {/* Drag handle hint */}
-        <div className="text-white/20 text-xs mb-2 select-none">⠿ drag to reorder</div>
+        {/* Drag handle */}
+        <div className="mb-3 flex items-center gap-2 text-xs select-none">
+          <span
+            {...dragListeners}
+            className="rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200 cursor-grab active:cursor-grabbing touch-manipulation"
+          >
+            ⠿
+          </span>
+          <span className="text-cyan-300/80">drag to reorder</span>
+        </div>
 
         {/* Name */}
-        <div className="text-white font-semibold text-base mb-1">
+        <div className="mb-1 flex items-center gap-2 text-white font-semibold text-base">
+          <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="name" value={service.name} />
         </div>
 
         {/* Price */}
-        <div className="text-brand-accent font-bold text-sm mb-2">
+        <div className="mb-2 flex items-center gap-2 text-brand-accent font-bold text-sm">
+          <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="price" value={service.price} />
         </div>
 
@@ -6962,7 +6948,9 @@ export default function AdminServicesPage() {
               >
                 <div>{preset.label}</div>
                 <div
-                  className={`text-xs font-normal mt-0.5 ${layout === preset.key ? "text-black/60" : "text-white/40"}`}
+                  className={`text-xs font-normal mt-0.5 ${
+                    layout === preset.key ? "text-black/60" : "text-white/40"
+                  }`}
                 >
                   {preset.desc}
                 </div>
@@ -6989,114 +6977,117 @@ export default function AdminServicesPage() {
         {loading ? (
           <p className="text-white/40 text-center py-20">Loading services...</p>
         ) : (
-          <div className="flex flex-col gap-10">
-            {orderedCategories.map((cat) => (
-              <div
-                key={cat}
-                draggable
-                onDragStart={() => handleCatDragStart(cat)}
-                onDragOver={(e) => {
-                  if (
-                    draggedServiceId !== null ||
-                    e.dataTransfer.types.includes("application/x-service-id")
-                  ) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    return;
-                  }
-                  e.preventDefault();
-                  handleCatDragOver(e, cat);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedServiceId !== null) {
-                    if (dragOverServiceIdRef.current !== null) {
-                      handleServiceDrop(dragOverServiceIdRef.current);
-                    } else {
-                      handleServiceDragEnd();
-                    }
-                    return;
-                  }
-                  handleCatDrop(cat);
-                }}
-                onDragEnd={() => {
-                  setDraggedServiceId(null);
-                  dragOverServiceIdRef.current = null;
-                  setDraggedCat(null);
-                  setDragOverCat(null);
-                }}
-                className={`rounded-2xl border p-5 transition-all ${
-                  draggedCat === cat ? "opacity-40" : ""
-                } ${dragOverCat === cat && draggedCat !== cat ? "border-brand-accent" : "border-white/10"} bg-white/3`}
-              >
-                {/* Category header */}
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-white/20 cursor-grab select-none text-lg">⠿</span>
-                    <h2 className="text-xl font-bold text-white">
-                      <EditableField
-                        serviceId={-1}
-                        field="category"
-                        value={cat}
-                        className="text-xl font-bold"
-                      />
-                    </h2>
-                    <span className="text-white/30 text-xs">drag to reorder category</span>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => handleAddService(cat)}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        handleAddService(cat);
-                      }}
-                      className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
-                    >
-                      + Add Service
-                    </button>
-                    {confirmDeleteCat === cat ? (
-                      <>
-                        <button
-                          onClick={() => handleDeleteCategory(cat)}
-                          onTouchEnd={(e) => {
-                            e.preventDefault();
-                            handleDeleteCategory(cat);
-                          }}
-                          className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
-                        >
-                          Delete All
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteCat(null)}
-                          className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDeleteCat(cat)}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setConfirmDeleteCat(cat);
-                        }}
-                        className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleCategoryDragEnd}
+          >
+            <SortableContext items={orderedCategories} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-10">
+                {orderedCategories.map((cat) => (
+                  <SortableItem key={cat} id={cat}>
+                    {(catListeners, isCatDragging) => (
+                      <div
+                        className={`rounded-2xl border p-5 transition-all ${
+                          isCatDragging ? "opacity-40" : ""
+                        } border-white/10 bg-white/3`}
                       >
-                        🗑 Category
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        {/* Category header */}
+                        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              {...catListeners}
+                              className="text-white/20 cursor-grab active:cursor-grabbing select-none text-lg touch-manipulation"
+                            >
+                              ⠿
+                            </span>
+                            <h2 className="text-xl font-bold text-white">
+                              <EditableField
+                                serviceId={-1}
+                                field="category"
+                                value={cat}
+                                className="text-xl font-bold"
+                              />
+                            </h2>
+                            <span className="text-white/30 text-xs">drag to reorder category</span>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <button
+                              onClick={() => handleAddService(cat)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleAddService(cat);
+                              }}
+                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                            >
+                              + Add Service
+                            </button>
+                            {confirmDeleteCat === cat ? (
+                              <>
+                                <button
+                                  onClick={() => handleDeleteCategory(cat)}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    handleDeleteCategory(cat);
+                                  }}
+                                  className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                                >
+                                  Delete All
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteCat(null)}
+                                  className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteCat(cat)}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  setConfirmDeleteCat(cat);
+                                }}
+                                className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
+                              >
+                                🗑 Category
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                {/* Services in this category — admin always shows cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {servicesInCategory(cat).map((s) => (
-                    <ServiceCard key={s.id} service={s} />
-                  ))}
-                </div>
+                        {/* Services grid — each category gets its own DndContext */}
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(e) => handleServiceDragEnd(e, cat)}
+                        >
+                          <SortableContext
+                            items={servicesInCategory(cat).map((s) => s.id)}
+                            strategy={rectSortingStrategy}
+                          >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {servicesInCategory(cat).map((s) => (
+                                <SortableItem key={s.id} id={s.id}>
+                                  {(svcListeners, isSvcDragging) => (
+                                    <ServiceCard
+                                      service={s}
+                                      dragListeners={svcListeners}
+                                      isDragging={isSvcDragging}
+                                    />
+                                  )}
+                                </SortableItem>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      </div>
+                    )}
+                  </SortableItem>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
     </main>
@@ -7116,11 +7107,15 @@ export default function AdminServicesPage() {
     "lint": "eslint"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -7136,44 +7131,6 @@ export default function AdminServicesPage() {
 </file>
 
 <file path="README.md">
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
 # Fades & Facials 2.0 — Learning Roadmap
 > **Phase 1 Status:** In progress — Terminal & Git complete.
 > Britton's full-stack rebuild. Built the right way, from scratch.
@@ -7218,138 +7175,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - [ ] SEO optimization & polish
 - [ ] Live deployment
 - [ ] AI architecture deep dive (prompting, agents, agentic patterns)
->>>>>>> 7b383ae1b632149e3ae9d5ae8ac1f77b497ecc37
-</file>
-
-<file path="app/admin/page.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: Admin Login Page
-// WHAT: Magic link email form — sends OTP via Supabase Auth.
-// WHY: Password-free auth. Barber enters email, clicks link, session is created.
-// PHASE 4: No changes needed — already wired to Supabase Auth.
-// ─────────────────────────────────────────
-import { Suspense, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
-
-function AdminLoginForm() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get("error");
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
-  async function handleSubmit() {
-    if (!email.trim() || cooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    setSent(false);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: "https://fades-and-facials.vercel.app/admin/callback",
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSent(true);
-    setCooldown(60);
-    setLoading(false);
-  }
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
-            Fades & Facials
-          </p>
-          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
-        </div>
-
-        {sent && (
-          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
-            ✅ Magic link sent! Check your email and click the link.
-            {cooldown > 0 && (
-              <p className="mt-1 text-green-300/60 text-xs">
-                Need another? Wait {cooldown}s before resending.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
-          />
-
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
-          {urlError && !error && (
-            <p className="text-red-400 text-sm text-center">
-              {urlError === "otp_expired"
-                ? "Link expired — request a new one below."
-                : "Auth failed — try again."}
-            </p>
-          )}
-
-          <button
-            onClick={handleSubmit}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-            disabled={loading || cooldown > 0}
-            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
-          >
-            {loading
-              ? "Sending..."
-              : cooldown > 0
-                ? `Wait ${cooldown}s to resend`
-                : sent
-                  ? "Resend Magic Link"
-                  : "Send Magic Link"}
-          </button>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense>
-      <AdminLoginForm />
-    </Suspense>
-  );
-}
 </file>
 
 <file path="app/services/page.tsx">
@@ -7539,6 +7364,137 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+</file>
+
+<file path="app/admin/page.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Admin Login Page
+// WHAT: Magic link email form — sends OTP via Supabase Auth.
+// WHY: Password-free auth. Barber enters email, clicks link, session is created.
+// PHASE 4: No changes needed — already wired to Supabase Auth.
+// ─────────────────────────────────────────
+import { Suspense, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function handleSubmit() {
+    if (!email.trim() || cooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    setSent(false);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: "https://fades-and-facials.vercel.app/admin/callback",
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    setSent(true);
+    setCooldown(60);
+    setLoading(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Fades & Facials
+          </p>
+          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+        </div>
+
+        {sent && (
+          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
+            ✅ Magic link sent! Check your email and click the link.
+            {cooldown > 0 && (
+              <p className="mt-1 text-green-300/60 text-xs">
+                Need another? Wait {cooldown}s before resending.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+          />
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {urlError && !error && (
+            <p className="text-red-400 text-sm text-center">
+              {urlError === "otp_expired"
+                ? "Link expired — request a new one below."
+                : "Auth failed — try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            disabled={loading || cooldown > 0}
+            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+          >
+            {loading
+              ? "Sending..."
+              : cooldown > 0
+                ? `Wait ${cooldown}s to resend`
+                : sent
+                  ? "Resend Magic Link"
+                  : "Send Magic Link"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
+}
 </file>
 
 <file path="app/page.tsx">
