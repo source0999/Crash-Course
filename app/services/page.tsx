@@ -1,4 +1,5 @@
-import { allServices } from "@/lib/services";
+import { allServices, type Service } from "@/lib/services";
+import { supabase, type DbService } from "@/lib/supabase";
 
 // ─────────────────────────────────────────
 // SECTION: Category Derivation
@@ -6,7 +7,6 @@ import { allServices } from "@/lib/services";
 // WHY: Deriving categories prevents duplicated category constants and stays synced with catalog changes.
 // PHASE 4: Keep this logic, but derive from database results returned by API/server actions.
 // ─────────────────────────────────────────
-const serviceCategories = Array.from(new Set(allServices.map((s) => s.category)));
 
 // ─────────────────────────────────────────
 // SECTION: Services Page Rendering
@@ -14,12 +14,69 @@ const serviceCategories = Array.from(new Set(allServices.map((s) => s.category))
 // WHY: Grouping by category improves scanning while cards keep details and actions consistent.
 // PHASE 4: Swap allServices for database-fetched rows without changing card layout components.
 // ─────────────────────────────────────────
-export default function ServicesPage() {
+
+// ─────────────────────────────────────────
+// SECTION: Static → DB shape adapter
+// WHAT: Maps each `Service` from lib/services.ts into a `DbService` object.
+// WHY: Fallback rows must match the same shape as Supabase so one render path can use either source.
+// NOTE: `created_at` uses epoch ISO string only as a placeholder — real rows from DB carry true timestamps.
+// ─────────────────────────────────────────
+function mapStaticServiceToDb(s: Service): DbService {
+  return {
+    id: s.id,
+    name: s.name,
+    category: s.category,
+    price: s.price,
+    description: s.description,
+    image: s.image,
+    is_active: true,
+    created_at: new Date(0).toISOString(),
+  };
+}
+
+// ─────────────────────────────────────────
+// SECTION: ServicesPage (async Server Component)
+// WHAT: Loads active services from Supabase, or falls back to the hardcoded catalog.
+// WHY: Server fetch keeps secrets off the client; try/catch + empty check covers network, RLS, and empty tables.
+// FLOW: (1) query → (2) on failure or empty, substitute allServices → (3) derive categories → (4) render grid.
+// ─────────────────────────────────────────
+export default async function ServicesPage() {
+  // Accumulator for rows we will render (either from DB or fallback).
+  let services: DbService[] = [];
+
+  try {
+    // Chain: table "services", all columns, only active rows, stable sort by category then id.
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true)
+      .order("category", { ascending: true })
+      .order("id", { ascending: true });
+
+    // Supabase returns { error } instead of throwing — we normalize by throwing so one catch handles everything.
+    if (error) throw error;
+    services = data ?? [];
+  } catch (err) {
+    // Log for dev overlay / Vercel logs. Some error shapes (e.g. Postgrest) stringify as "{}" in the console.
+    console.error("[ServicesPage] Supabase fetch failed, using fallback:", err);
+  }
+
+  // After a failed fetch or an empty table, `services` is still [] — substitute static catalog so the page never blanks.
+  if (services.length === 0) {
+    services = allServices.map(mapStaticServiceToDb);
+  }
+
+  // Unique category labels in first-seen order (depends on current sort of `services`).
+  const serviceCategories = Array.from(
+    new Set(services.map((s) => s.category)),
+  );
+
   return (
     <main className="bg-[#081220] px-6 py-24 md:px-10">
       <div className="mx-auto max-w-7xl">
         {serviceCategories.map((category) => {
-          const categoryServices = allServices.filter(
+          // All services belonging to this section’s category (same array, filtered per heading).
+          const categoryServices = services.filter(
             (service) => service.category === category,
           );
 
@@ -35,8 +92,9 @@ export default function ServicesPage() {
                     key={service.id}
                     className="overflow-hidden rounded-xl bg-[#0a1628]"
                   >
+                    {/* DB allows null image — fallback path keeps cards valid if a row is missing media. */}
                     <img
-                      src={service.image}
+                      src={service.image ?? "/images/services/fade.gif"}
                       alt={service.name}
                       className="h-52 w-full object-cover"
                     />
@@ -47,8 +105,9 @@ export default function ServicesPage() {
                       <p className="mt-2 text-lg font-semibold text-[#c9a96e]">
                         ${service.price}
                       </p>
+                      {/* description is string | null on DbService — empty string avoids rendering "null" text. */}
                       <p className="mt-3 text-base text-slate-200">
-                        {service.description}
+                        {service.description ?? ""}
                       </p>
                       <a
                         href="/booking"

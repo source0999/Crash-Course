@@ -1,4 +1,5 @@
-import { allServices } from "@/lib/services";
+import { allServices, type Service } from "@/lib/services";
+import { supabase, type DbService } from "@/lib/supabase";
 
 // ─────────────────────────────────────────
 // SECTION: Homepage Service Preview Selection
@@ -6,9 +7,21 @@ import { allServices } from "@/lib/services";
 // WHY: Keeps the homepage lightweight while reusing the shared service catalog.
 // PHASE 4: Keep this selector logic, but source allServices from database-backed fetches.
 // ─────────────────────────────────────────
-const previewServices = allServices
-  .filter((s) => [1, 6, 4].includes(s.id))
-  .map((service, index) => ({ ...service, reversed: index % 2 !== 0 }));
+
+const PREVIEW_IDS = [1, 4, 6] as const;
+
+function mapStaticServiceToDb(s: Service): DbService {
+  return {
+    id: s.id,
+    name: s.name,
+    category: s.category,
+    price: s.price,
+    description: s.description,
+    image: s.image,
+    is_active: true,
+    created_at: new Date(0).toISOString(),
+  };
+}
 
 // ─────────────────────────────────────────
 // SECTION: Home Page Composition
@@ -16,7 +29,38 @@ const previewServices = allServices
 // WHY: Combines brand-first messaging with quick access to key bookable services.
 // PHASE 4: Keep this UI structure and feed it with live service records from Supabase.
 // ─────────────────────────────────────────
-export default function Home() {
+export default async function Home() {
+  let rows: DbService[] = [];
+  try {
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true)
+      .in("id", [...PREVIEW_IDS]);
+    if (error) throw error;
+    rows = data ?? [];
+  } catch (err) {
+    console.error("[Home] Supabase fetch failed, using fallback:", err);
+  }
+
+  if (rows.length === 0) {
+    rows = allServices
+      .filter((s) => (PREVIEW_IDS as readonly number[]).includes(s.id))
+      .map(mapStaticServiceToDb);
+  } else {
+    const orderMap: Record<number, number> = { 1: 0, 4: 1, 6: 2 };
+    rows = [...rows].sort(
+      (a, b) => (orderMap[a.id] ?? 99) - (orderMap[b.id] ?? 99),
+    );
+  }
+
+  const previewServices = rows.map((service, index) => ({
+    ...service,
+    image: service.image ?? "/images/services/fade.gif",
+    description: service.description ?? "",
+    reversed: index % 2 !== 0,
+  }));
+
   return (
     <>
       {/* Full-screen hero with animated GIF background */}
