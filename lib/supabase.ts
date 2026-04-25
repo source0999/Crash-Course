@@ -29,3 +29,20 @@ export type DbService = {
   is_active: boolean;
   created_at: string;
 };
+
+// ─────────────────────────────────────────
+// SECTION: Gallery Type
+// WHAT: Mirrors the gallery table schema in Supabase.
+// WHY: Provides type safety for all gallery data fetched from the database.
+// PHASE 4: No changes needed — this IS the Phase 4 shape.
+// ─────────────────────────────────────────
+export type DbGalleryItem = {
+  id: number;
+  title: string | null;
+  file_url: string;
+  file_type: "image" | "video";
+  category: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+};

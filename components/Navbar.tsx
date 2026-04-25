@@ -104,6 +104,7 @@ export default function Navbar() {
         <div className="hidden md:flex gap-8">
           <Link href="/" className="text-white">Home</Link>
           <Link href="/services" className="text-white">Services</Link>
+          <Link href="/gallery" className="text-white">Gallery</Link>
           <Link href="/booking" className="text-white">Book Now</Link>
         </div>
 
@@ -116,6 +117,7 @@ export default function Navbar() {
         <div className="flex flex-col gap-4 mt-4 md:hidden">
           <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/gallery" className="text-white" onClick={() => setMenuOpen(false)}>Gallery</Link>
           <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
         </div>
       )}
