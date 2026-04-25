@@ -46,12 +46,14 @@ AGENTS.md
 app/admin/gallery/page.tsx
 app/admin/page.tsx
 app/admin/services/page.tsx
+app/booking/page.tsx
 app/favicon.ico
 app/globals.css
 app/layout.tsx
 app/page.tsx
 app/services/page.tsx
 CLAUDE.md
+components/Eruda.tsx
 components/Navbar.tsx
 CRASH_COURSE_README.md
 eslint.config.mjs
@@ -80,6 +82,52 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="app/booking/page.tsx">
+import Link from "next/link";
+
+export default function BookingPage() {
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] text-white">
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
+          Book Your Appointment
+        </h1>
+        <p className="mt-6 text-base leading-relaxed text-white/90 sm:text-lg">
+          Online booking coming soon. Call or text us to schedule your visit.
+        </p>
+
+        <div className="mt-10 flex flex-col items-stretch gap-4 sm:items-center">
+          <a
+            href="tel:+15550000000"
+            className="inline-flex w-full items-center justify-center rounded-md bg-amber-500 px-8 py-4 text-lg font-semibold text-black shadow-lg transition hover:bg-amber-400 sm:w-auto sm:min-w-[16rem]"
+          >
+            (555) 000-0000
+          </a>
+          <Link
+            href="/services"
+            className="inline-flex w-full items-center justify-center rounded-md border-2 border-amber-500 bg-transparent px-8 py-4 text-lg font-semibold text-amber-400 transition hover:bg-amber-500/10 sm:w-auto sm:min-w-[16rem]"
+          >
+            View Our Services
+          </Link>
+        </div>
+
+        <div className="mt-16 min-h-[120px] rounded-xl border border-dashed border-white/20 bg-black/20 p-6 text-left text-sm text-white/60">
+          {/* ─────────────────────────────────────────
+              VAGARO BOOKING WIDGET
+              WHAT: Vagaro provides an embed script that renders
+              their booking calendar inline.
+              HOW TO ADD: Paste the embed code from Vagaro dashboard
+              (Promote → Booking Widget → Embed Code) here.
+              Replace this entire comment block with the script tag
+              they provide.
+              ───────────────────────────────────────── */}
+        </div>
+      </div>
+    </main>
+  );
+}
+</file>
 
 <file path=".cursorrules">
 # Project Architecture & Workflow Rules
@@ -174,6 +222,34 @@ export default function Home() {
 
 <file path="CLAUDE.md">
 @AGENTS.md
+</file>
+
+<file path="components/Eruda.tsx">
+"use client";
+
+import { useEffect } from "react";
+
+export default function Eruda() {
+  useEffect(() => {
+    const w = window as typeof window & { eruda?: { init: () => void } };
+    if (w.eruda) {
+      w.eruda.init();
+      return;
+    }
+    if (document.querySelector("script[data-eruda-loader]")) return;
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/eruda";
+    script.async = true;
+    script.dataset.erudaLoader = "";
+    script.onload = () => {
+      w.eruda?.init();
+    };
+    document.body.appendChild(script);
+  }, []);
+
+  return null;
+}
 </file>
 
 <file path="CRASH_COURSE_README.md">
@@ -347,16 +423,6 @@ export const allServices: Service[] = [
 // The Service type above maps directly to the database schema.
 </file>
 
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
-</file>
-
 <file path="package.json">
 {
   "name": "fades-and-facials",
@@ -505,6 +571,30 @@ export default function ServicesPage() {
 }
 </file>
 
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // ─────────────────────────────────────────
+  // MOBILE DEV ACCESS — allowedDevOrigins
+  // WHAT: Allows devices on the local network to connect to the Next.js dev server.
+  // WHY: Next.js 15 blocks cross-origin requests to dev resources by default.
+  //      Without this, phones/tablets on the same WiFi get a blocked HMR connection,
+  //      changes don't reflect on device, and scroll/interaction bugs appear "unfixed"
+  //      even after correct code changes are applied.
+  // HOW TO FIND YOUR IP: Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
+  //      and look for your IPv4 address under your WiFi adapter.
+  // PRODUCTION: This setting only affects the dev server. It has zero effect on builds.
+  // ─────────────────────────────────────────
+  allowedDevOrigins: ['10.0.0.126'],
+  images: {
+    qualities: [75, 100],
+  },
+};
+
+export default nextConfig;
+</file>
+
 <file path="components/Navbar.tsx">
 "use client"
 
@@ -516,25 +606,83 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
+  // ─────────────────────────────────────────
+  // iOS FIX: Scroll on documentElement + body as scroll container
+  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
+  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
+  // ─────────────────────────────────────────
   useEffect(() => {
+    const getScrollY = (): number =>
+      window.scrollY ??
+      window.pageYOffset ??
+      document.documentElement.scrollTop ??
+      document.body.scrollTop ??
+      0
+
     const handleScroll = () => {
-      setScrolled(window.scrollY > 80)
+      const y = getScrollY()
+      setScrolled(y > 80)
+      const debugEl = document.getElementById('debug-scroll')
+      if (debugEl) debugEl.textContent = String(y)
+      // DEBUG: remove before production
+      console.log("[Navbar Debug] scrollY:", y, "| scrolled:", y > 80)
     }
 
-    window.addEventListener("scroll", handleScroll)
+    // iOS Safari fires scroll on documentElement, not window
+    // All four targets are registered to cover every browser
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    document.addEventListener("scroll", handleScroll, { passive: true })
+    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
+    document.body.addEventListener("scroll", handleScroll, { passive: true })
     handleScroll()
 
     return () => {
       window.removeEventListener("scroll", handleScroll)
+      document.removeEventListener("scroll", handleScroll)
+      document.documentElement.removeEventListener("scroll", handleScroll)
+      document.body.removeEventListener("scroll", handleScroll)
     }
   }, [])
 
+  // ─────────────────────────────────────────
+  // iOS FIX: Scrolled bar background (no backdrop-blur)
+  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
+  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
+  // ─────────────────────────────────────────
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Hamburger touch target
+  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
+  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
+  // ─────────────────────────────────────────
+  const mobileMenuButton = (
+    <button
+      type="button"
+      aria-label={menuOpen ? "Close menu" : "Open menu"}
+      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
+      onClick={() => setMenuOpen((prev) => !prev)}
+      onTouchEnd={(e) => {
+        e.preventDefault()
+        setMenuOpen((prev) => !prev)
+      }}
+    >
+      <span className="text-2xl text-white select-none">
+        {menuOpen ? "✕" : "☰"}
+      </span>
+    </button>
+  )
+
   return (
+    <>
     <nav
-      className={`fixed top-4 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+      }}
+      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
         scrolled
-          ? "mx-4 md:mx-8 rounded-2xl bg-white/25 py-3 shadow-lg backdrop-blur-sm"
-          : "mx-0 bg-transparent py-4 border-b border-white/25"
+          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
+          : "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25 will-change-transform"
       }`}
     >
       <div className="flex items-center justify-between">
@@ -558,12 +706,7 @@ export default function Navbar() {
         </div>
 
         {/* Hamburger — visible on mobile only */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? "✕" : "☰"}
-        </button>
+        {mobileMenuButton}
       </div>
 
       {/* Mobile dropdown */}
@@ -575,6 +718,23 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+
+      {/* ─────────────────────────────────────────
+          DEBUG OVERLAY — iOS testing only
+          Must be a SIBLING of <nav>, not a child: nav has transform:translateZ(0)
+          for iOS repaint; that creates a fixed-position containing block, so a
+          fixed child would pin to the nav box (top) instead of the viewport.
+          ───────────────────────────────────────── */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="fixed bottom-4 left-4 z-[9999] rounded-xl bg-black/80 px-4 py-3 font-mono text-xs text-white pointer-events-none">
+          <div>
+            scrollY: <span id="debug-scroll">—</span>
+          </div>
+          <div>scrolled state: {scrolled ? "TRUE ✅" : "FALSE ❌"}</div>
+          <div>menuOpen: {menuOpen ? "TRUE ✅" : "FALSE ❌"}</div>
+        </div>
+      )}
+    </>
   )
 }
 </file>
@@ -665,63 +825,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 >>>>>>> 7b383ae1b632149e3ae9d5ae8ac1f77b497ecc37
 </file>
 
-<file path="app/globals.css">
-@import "tailwindcss";
-
-@theme {
-  --color-brand-navy: #1e3a5f;
-  --color-brand-white: #f8fafc;
-  --color-brand-bg: #0f1e2e;
-  --color-brand-text: #f8fafc;
-  --color-brand-accent: #c9a96e;
-}
-
-body {
-  background-color: #0f1e2e;
-  color: #f8fafc;
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navbar from '../components/Navbar'
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-          <Navbar/>
-        {children}
-        </body>
-    </html>
-  );
-}
-</file>
-
 <file path="app/page.tsx">
 import { allServices } from "@/lib/services";
 
@@ -805,6 +908,90 @@ export default function Home() {
         </section>
       ))}
     </>
+  );
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #1e3a5f;
+  --color-brand-white: #f8fafc;
+  --color-brand-bg: #0f1e2e;
+  --color-brand-text: #f8fafc;
+  --color-brand-accent: #c9a96e;
+}
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-y: auto;
+  background-color: #0f1e2e;
+  color: #f8fafc;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import Navbar from "../components/Navbar";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Fades and Facials",
+  description: "It's an experience",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-auto antialiased`}
+    >
+      <body className="min-h-screen flex flex-col overflow-y-auto">
+      <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+      <script>eruda.init();</script>
+        <Navbar />
+        {children}
+        {process.env.NODE_ENV === "development" && (
+          <div>
+            <div
+              style={{
+                position: "fixed",
+                bottom: 16,
+                left: 16,
+                zIndex: 99999,
+                opacity: 0.85,
+              }}
+              className="pointer-events-auto max-w-[min(100vw-2rem,20rem)] rounded-xl bg-black/80 px-3 py-2 font-mono text-[11px] leading-snug text-white shadow-lg"
+            >
+              Layout dev overlay — extend as needed.
+            </div>
+          </div>
+        )}
+      </body>
+    </html>
   );
 }
 </file>

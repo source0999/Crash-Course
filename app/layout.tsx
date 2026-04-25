@@ -29,8 +29,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">
-      <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-      <script>eruda.init();</script>
         <Navbar />
         {children}
       </body>

@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 export default function Navbar() {
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -24,10 +27,6 @@ export default function Navbar() {
     const handleScroll = () => {
       const y = getScrollY()
       setScrolled(y > 80)
-      const debugEl = document.getElementById('debug-scroll')
-      if (debugEl) debugEl.textContent = String(y)
-      // DEBUG: remove before production
-      console.log("[Navbar Debug] scrollY:", y, "| scrolled:", y > 80)
     }
 
     // iOS Safari fires scroll on documentElement, not window
@@ -80,10 +79,12 @@ export default function Navbar() {
         transform: "translateZ(0)",
         WebkitTransform: "translateZ(0)",
       }}
-      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 will-change-transform ${
         scrolled
           ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
-          : "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25 will-change-transform"
+          : isHomePage
+            ? "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25"
+            : "pt-4 mx-0 bg-[#1e3a5f] pb-4"
       }`}
     >
       <div className="flex items-center justify-between">
@@ -116,21 +117,6 @@ export default function Navbar() {
           <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
           <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────
-          DEBUG OVERLAY — iOS testing only
-          Remove this entire block before production deployment
-          Shows real-time scroll position and state on device screen
-          ───────────────────────────────────────── */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="fixed bottom-4 left-4 z-[9999] rounded-xl bg-black/80 px-4 py-3 font-mono text-xs text-white pointer-events-none">
-          <div>
-            scrollY: <span id="debug-scroll">—</span>
-          </div>
-          <div>scrolled state: {scrolled ? "TRUE ✅" : "FALSE ❌"}</div>
-          <div>menuOpen: {menuOpen ? "TRUE ✅" : "FALSE ❌"}</div>
         </div>
       )}
     </nav>
