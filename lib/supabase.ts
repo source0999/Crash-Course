@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+export { getURL } from "@/lib/url";
+
 // ─────────────────────────────────────────
 // SECTION: Supabase Client
 // WHAT: Creates a single reusable Supabase client instance.

@@ -10,6 +10,7 @@ import { Suspense, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { getURL } from "@/lib/url";
 
 function AdminLoginForm() {
   const [email, setEmail] = useState("");
@@ -40,7 +41,7 @@ function AdminLoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: "https://fades-and-facials.vercel.app/admin/callback",
+        emailRedirectTo: `${getURL()}/admin/callback`,
       },
     });
 
