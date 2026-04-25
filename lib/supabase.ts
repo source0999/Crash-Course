@@ -26,10 +26,11 @@ export type DbService = {
   id: number;
   name: string;
   category: string;
-  price: number;
+  price: string | number;
   description: string | null;
   image: string | null;
   is_active: boolean;
+  sort_order?: number;
   created_at: string;
 };
 

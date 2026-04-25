@@ -9,12 +9,14 @@
 import { Suspense, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 function AdminLoginForm() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
 
@@ -23,10 +25,17 @@ function AdminLoginForm() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
   async function handleSubmit() {
-    if (!email.trim()) return;
+    if (!email.trim() || cooldown > 0) return;
     setLoading(true);
     setError(null);
+    setSent(false);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -41,7 +50,8 @@ function AdminLoginForm() {
       return;
     }
 
-    setSubmitted(true);
+    setSent(true);
+    setCooldown(60);
     setLoading(false);
   }
 
@@ -56,46 +66,54 @@ function AdminLoginForm() {
           <h1 className="text-3xl font-bold text-white">Admin Access</h1>
         </div>
 
-        {!submitted ? (
-          <div className="flex flex-col gap-4">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
-            />
-
-            {(error || urlError) && (
-              <p className="text-red-400 text-sm text-center">
-                {error ??
-                  (urlError === "otp_expired"
-                    ? "Link expired — request a new one."
-                    : "Auth failed — try again.")}
+        {sent && (
+          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
+            ✅ Magic link sent! Check your email and click the link.
+            {cooldown > 0 && (
+              <p className="mt-1 text-green-300/60 text-xs">
+                Need another? Wait {cooldown}s before resending.
               </p>
             )}
-
-            <button
-              onClick={handleSubmit}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                handleSubmit();
-              }}
-              disabled={loading}
-              className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
-            >
-              {loading ? "Sending..." : "Send Magic Link"}
-            </button>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-white text-lg font-light">Check your email.</p>
-            <p className="mt-2 text-white/50 text-sm">
-              Click the link we sent to{" "}
-              <span className="text-brand-accent">{email}</span> to sign in.
-            </p>
           </div>
         )}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+          />
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {urlError && !error && (
+            <p className="text-red-400 text-sm text-center">
+              {urlError === "otp_expired"
+                ? "Link expired — request a new one below."
+                : "Auth failed — try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            disabled={loading || cooldown > 0}
+            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+          >
+            {loading
+              ? "Sending..."
+              : cooldown > 0
+                ? `Wait ${cooldown}s to resend`
+                : sent
+                  ? "Resend Magic Link"
+                  : "Send Magic Link"}
+          </button>
+        </div>
       </div>
     </main>
   );

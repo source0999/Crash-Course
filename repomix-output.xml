@@ -114,44 +114,6 @@ This section contains the contents of the repository's files.
 - Do not invent dependencies. Ask before running npm install.
 </file>
 
-<file path="AGENTS.md">
-# Agent Instructions — Fades & Facials
-
-## Identity
-You are Lead Architect on this project. Britton is Director.
-Britton gives raw ideas. You write precise Cursor prompts.
-Always give architecture plan BEFORE writing code prompts.
-Calibrate to senior speed — skip conceptual basics.
-
-## Current Phase
-Phase A: Admin functionality (all features working, desktop-ok)
-- Gallery ordering + layout presets — NEXT
-- Services CRUD — after gallery ordering
-- Homepage controls — after services
-Phase B: Mobile-first admin pass (after all Phase A features done)
-Phase C: Public site design overhaul (last)
-
-## What's Working
-- Full auth flow (magic link → callback → dashboard → logout)
-- Admin gallery manager (upload, delete, replace, toggle visibility)
-- Public gallery page with masonry + stagger animation
-- Services page (live Supabase data)
-- Booking page (Vagaro iframe)
-- Navbar (scroll-aware, floating, mobile hamburger)
-
-## Never Do
-- backdrop-filter / backdrop-blur
-- translateX or scaleX in animations (use translate3d/scale3d)
-- Add packages without instruction
-- Edit tailwind.config.ts (doesn't exist — use globals.css @theme)
-- Commit directly to main
-- Skip the architecture plan before a prompt
-
-## Branch Naming
-feature/, fix/, docs/, chore/
-Current branch: feature/admin-auth (commit and branch to feature/admin-gallery-ordering next)
-</file>
-
 <file path="app/admin/callback/route.ts">
 // ─────────────────────────────────────────
 // SECTION: Auth Callback Route Handler
@@ -292,566 +254,920 @@ export default async function AdminDashboard() {
 </file>
 
 <file path="app/admin/services/page.tsx">
-export default function Home() {
-  return <h1>Admin Services</h1>;
-}
-</file>
-
-<file path="app/gallery/GalleryGrid.tsx">
 "use client";
 
 // ─────────────────────────────────────────
-// SECTION: GalleryGrid
-// WHAT: Renders gallery media in masonry, grid, or fullwidth layout with stagger animation.
-// WHY: Layout is chosen by the barber in admin and passed from the server page.
-// PHASE 4: No changes needed.
+// SECTION: Admin Services Manager
+// WHAT: Full CRUD for services — edit, reorder, add, delete, toggle, layout presets.
+// WHY: Lets the barber manage service listings without touching code or the database.
+// PHASE 4: No changes needed — already wired to live Supabase services table.
 // ─────────────────────────────────────────
-import { DbGalleryItem } from "@/lib/supabase";
 
-type Props = {
-  items: DbGalleryItem[];
-  layout?: "masonry" | "grid" | "fullwidth";
-};
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import type { DbService } from "@/lib/supabase";
 
-function MediaItem({ item, index }: { item: DbGalleryItem; index: number }) {
-  const style = {
-    animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
-    animationDelay: `${index * 80}ms`,
-    transform: "translateZ(0)",
-    WebkitTransform: "translateZ(0)",
-  };
-  const media =
-    item.file_type === "video" ? (
-      <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-    ) : (
-      <img
-        src={item.file_url}
-        alt={item.title ?? "Gallery image"}
-        className="w-full h-full object-cover"
-        loading="lazy"
-      />
-    );
-  return { style, media };
-}
+// ── Module-level Supabase client ──
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
 
-export default function GalleryGrid({ items, layout = "masonry" }: Props) {
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-40 text-center">
-        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">Coming Soon</p>
-        <p className="mt-3 text-sm text-white/25 tracking-wider">The portfolio is being built. Check back soon.</p>
-      </div>
-    );
+// ── Types ──
+type EditingField = { id: number; field: "name" | "price" | "description" | "category" };
+type Layout = "cards" | "list" | "minimal";
+
+export default function AdminServicesPage() {
+  const [services, setServices] = useState<DbService[]>([]);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
+  const [layout, setLayout] = useState<Layout>("cards");
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [editing, setEditing] = useState<EditingField | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [draggedServiceId, setDraggedServiceId] = useState<number | null>(null);
+  const [dragOverServiceId, setDragOverServiceId] = useState<number | null>(null);
+  const [draggedCat, setDraggedCat] = useState<string | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
+
+  // #region agent log
+  function logDebug(
+    runId: string,
+    hypothesisId: string,
+    location: string,
+    message: string,
+    data: Record<string, unknown>,
+  ) {
+    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "e7a726",
+      },
+      body: JSON.stringify({
+        sessionId: "e7a726",
+        runId,
+        hypothesisId,
+        location,
+        message,
+        data,
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+
+  // ── Feedback auto-clear ──
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+
+  // ── Initial load ──
+  useEffect(() => {
+    async function init() {
+      await Promise.all([fetchServices(), fetchConfig()]);
+    }
+    init();
+  }, []);
+
+  async function fetchServices() {
+    setLoading(true);
+    const { data, error } = await supabase.from("services").select("*").order("sort_order", { ascending: true });
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to load services." });
+    } else {
+      setServices(data ?? []);
+    }
+    setLoading(false);
   }
 
-  if (layout === "grid") {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {items.map((item, index) => (
-          <div
-            key={item.id}
-            className={`aspect-square overflow-hidden rounded-lg ${item.show_bg ? "bg-black" : "bg-transparent"}`}
-            style={{
-              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
-              animationDelay: `${index * 80}ms`,
-              transform: "translateZ(0)",
-              WebkitTransform: "translateZ(0)",
-            }}
-          >
-            {item.file_type === "video" ? (
-              <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-            ) : (
-              <img
-                src={item.file_url}
-                alt={item.title ?? "Gallery image"}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    );
+  async function fetchConfig() {
+    const [layoutRes, orderRes] = await Promise.all([
+      supabase.from("site_config").select("value").eq("key", "services_layout").single(),
+      supabase.from("site_config").select("value").eq("key", "category_order").single(),
+    ]);
+    if (layoutRes.data?.value) setLayout(layoutRes.data.value as Layout);
+    if (orderRes.data?.value) {
+      try {
+        setCategoryOrder(JSON.parse(orderRes.data.value));
+      } catch {}
+    }
   }
 
-  if (layout === "fullwidth") {
-    return (
-      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
-        {items.map((item, index) => (
-          <div
-            key={item.id}
-            className="w-full overflow-hidden rounded-xl"
-            style={{
-              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
-              animationDelay: `${index * 80}ms`,
-              transform: "translateZ(0)",
-              WebkitTransform: "translateZ(0)",
-            }}
-          >
-            {item.file_type === "video" ? (
-              <video
-                src={item.file_url}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-auto block"
-                style={{ maxHeight: "80vh" }}
-              />
-            ) : (
-              <img
-                src={item.file_url}
-                alt={item.title ?? "Gallery image"}
-                className="w-full h-auto block"
-                style={{ maxHeight: "80vh", objectFit: "cover" }}
-                loading="lazy"
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    );
+  // ── Derive ordered categories ──
+  const allCategories = [...new Set(services.map((s) => s.category))];
+  const orderedCategories = [
+    ...categoryOrder.filter((c) => allCategories.includes(c)),
+    ...allCategories.filter((c) => !categoryOrder.includes(c)),
+  ];
+
+  // ── Services grouped by category ──
+  function servicesInCategory(cat: string) {
+    return services.filter((s) => s.category === cat);
   }
 
-  // Default: masonry
-  return (
-    <div
-      style={{ columns: "var(--gallery-cols)", columnGap: "12px" }}
-      className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
-    >
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          className="mb-3 break-inside-avoid overflow-hidden rounded-lg"
-          style={{
-            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
-            animationDelay: `${index * 80}ms`,
-            transform: "translateZ(0)",
-            WebkitTransform: "translateZ(0)",
+  // ── Save layout ──
+  async function saveLayout(newLayout: Layout) {
+    setLayoutSaving(true);
+    setLayout(newLayout);
+    await supabase.from("site_config").upsert({
+      key: "services_layout",
+      value: newLayout,
+      updated_at: new Date().toISOString(),
+    });
+    setLayoutSaving(false);
+    setFeedback({ type: "success", msg: `Layout set to ${newLayout}` });
+  }
+
+  // ── Inline edit ──
+  function startEdit(id: number, field: EditingField["field"], current: string | number) {
+    setEditing({ id, field });
+    setEditValue(String(current));
+  }
+
+  async function commitEdit() {
+    if (!editing) return;
+    const { id, field } = editing;
+    const valueToSave =
+      field === "price" ? parseFloat(editValue.replace(/[^0-9.]/g, "")) : editValue;
+    const { error } = await supabase
+      .from("services")
+      .update({ [field]: valueToSave, ...(field === "category" ? {} : {}) })
+      .eq("id", id);
+    if (error) {
+      setFeedback({ type: "error", msg: `Failed to update ${field}.` });
+    } else {
+      setServices((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, [field]: valueToSave } : s)),
+      );
+      if (field === "category") {
+        // Update category order if new category was introduced
+        setCategoryOrder((prev) => (prev.includes(editValue) ? prev : [...prev, editValue]));
+      }
+    }
+    setEditing(null);
+    setEditValue("");
+  }
+
+  // ── Toggle is_active ──
+  async function handleToggle(service: DbService) {
+    const { error } = await supabase
+      .from("services")
+      .update({ is_active: !service.is_active })
+      .eq("id", service.id);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to update visibility." });
+    } else {
+      setServices((prev) =>
+        prev.map((s) => (s.id === service.id ? { ...s, is_active: !s.is_active } : s)),
+      );
+    }
+  }
+
+  // ── Delete service ──
+  async function handleDelete(id: number) {
+    const { error } = await supabase.from("services").delete().eq("id", id);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to delete service." });
+    } else {
+      setServices((prev) => prev.filter((s) => s.id !== id));
+      setFeedback({ type: "success", msg: "Service deleted." });
+    }
+    setConfirmDelete(null);
+  }
+
+  // ── Delete category (all services in it) ──
+  async function handleDeleteCategory(cat: string) {
+    const ids = servicesInCategory(cat).map((s) => s.id);
+    const { error } = await supabase.from("services").delete().in("id", ids);
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to delete category." });
+    } else {
+      setServices((prev) => prev.filter((s) => s.category !== cat));
+      setCategoryOrder((prev) => prev.filter((c) => c !== cat));
+      await supabase.from("site_config").upsert({
+        key: "category_order",
+        value: JSON.stringify(categoryOrder.filter((c) => c !== cat)),
+        updated_at: new Date().toISOString(),
+      });
+      setFeedback({ type: "success", msg: `Category "${cat}" deleted.` });
+    }
+    setConfirmDeleteCat(null);
+  }
+
+  // ── Add new service to category ──
+  async function handleAddService(cat: string) {
+    const maxOrder =
+      services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
+    const { data, error } = await supabase
+      .from("services")
+      .insert({
+        name: "New Service",
+        category: cat,
+        price: "$0",
+        description: "",
+        image: null,
+        is_active: true,
+        sort_order: maxOrder + 1,
+      })
+      .select()
+      .single();
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to add service." });
+    } else {
+      setServices((prev) => [...prev, data]);
+      setFeedback({ type: "success", msg: "New service added — tap to edit." });
+    }
+  }
+
+  // ── Add new category ──
+  async function handleAddCategory() {
+    const newCat = "New Category";
+    const maxOrder =
+      services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
+    const { data, error } = await supabase
+      .from("services")
+      .insert({
+        name: "New Service",
+        category: newCat,
+        price: "$0",
+        description: "",
+        image: null,
+        is_active: true,
+        sort_order: maxOrder + 1,
+      })
+      .select()
+      .single();
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to add category." });
+    } else {
+      setServices((prev) => [...prev, data]);
+      setCategoryOrder((prev) => [...prev, newCat]);
+      await supabase.from("site_config").upsert({
+        key: "category_order",
+        value: JSON.stringify([...categoryOrder, newCat]),
+        updated_at: new Date().toISOString(),
+      });
+      setFeedback({ type: "success", msg: "New category added — tap the name to rename it." });
+    }
+  }
+
+  // ── Drag: services within category ──
+  function handleServiceDragStart(e: React.DragEvent, id: number) {
+    // #region agent log
+    logDebug("run-services-drag-1", "H1", "app/admin/services/page.tsx:handleServiceDragStart", "service drag start", {
+      id,
+    });
+    // #endregion
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-service-id", String(id));
+    setDraggedServiceId(id);
+  }
+  function handleServiceDragOver(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    // #region agent log
+    logDebug("run-services-drag-1", "H2", "app/admin/services/page.tsx:handleServiceDragOver", "service drag over", {
+      id,
+      draggedServiceId,
+      targetTag: (e.target as HTMLElement | null)?.tagName ?? null,
+    });
+    // #endregion
+    setDragOverServiceId(id);
+  }
+  function handleServiceDragEnd() {
+    // #region agent log
+    logDebug("run-services-drag-1", "H3", "app/admin/services/page.tsx:handleServiceDragEnd", "service drag end", {
+      draggedServiceId,
+      dragOverServiceId,
+      draggedCat,
+      dragOverCat,
+    });
+    // #endregion
+    setDraggedServiceId(null);
+    setDragOverServiceId(null);
+    setDraggedCat(null);
+    setDragOverCat(null);
+  }
+
+  async function handleServiceDrop(targetId: number) {
+    // #region agent log
+    logDebug("run-services-drag-1", "H2", "app/admin/services/page.tsx:handleServiceDrop", "service drop attempt", {
+      targetId,
+      draggedServiceId,
+      draggedCat,
+    });
+    // #endregion
+    if (draggedServiceId === null || draggedServiceId === targetId) {
+      setDraggedServiceId(null);
+      setDragOverServiceId(null);
+      return;
+    }
+
+    const dragged = services.find((s) => s.id === draggedServiceId);
+    const target = services.find((s) => s.id === targetId);
+
+    // Only allow reordering within the same category
+    if (!dragged || !target || dragged.category !== target.category) {
+      // #region agent log
+      logDebug("run-services-drag-1", "H4", "app/admin/services/page.tsx:handleServiceDrop", "service drop rejected", {
+        hasDragged: Boolean(dragged),
+        hasTarget: Boolean(target),
+        draggedCategory: dragged?.category ?? null,
+        targetCategory: target?.category ?? null,
+      });
+      // #endregion
+      setDraggedServiceId(null);
+      setDragOverServiceId(null);
+      return;
+    }
+
+    const newServices = [...services];
+    const oldIdx = newServices.findIndex((s) => s.id === dragged.id);
+    newServices.splice(oldIdx, 1);
+    const newIdx = newServices.findIndex((s) => s.id === target.id);
+    newServices.splice(newIdx, 0, dragged);
+
+    // Update sort_order based on the new array positions
+    const withUpdatedOrder = newServices.map((s, i) => ({ ...s, sort_order: i + 1 }));
+
+    setServices(withUpdatedOrder);
+    setDraggedServiceId(null);
+    setDragOverServiceId(null);
+
+    // Update Supabase (use row updates; services.id is identity and rejects upsert inserts)
+    const updates = withUpdatedOrder.map((s) =>
+      supabase.from("services").update({ sort_order: s.sort_order }).eq("id", s.id),
+    );
+    const results = await Promise.all(updates);
+    const anyError = results.find((r) => r.error);
+
+    if (anyError?.error) {
+      // #region agent log
+      logDebug("run-services-drag-1", "H5", "app/admin/services/page.tsx:handleServiceDrop", "service drop db sync failed", {
+        message: anyError.error.message,
+      });
+      // #endregion
+      setFeedback({ type: "error", msg: "Failed to sync order to database." });
+      fetchServices();
+    } else {
+      // #region agent log
+      logDebug("run-services-drag-1", "H5", "app/admin/services/page.tsx:handleServiceDrop", "service drop db sync success", {
+        count: withUpdatedOrder.length,
+      });
+      // #endregion
+    }
+  }
+
+  // ── Drag: categories ──
+  function handleCatDragStart(cat: string) {
+    // #region agent log
+    logDebug("run-services-drag-1", "H1", "app/admin/services/page.tsx:handleCatDragStart", "category drag start", {
+      cat,
+      draggedServiceId,
+    });
+    // #endregion
+    setDraggedCat(cat);
+  }
+  function handleCatDragOver(e: React.DragEvent, cat: string) {
+    e.preventDefault();
+    setDragOverCat(cat);
+  }
+  function handleCatDragEnd() {
+    setDraggedCat(null);
+    setDragOverCat(null);
+    setDraggedServiceId(null);
+    setDragOverServiceId(null);
+  }
+
+  async function handleCatDrop(targetCat: string) {
+    if (draggedCat === null || draggedCat === targetCat) {
+      setDraggedCat(null);
+      setDragOverCat(null);
+      return;
+    }
+    const reordered = [...orderedCategories];
+    const fromIdx = reordered.indexOf(draggedCat);
+    const toIdx = reordered.indexOf(targetCat);
+    reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, draggedCat);
+    setCategoryOrder(reordered);
+    setDraggedCat(null);
+    setDragOverCat(null);
+    await supabase.from("site_config").upsert({
+      key: "category_order",
+      value: JSON.stringify(reordered),
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  // ── Editable field component ──
+  function EditableField({
+    serviceId,
+    field,
+    value,
+    className,
+  }: {
+    serviceId: number;
+    field: EditingField["field"];
+    value: string | number;
+    className?: string;
+  }) {
+    const isActive = editing?.id === serviceId && editing?.field === field;
+    if (isActive) {
+      return (
+        <input
+          autoFocus
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
           }}
-        >
-          {item.file_type === "video" ? (
-            <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block" />
+          className={`bg-white/10 border border-brand-accent rounded px-2 py-1 text-white focus:outline-none w-full ${className}`}
+        />
+      );
+    }
+    return (
+      <span
+        onClick={() => startEdit(serviceId, field, value)}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          startEdit(serviceId, field, value);
+        }}
+        className={`cursor-pointer hover:text-brand-accent transition touch-manipulation ${className}`}
+        title="Tap to edit"
+      >
+        {value || <span className="text-white/30 italic">tap to edit</span>}
+      </span>
+    );
+  }
+
+  // ── Service card (cards layout) ──
+  function ServiceCard({ service }: { service: DbService }) {
+    return (
+      <div
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          handleServiceDragStart(e, service.id);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDragOver(e, service.id);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDrop(service.id);
+        }}
+        onDragEnd={handleServiceDragEnd}
+        className={`rounded-xl border bg-white/5 p-4 transition-all select-none cursor-grab active:cursor-grabbing ${
+          draggedServiceId === service.id
+            ? "opacity-40 scale-95"
+            : draggedServiceId !== null
+              ? ""
+              : "hover:scale-[1.02]"
+        } ${
+          dragOverServiceId === service.id && draggedServiceId !== service.id
+            ? "border-brand-accent"
+            : service.is_active
+              ? "border-white/10"
+              : "border-white/5 opacity-60"
+        }`}
+      >
+        {/* Drag handle hint */}
+        <div className="text-white/20 text-xs mb-2 select-none">⠿ drag to reorder</div>
+
+        {/* Name */}
+        <div className="text-white font-semibold text-base mb-1">
+          <EditableField serviceId={service.id} field="name" value={service.name} />
+        </div>
+
+        {/* Price */}
+        <div className="text-brand-accent font-bold text-sm mb-2">
+          <EditableField serviceId={service.id} field="price" value={service.price} />
+        </div>
+
+        {/* Description */}
+        <div className="text-white/50 text-xs mb-3">
+          <EditableField
+            serviceId={service.id}
+            field="description"
+            value={service.description ?? ""}
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 mt-2">
+          <button
+            onClick={() => handleToggle(service)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleToggle(service);
+            }}
+            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
+          >
+            {service.is_active ? "👁 Hide Service" : "✅ Show Service"}
+          </button>
+
+          {confirmDelete === service.id ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDelete(service.id)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleDelete(service.id);
+                }}
+                className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
+              >
+                Yes, Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setConfirmDelete(null);
+                }}
+                className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 text-white transition"
+              >
+                Cancel
+              </button>
+            </div>
           ) : (
-            <img
-              src={item.file_url}
-              alt={item.title ?? "Gallery image"}
-              className="w-full h-auto block"
-              loading="lazy"
-            />
+            <button
+              onClick={() => setConfirmDelete(service.id)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setConfirmDelete(service.id);
+              }}
+              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white transition"
+            >
+              🗑 Delete
+            </button>
           )}
         </div>
-      ))}
-    </div>
-  );
-}
-</file>
+      </div>
+    );
+  }
 
-<file path="app/gallery/page.tsx">
-// ─────────────────────────────────────────
-// SECTION: Gallery Page
-// WHAT: Fetches gallery items AND layout preference from Supabase, passes both to GalleryGrid.
-// WHY: Layout is barber-controlled via admin — public page must respect that choice.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-import { supabase, type DbGalleryItem } from "@/lib/supabase";
-import GalleryGrid from "./GalleryGrid";
+  // ── Service row (list layout) ──
+  function ServiceRow({ service }: { service: DbService }) {
+    return (
+      <div
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          handleServiceDragStart(e, service.id);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDragOver(e, service.id);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDrop(service.id);
+        }}
+        onDragEnd={handleServiceDragEnd}
+        className={`flex items-center gap-4 rounded-xl border bg-white/5 px-4 py-3 transition-all select-none cursor-grab active:cursor-grabbing ${
+          draggedServiceId === service.id ? "opacity-40" : ""
+        } ${
+          dragOverServiceId === service.id && draggedServiceId !== service.id
+            ? "border-brand-accent"
+            : service.is_active
+              ? "border-white/10"
+              : "border-white/5 opacity-60"
+        }`}
+      >
+        <span className="text-white/20 select-none">⠿</span>
+        <div className="flex-1 text-white font-medium">
+          <EditableField serviceId={service.id} field="name" value={service.name} />
+        </div>
+        <div className="text-brand-accent font-bold text-sm w-20 text-right">
+          <EditableField serviceId={service.id} field="price" value={service.price} />
+        </div>
+        <button
+          onClick={() => handleToggle(service)}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleToggle(service);
+          }}
+          className="text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] px-2 transition"
+        >
+          {service.is_active ? "👁" : "🚫"}
+        </button>
+        {confirmDelete === service.id ? (
+          <>
+            <button
+              onClick={() => handleDelete(service.id)}
+              className="text-xs text-red-400 touch-manipulation min-h-[44px] px-2"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setConfirmDelete(null)}
+              className="text-xs text-white/40 touch-manipulation min-h-[44px] px-2"
+            >
+              No
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(service.id)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setConfirmDelete(service.id);
+            }}
+            className="text-xs text-white/30 hover:text-red-400 touch-manipulation min-h-[44px] px-2 transition"
+          >
+            🗑
+          </button>
+        )}
+      </div>
+    );
+  }
 
-export const revalidate = 30;
-
-export default async function GalleryPage() {
-  let items: DbGalleryItem[] = [];
-  let layout: "masonry" | "grid" | "fullwidth" = "masonry";
-
-  try {
-    const [galleryResult, configResult] = await Promise.all([
-      supabase
-        .from("gallery")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      supabase.from("site_config").select("value").eq("key", "gallery_layout").single(),
-    ]);
-    if (!galleryResult.error) items = galleryResult.data ?? [];
-    if (!configResult.error && configResult.data?.value) {
-      layout = configResult.data.value as "masonry" | "grid" | "fullwidth";
-    }
-  } catch (err) {
-    console.error("[Gallery] Fetch failed:", err);
+  // ── Service minimal (minimal layout) ──
+  function ServiceMinimal({ service }: { service: DbService }) {
+    return (
+      <div
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          handleServiceDragStart(e, service.id);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDragOver(e, service.id);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleServiceDrop(service.id);
+        }}
+        onDragEnd={handleServiceDragEnd}
+        className={`flex items-center justify-between border-b border-white/10 py-3 px-2 transition-all select-none cursor-grab ${
+          draggedServiceId === service.id ? "opacity-40" : ""
+        } ${dragOverServiceId === service.id && draggedServiceId !== service.id ? "border-brand-accent" : ""}`}
+      >
+        <span className="text-white/20 mr-3 select-none">⠿</span>
+        <span className={`flex-1 text-white ${!service.is_active ? "line-through text-white/40" : ""}`}>
+          <EditableField serviceId={service.id} field="name" value={service.name} />
+        </span>
+        <span className="text-brand-accent font-bold text-sm ml-4">
+          <EditableField serviceId={service.id} field="price" value={service.price} />
+        </span>
+        <button
+          onClick={() => handleToggle(service)}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleToggle(service);
+          }}
+          className="ml-3 text-xs text-white/30 hover:text-white touch-manipulation min-h-[44px] px-2 transition"
+        >
+          {service.is_active ? "👁" : "🚫"}
+        </button>
+        {confirmDelete === service.id ? (
+          <>
+            <button
+              onClick={() => handleDelete(service.id)}
+              className="text-xs text-red-400 touch-manipulation px-2"
+            >
+              ✓
+            </button>
+            <button
+              onClick={() => setConfirmDelete(null)}
+              className="text-xs text-white/40 touch-manipulation px-2"
+            >
+              ✗
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(service.id)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setConfirmDelete(service.id);
+            }}
+            className="ml-2 text-xs text-white/20 hover:text-red-400 touch-manipulation min-h-[44px] px-2 transition"
+          >
+            🗑
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
-      <div className="mb-12 text-center">
-        <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-3">Fades & Facials</p>
-        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">The Work</h1>
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* ── Header ── */}
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">Admin</p>
+            <h1 className="text-3xl font-bold text-white">Services Manager</h1>
+          </div>
+          <a href="/admin/dashboard" className="text-white/40 text-sm hover:text-white transition">
+            ← Back to Dashboard
+          </a>
+        </div>
+
+        {/* ── Feedback ── */}
+        {feedback && (
+          <div
+            className={`mb-6 rounded-lg px-4 py-3 text-sm font-medium ${
+              feedback.type === "success"
+                ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                : "bg-red-500/20 text-red-300 border border-red-500/30"
+            }`}
+          >
+            {feedback.msg}
+          </div>
+        )}
+
+        {/* ── Layout Preset Picker ── */}
+        <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
+          <p className="text-white font-semibold mb-1">Services Layout</p>
+          <p className="text-white/40 text-xs mb-4">
+            Choose how your services page looks to visitors
+          </p>
+          <div className="flex gap-3 flex-wrap">
+            {([
+              { key: "cards", label: "⊞ Cards", desc: "Grid with details" },
+              { key: "list", label: "≡ List", desc: "Compact rows" },
+              { key: "minimal", label: "— Minimal", desc: "Name + price only" },
+            ] as const).map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => saveLayout(preset.key)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  saveLayout(preset.key);
+                }}
+                disabled={layoutSaving}
+                className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
+                  layout === preset.key
+                    ? "bg-brand-accent text-black border-brand-accent"
+                    : "bg-white/5 text-white border-white/10 hover:bg-white/10"
+                }`}
+              >
+                <div>{preset.label}</div>
+                <div
+                  className={`text-xs font-normal mt-0.5 ${layout === preset.key ? "text-black/60" : "text-white/40"}`}
+                >
+                  {preset.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Add Category button ── */}
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={handleAddCategory}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleAddCategory();
+            }}
+            className="rounded-lg bg-brand-accent px-5 py-2 text-sm font-semibold text-black touch-manipulation min-h-[44px] hover:opacity-90 transition"
+          >
+            + Add Category
+          </button>
+        </div>
+
+        {/* ── Categories + Services ── */}
+        {loading ? (
+          <p className="text-white/40 text-center py-20">Loading services...</p>
+        ) : (
+          <div className="flex flex-col gap-10">
+            {orderedCategories.map((cat) => (
+              <div
+                key={cat}
+                draggable
+                onDragStart={() => handleCatDragStart(cat)}
+                onDragOver={(e) => {
+                  if (
+                    draggedServiceId !== null ||
+                    e.dataTransfer.types.includes("application/x-service-id")
+                  ) {
+                    return;
+                  }
+                  e.preventDefault();
+                  handleCatDragOver(e, cat);
+                }}
+                onDrop={() => {
+                  if (draggedServiceId !== null) return;
+                  handleCatDrop(cat);
+                }}
+                onDragEnd={() => {
+                  setDraggedServiceId(null);
+                  setDragOverServiceId(null);
+                  setDraggedCat(null);
+                  setDragOverCat(null);
+                }}
+                className={`rounded-2xl border p-5 transition-all ${
+                  draggedCat === cat ? "opacity-40" : ""
+                } ${dragOverCat === cat && draggedCat !== cat ? "border-brand-accent" : "border-white/10"} bg-white/3`}
+              >
+                {/* Category header */}
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-white/20 cursor-grab select-none text-lg">⠿</span>
+                    <h2 className="text-xl font-bold text-white">
+                      <EditableField
+                        serviceId={-1}
+                        field="category"
+                        value={cat}
+                        className="text-xl font-bold"
+                      />
+                    </h2>
+                    <span className="text-white/30 text-xs">drag to reorder category</span>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => handleAddService(cat)}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        handleAddService(cat);
+                      }}
+                      className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                    >
+                      + Add Service
+                    </button>
+                    {confirmDeleteCat === cat ? (
+                      <>
+                        <button
+                          onClick={() => handleDeleteCategory(cat)}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            handleDeleteCategory(cat);
+                          }}
+                          className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                        >
+                          Delete All
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteCat(null)}
+                          className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteCat(cat)}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          setConfirmDeleteCat(cat);
+                        }}
+                        className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
+                      >
+                        🗑 Category
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Services in this category */}
+                {layout === "cards" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {servicesInCategory(cat).map((s) => (
+                      <ServiceCard key={s.id} service={s} />
+                    ))}
+                  </div>
+                )}
+                {layout === "list" && (
+                  <div className="flex flex-col gap-2">
+                    {servicesInCategory(cat).map((s) => (
+                      <ServiceRow key={s.id} service={s} />
+                    ))}
+                  </div>
+                )}
+                {layout === "minimal" && (
+                  <div>
+                    {servicesInCategory(cat).map((s) => (
+                      <ServiceMinimal key={s.id} service={s} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <GalleryGrid items={items} layout={layout} />
     </main>
   );
 }
-</file>
-
-<file path="CLAUDE_HANDOFF.md">
-# Fades & Facials 2.0 — Claude Handoff Document
-> Written by Claude for the next Claude instance taking over this project.
-> Britton's email confirmed. Barber's email TBD — she'll be invited when ready.
-
----
-
-## WHO IS BRITTON
-
-- Bachelor's in Web Dev, ~5 years rust. Refreshing, not starting from zero.
-- Calibrate to senior speed — skip conceptual basics, focus on modern patterns.
-- He works as Director, you work as Lead Architect.
-- He gives raw ideas, you write the precise Cursor prompts.
-- He uses Cursor IDE for all code generation. You write the prompts, he pastes them.
-- Always ask for architecture plan/prediction BEFORE telling him to run code.
-- No scaffolded solutions — give him the goal, let him fill in what he can.
-
----
-
-## THE PROJECT
-
-**Fades & Facials Barbershop** — Suwanee, GA
-Real client site being rebuilt from scratch. Deployed on Vercel.
-
-**Stack:**
-- Next.js 16.2.4 (App Router, Turbopack)
-- TypeScript
-- Tailwind CSS v4 (no tailwind.config.ts — configured via @theme in globals.css)
-- Supabase (PostgreSQL + Auth + Storage)
-- Vercel (deployment)
-- Vagaro (third-party booking system, iframe embed only)
-
-**Repo:** https://github.com/source0999/Crash-Course
-**Vercel URL:** https://fades-and-facials-6x0rscn7e-sources-projects-0aed7c2a.vercel.app
-
----
-
-## CURRENT FILE STRUCTURE
-
-```
-fades-and-facials/
-├── app/
-│   ├── layout.tsx          ← root shell, Navbar imported here
-│   ├── page.tsx            ← homepage (async Server Component, fetches from Supabase)
-│   ├── globals.css         ← Tailwind v4 @import + @theme tokens + body styles
-│   ├── admin/
-│   │   ├── page.tsx              ← magic link login form (use client)
-│   │   ├── callback/
-│   │   │   └── route.ts          ← exchanges magic link code for session, redirects to dashboard
-│   │   ├── dashboard/
-│   │   │   ├── page.tsx          ← protected hub, links to Gallery + Services admin
-│   │   │   └── LogoutButton.tsx  ← use client, calls supabase.auth.signOut()
-│   │   ├── services/
-│   │   │   └── page.tsx          ← stub only
-│   │   └── gallery/
-│   │       └── page.tsx          ← full client CRUD manager (upload/replace/toggle/delete)
-│   ├── booking/
-│   │   └── page.tsx        ← Vagaro iframe (production) / placeholder (localhost)
-│   ├── gallery/
-│   │   ├── page.tsx              ← async Server Component, fetches gallery table, revalidate=60
-│   │   └── GalleryGrid.tsx       ← use client, masonry CSS columns, stagger animation
-│   └── services/
-│       └── page.tsx        ← async Server Component, fetches from Supabase
-├── components/
-│   └── Navbar.tsx          ← "use client", scroll-aware floating navbar, iOS-fixed
-├── lib/
-│   ├── services.ts         ← hardcoded fallback data (used if Supabase fails)
-│   └── supabase.ts         ← Supabase client + DbService + DbGalleryItem + server/middleware helpers
-├── middleware.ts           ← protects /admin/* routes, allows /admin and /admin/callback through
-├── public/
-│   └── images/
-│       ├── logo.png
-│       ├── logo.ico
-│       ├── lele1.gif       ← current hero background (to be replaced with video)
-│       ├── lele2.gif
-│       ├── cuts/
-│       ├── hair/
-│       └── services/
-│           ├── fade.gif
-│           ├── facial.gif
-│           └── barbergif1.gif
-└── next.config.ts          ← allowedDevOrigins: ['10.0.0.126'] for mobile dev
-```
-
----
-
-## ENVIRONMENT VARIABLES
-
-In `.env.local` (gitignored) and Vercel dashboard:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://[project-id].supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
-```
-
-`.gitignore` has `.env*` — all env files are safe.
-
-Note: @supabase/ssr is installed. createBrowserClient used in client components, createServerSupabaseClient used in server components and route handlers, createMiddlewareSupabaseClient used in middleware.ts.
-
----
-
-## SUPABASE STATE
-
-**Project:** fades-and-facials (source0999's Org)
-
-**Tables created and seeded:**
-
-`services` (10 rows, live)
-- id, name, category, price, description, image, is_active, created_at
-- RLS: public read, authenticated write
-- Categories: "Cuts", "Beard Care", "Hair Care"
-
-`profiles` (created, trigger attached)
-- id (references auth.users), email, role (default 'admin'), created_at
-- Auto-populated via trigger on_auth_user_created
-- RLS: authenticated read/write
-
-`gallery` (created, live with uploaded rows)
-- id, title, file_url, file_type ('image'|'video'), category, sort_order, is_active, created_at
-- RLS: public read (is_active=true), authenticated write
-
-`site_config` (created, seeded with defaults)
-- key (primary), value, updated_at
-- Seeded: hero_media_url='/images/lele1.gif', hero_media_type='gif', featured_service_ids='1,4,6'
-- RLS: public read, authenticated write
-
-**Storage buckets:** CREATED ✅
-- `gallery` bucket (public)
-- `hero` bucket (public)
-- Policies set: public read + authenticated upload/delete
-
-**Auth:**
-- Magic link only (no passwords)
-- Site URL: set to Vercel URL ✅
-- Redirect URLs: `/admin/callback` working ✅
-- Britton's user: confirmed and working ✅
-- Magic link flow tested end-to-end ✅
-- Barber's user: NOT yet created (no email yet)
-
----
-
-## WHAT'S BUILT AND WORKING
-
-✅ Navbar — floating scroll-aware, transparent on hero, solid on other pages
-✅ iOS scroll fixes — passive listeners on window+document+documentElement+body, translateZ(0) GPU layer, 44px touch targets, onTouchEnd handlers
-✅ Homepage — hero GIF background with overlay, services preview (3 cards zigzag)
-✅ Services page — live Supabase data, grouped by category, responsive grid
-✅ Booking page — Vagaro iframe on production (HTTPS), placeholder on localhost
-✅ Public gallery page (/gallery) — masonry grid, staggered entrance animation, live Supabase data
-✅ Admin auth — magic link login, callback route, middleware protection, session-aware dashboard
-✅ Admin gallery manager — upload (multi-file), delete (with confirm), replace/swap, toggle visibility (show/hide)
-✅ Supabase connection — live data pipeline working
-✅ Supabase Storage — gallery + hero buckets created, public read + authenticated write policies set
-✅ DbGalleryItem type — added to lib/supabase.ts
-✅ createServerSupabaseClient + createMiddlewareSupabaseClient — added to lib/supabase.ts
-✅ @supabase/ssr installed — cookie-aware auth for App Router
-✅ Vercel deployment — live and working
-✅ allowedDevOrigins — mobile dev testing works on local network
-✅ lib/services.ts — fallback data if Supabase fails
-✅ lib/supabase.ts — Supabase client with DbService type
-✅ Debug overlays — ALL removed, clean codebase
-
----
-
-## DESIGN SYSTEM
-
-```css
-/* globals.css @theme tokens */
---color-brand-navy: #1e3a5f
---color-brand-white: #f8fafc
---color-brand-bg: #0f1e2e       ← page background
---color-brand-text: #f8fafc
---color-brand-accent: #c9a96e   ← gold accent (prices, highlights)
-```
-
-**Inspiration:** lifetime.life — premium, cinematic, minimal text, bold headers
-**Mobile-first:** 375px base, scale up. iOS WebKit nuclear rules enforced throughout.
-
-**iOS WebKit rules (CRITICAL — never violate):**
-- No `backdrop-filter` or `backdrop-blur` — silently breaks on iOS
-- All animations use `translate3d`/`scale3d`, never `translateX`/`scaleX`
-- Every interactive element has `onTouchEnd` with `e.preventDefault()`
-- Minimum 44×44px touch targets (`min-h-[44px] min-w-[44px]`)
-- `touch-manipulation` on all clickable elements
-- No `opacity-0` for "hidden" — use conditional DOM mounting (`{condition && <Component />}`)
-
----
-
-## WHAT'S NOT BUILT YET — PRIORITY ORDER
-
-### 1. Gallery Ordering + Layout Presets (Admin)
-- Drag-to-reorder updates sort_order in gallery table
-- Layout preset picker: Masonry / Grid / Fullwidth
-- Layout choice persists to site_config table (key: gallery_layout)
-- Public /gallery page reads layout from site_config and renders accordingly
-
-### 2. Services CRUD (/admin/services)
-- List all services from Supabase
-- List all services, inline edit name/price/description
-- Toggle is_active per service
-- Add new service
-- Delete service (with confirmation)
-
-### 3. Homepage Controls (/admin/homepage)
-- Change hero background: upload new video/gif → saves URL to site_config
-- Select which 3 services appear in the preview section
-
-### 4. Mobile-First Admin Pass (after all features functional)
-- Full /admin/* mobile redesign for iPhone use
-- Bottom-sheet controls, thumb-friendly layout, camera roll optimized
-
-### 5. Public Site Design Overhaul (Phase 3 polish — do LAST)
-- lifetime.life aesthetic applied section by section
-- Full-bleed cinematic layouts, bold typography, scroll animations
-
----
-
-## VAGARO BOOKING
-
-**The embed works on HTTPS only** (Vercel URL, not localhost). This is expected — Vagaro requires HTTPS for iframe.
-
-The iframe src URL is hardcoded in `app/booking/page.tsx`. If the barber regenerates the widget in Vagaro (Promote → Booking Widget → Embed), update the `src` attribute with the new `enc=` parameter.
-
-**Vagaro does NOT have a public API.** Cannot pull service data from Vagaro programmatically. Supabase is the source of truth for services.
-
----
-
-## KEY ARCHITECTURAL DECISIONS (don't re-debate these)
-
-1. **Services data source:** Supabase `services` table. `lib/services.ts` is fallback only.
-2. **Booking:** Vagaro iframe only. No custom booking system.
-3. **Auth:** Supabase magic link. No passwords.
-4. **Images/Videos:** Native `<video>` tags for motion content, not GIFs. Better performance.
-5. **Admin invite:** Supabase `auth.admin.inviteUserByEmail()` — requires service role key in server-only context.
-6. **No `src/` directory** — all files at root level of their directories.
-7. **Tailwind v4** — no `tailwind.config.ts`, use `@theme` in globals.css.
-8. **Server Components by default** — only add `"use client"` when state/interactivity is required.
-9. **Gallery:** Pinterest masonry, native video support, no GIF conversion needed.
-
----
-
-## GIT WORKFLOW
-
-Branch naming: `feature/`, `fix/`, `docs/`, `chore/`
-Commit format: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`)
-Never commit directly to `main`. Branch → PR → merge.
-
-Current branch state: Should be on `main` with everything pushed.
-Next branch to create: `feature/admin-auth`
-
----
-
-## CURSOR PROMPT RULES (for writing prompts)
-
-Always end prompts with:
-```
-Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
-Mobile-first. No external CSS files. All styling via Tailwind classes.
-```
-
-Always specify:
-- Exact files to edit (and files NOT to touch)
-- No new packages unless explicitly needed
-- Comment block format above every major section
-- TypeScript strict — no `any` types
-
-Comment format required in all files:
-```typescript
-// ─────────────────────────────────────────
-// SECTION: [name]
-// WHAT: [one sentence]
-// WHY: [one sentence]
-// PHASE 4: [what changes when database is connected]
-// ─────────────────────────────────────────
-```
-
----
-
-## MOBILE DEV TESTING
-
-Britton's local IP: `10.0.0.126`
-`next.config.ts` has `allowedDevOrigins: ['10.0.0.126']`
-Phone accesses dev server at: `http://10.0.0.126:3000`
-Eruda (mobile console) was used but removed — don't add it again unless debugging.
-
-**If scroll/interaction bugs appear on iOS:**
-1. Check `allowedDevOrigins` first — if missing, phone loads cached version
-2. Check for `backdrop-blur` — remove it
-3. Check touch targets are 44×44px minimum
-4. Check `onTouchEnd` exists on all interactive elements
-5. Add `{ passive: true }` to all scroll listeners
-
----
-
-## PHASE 1 CURRICULUM STATUS (Britton's learning)
-
-Britton completed Phase 1 fundamentals in crash-course practice files:
-✅ Terminal & Git (init, branch, merge, push, conventional commits)
-✅ const vs let, data types
-✅ Conditionals (if/else, ===)
-✅ Functions, arrow functions
-✅ Arrays, loops, forEach, map, filter
-✅ Objects, destructuring
-✅ Scope, closures
-✅ Async/Await, event loop
-✅ Error handling (try/catch/throw)
-
-Practice files in `/c/projects/crash-course/`:
-functions.js, arrays.js, objects.js, scope.js, async.js, errors.js
-
-Phase 2 (Architecture) and Phase 3 (Frontend) are COMPLETE via the actual project.
-Phase 4 (Admin Backend) is IN PROGRESS — Supabase set up, auth not yet built.
-Phase 5 (Advanced — Docker, TypeScript, Zustand, Linux) — NOT started.
-Phase 6 (AI + Deployment) — Vercel deployed ✅, rest not started.
-</file>
-
-<file path="CLAUDE.md">
-# Fades & Facials — AI Agent Guide
-
-## Project
-Barbershop site for Fades & Facials, Suwanee GA. Real client. Deployed on Vercel.
-Repo: https://github.com/source0999/Crash-Course
-
-## Stack
-- Next.js 16.2.4 (App Router, Turbopack)
-- TypeScript strict
-- Tailwind CSS v4 (no tailwind.config.ts — @theme in globals.css only)
-- Supabase (PostgreSQL + Auth + Storage)
-- @supabase/ssr for cookie-aware auth
-- Vercel deployment
-
-## Critical Rules — Never Violate
-1. No backdrop-filter or backdrop-blur anywhere — breaks iOS WebKit silently
-2. All animations use translate3d/scale3d — never translateX/scaleX
-3. Every interactive element needs onTouchEnd with e.preventDefault()
-4. Minimum 44x44px touch targets on all clickable elements
-5. touch-manipulation class on all buttons/links
-6. No opacity-0 for hidden — use conditional DOM mounting
-7. No new packages without explicit instruction
-8. Server Components by default — use client only when state/interactivity needed
-9. No tailwind.config.ts — all tokens in globals.css @theme block
-10. No src/ directory — files at root of their directories
-11. Comment block required above every major section (see format below)
-
-## Comment Format (required in all files)
-// ─────────────────────────────────────────
-// SECTION: [name]
-// WHAT: [one sentence]
-// WHY: [one sentence]
-// PHASE 4: [what changes when database is connected]
-// ─────────────────────────────────────────
-
-## Auth Pattern
-- Browser client: createBrowserClient from @supabase/ssr (in use client components)
-- Server client: createServerSupabaseClient() from @/lib/supabase (in server components/route handlers)
-- Middleware client: createMiddlewareSupabaseClient() from @/lib/supabase (in middleware.ts only)
-- Magic link only — no passwords
-
-## Cursor Prompt Footer (always append to prompts)
-Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
-Mobile-first. No external CSS files. All styling via Tailwind classes.
 </file>
 
 <file path="components/Eruda.tsx">
@@ -5054,6 +5370,976 @@ http://localhost:3000/admin/callback
 When you open the new chat, paste the contents of CLAUDE_HANDOFF.md as your first message. The next Claude will have everything it needs to continue without re-explaining the whole project. Good work today — you went from zero to a live deployed site with a real database in one session.
 </file>
 
+<file path="lib/services.ts">
+// ─────────────────────────────────────────
+// SECTION: Service Data Contract
+// WHAT: Defines the shared TypeScript shape for every service record.
+// WHY: Keeps homepage previews and the full services page consistent with one typed model.
+// PHASE 4: Replace static typing source with generated types from Supabase queries if preferred.
+// ─────────────────────────────────────────
+export type Service = {
+  id: number;
+  category: "Cuts" | "Beard Care" | "Hair Care";
+  name: string;
+  price: number;
+  description: string;
+  image: string; // path to gif or jpg in /public/images/
+};
+
+// ─────────────────────────────────────────
+// SECTION: All Services Source of Truth
+// WHAT: Exposes the complete service catalog used by multiple routes.
+// WHY: Centralizing this list makes migration to database-backed reads straightforward.
+// PHASE 4: Replace this exported array with API/database calls that return the same Service shape.
+// ─────────────────────────────────────────
+export const allServices: Service[] = [
+  { id: 1, category: "Cuts", name: "Fade Cut", price: 42, description: "Clean, precise fades tailored to your style.", image: "/images/services/fade.gif" },
+  { id: 2, category: "Cuts", name: "Specialty Fade Cut", price: 42, description: "Advanced fade techniques for a signature look.", image: "/images/services/fade.gif" },
+  { id: 3, category: "Cuts", name: "Children's Fade", price: 32, description: "Kid-friendly cuts with the same precision.", image: "/images/services/fade.gif" },
+  { id: 4, category: "Beard Care", name: "Beard Care", price: 35, description: "Shape and condition your beard to perfection.", image: "/images/services/facial.gif" },
+  { id: 5, category: "Beard Care", name: "Fade and Shave", price: 60, description: "Full fade paired with a clean straight razor shave.", image: "/images/services/fade.gif" },
+  { id: 6, category: "Beard Care", name: "Hot Shave", price: 35, description: "Classic hot towel straight razor shave.", image: "/images/lele2.gif"},
+  { id: 7, category: "Hair Care", name: "Shampoo", price: 12, description: "Deep cleanse and scalp treatment.", image: "/images/services/fade.gif" },
+  { id: 8, category: "Hair Care", name: "Line Up", price: 26, description: "Sharp, defined edges for a clean finish.", image: "/images/services/barbergif1.gif" },
+  { id: 9, category: "Hair Care", name: "Enhancement", price: 12, description: "Color and texture enhancements.", image: "/images/services/fade.gif" },
+  { id: 10, category: "Hair Care", name: "Bald Fade", price: 40, description: "Seamless fade down to skin.", image: "/images/services/fade.gif" },
+];
+
+// NOTE: This array is the single source of truth for all service data.
+// When the admin dashboard and database are implemented in Phase 4,
+// replace this file with API calls to fetch services from Supabase.
+// The Service type above maps directly to the database schema.
+</file>
+
+<file path="middleware.ts">
+// ─────────────────────────────────────────
+// SECTION: Admin Route Protection Middleware
+// WHAT: Guards all /admin/* routes — redirects to /admin login if no session.
+// WHY: Prevents unauthenticated access to admin dashboard and sub-pages.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { NextRequest, NextResponse } from "next/server";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase";
+
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  const { pathname } = request.nextUrl;
+
+  // Always allow the callback route through — it sets the session
+  if (pathname === "/admin/callback") {
+    return response;
+  }
+
+  // Allow the login page itself through unauthenticated
+  if (pathname === "/admin") {
+    return response;
+  }
+
+  // For all other /admin/* routes, check session
+  const supabase = createMiddlewareSupabaseClient(request, response);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    const loginUrl = new URL("/admin", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/admin/:path*"],
+};
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+.vercel
+</file>
+
+<file path="AGENTS.md">
+# Agent Instructions — Fades & Facials
+
+## Identity
+You are Lead Architect on this project. Britton is Director.
+Britton gives raw ideas. You write precise Cursor prompts.
+Always give architecture plan BEFORE writing code prompts.
+Calibrate to senior speed — skip conceptual basics.
+
+## Current Phase
+Phase A: Admin functionality (all features working, desktop-ok)
+- Gallery ordering + layout presets — NEXT
+- Services CRUD — after gallery ordering
+- Homepage controls — after services
+Phase B: Mobile-first admin pass (after all Phase A features done)
+Phase C: Public site design overhaul (last)
+
+## What's Working
+- Full auth flow (magic link → callback → dashboard → logout)
+- Admin gallery manager (upload, delete, replace, toggle visibility)
+- Public gallery page with masonry + stagger animation
+- Services page (live Supabase data)
+- Booking page (Vagaro iframe)
+- Navbar (scroll-aware, floating, mobile hamburger)
+
+## Never Do
+- backdrop-filter / backdrop-blur
+- translateX or scaleX in animations (use translate3d/scale3d)
+- Add packages without instruction
+- Edit tailwind.config.ts (doesn't exist — use globals.css @theme)
+- Commit directly to main
+- Skip the architecture plan before a prompt
+
+## Branch Naming
+feature/, fix/, docs/, chore/
+Current branch: feature/admin-auth (commit and branch to feature/admin-gallery-ordering next)
+</file>
+
+<file path="app/admin/page.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Admin Login Page
+// WHAT: Magic link email form — sends OTP via Supabase Auth.
+// WHY: Password-free auth. Barber enters email, clicks link, session is created.
+// PHASE 4: No changes needed — already wired to Supabase Auth.
+// ─────────────────────────────────────────
+import { Suspense, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function handleSubmit() {
+    if (!email.trim() || cooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    setSent(false);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/admin/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    setSent(true);
+    setCooldown(60);
+    setLoading(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Fades & Facials
+          </p>
+          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+        </div>
+
+        {sent && (
+          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
+            ✅ Magic link sent! Check your email and click the link.
+            {cooldown > 0 && (
+              <p className="mt-1 text-green-300/60 text-xs">
+                Need another? Wait {cooldown}s before resending.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+          />
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {urlError && !error && (
+            <p className="text-red-400 text-sm text-center">
+              {urlError === "otp_expired"
+                ? "Link expired — request a new one below."
+                : "Auth failed — try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            disabled={loading || cooldown > 0}
+            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+          >
+            {loading
+              ? "Sending..."
+              : cooldown > 0
+                ? `Wait ${cooldown}s to resend`
+                : sent
+                  ? "Resend Magic Link"
+                  : "Send Magic Link"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
+}
+</file>
+
+<file path="app/booking/page.tsx">
+export default function BookingPage() {
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.NEXT_PUBLIC_VERCEL_URL !== undefined;
+
+  // ─────────────────────────────────────────
+  // SECTION: Vagaro Booking Widget
+  // WHAT: Renders live Vagaro booking iframe on production, placeholder on localhost.
+  // WHY: Vagaro's iframe requires HTTPS — it silently fails on http://localhost.
+  //      Showing a clear message prevents confusion during development.
+  // PRODUCTION: The iframe src URL comes from Vagaro dashboard → Promote →
+  //             Booking Widget. If the barber regenerates the widget, update the src.
+  // ─────────────────────────────────────────
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] text-white">
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
+          Book Your Appointment
+        </h1>
+
+        {isProduction ? (
+          <div className="mt-10 bg-white rounded-2xl overflow-hidden text-left shadow-xl">
+            {/* VAGARO EMBED — live booking widget for Fades & Facials Barbershop, Suwanee GA
+                To update: log into Vagaro dashboard → Promote → Booking Widget → copy new src URL
+                The enc= parameter is unique to this business account */}
+            <iframe
+              src="https://www.vagaro.com/Users/BusinessWidget.aspx?enc=MMLjhIwJMcwFQhXLL7ifVCGo+Ra0FiSg17zHqo8Cvgt5dx5q5uTy3XYvAHiBYwCT6NRx6QAfMibDNs+0/QQlBOcfdqL5Ol+0o9meGD1BMLds5HBOy3IQA2df/ex8RHErqgA+46Edc5NzPu3sGXbtRDXut1UEqiFOk7soZssDsQJw2AIoPOYNxp83BlmaFnaKtHtZJI6ZldMd9steX8SnCF2eBNpsIXUnFT54S8Uxb0xVQ1SzRu69h0yaMYx+ReHNbuTQpzWremtAEw2ns9ztoMPIHulfhz3leV75xjRrswup17TEOQlKhLsIVYJ3zLohvtTd9JX0qT6KP+DMrD/C8k0GgCJQrcsS5u6mLLD0IDs/daxL544lWraK2UQAXXdofd++Dd+/MBCV4dx/PT16rYH7IB1bTRmY5floTs1x7NQ="
+              width="100%"
+              height="900"
+              frameBorder="0"
+              scrolling="auto"
+              title="Book an appointment at Fades and Facials Barbershop"
+            />
+          </div>
+        ) : (
+          <div className="mt-10 rounded-2xl border-2 border-dashed border-white/20 bg-white/5 p-12 text-center">
+            <p className="text-lg font-semibold text-white">
+              Vagaro Booking Widget
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Live booking is only available on the production URL.
+            </p>
+            <p className="mt-1 font-mono text-xs text-zinc-600">
+              Requires HTTPS — deploy to Vercel to test the full booking flow.
+            </p>
+            <a
+              href={
+                process.env.NEXT_PUBLIC_VERCEL_URL
+                  ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/booking`
+                  : "https://fades-and-facials.vercel.app/booking"
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-block rounded-xl border border-amber-500/50 px-6 py-3 font-semibold text-amber-400 transition-colors hover:bg-amber-500/10"
+            >
+              Open on Vercel to test booking →
+            </a>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+</file>
+
+<file path="app/gallery/GalleryGrid.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: GalleryGrid
+// WHAT: Renders gallery media in masonry, grid, or fullwidth layout with stagger animation.
+// WHY: Layout is chosen by the barber in admin and passed from the server page.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { DbGalleryItem } from "@/lib/supabase";
+
+type Props = {
+  items: DbGalleryItem[];
+  layout?: "masonry" | "grid" | "fullwidth";
+};
+
+function MediaItem({ item, index }: { item: DbGalleryItem; index: number }) {
+  const style = {
+    animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+    animationDelay: `${index * 80}ms`,
+    transform: "translateZ(0)",
+    WebkitTransform: "translateZ(0)",
+  };
+  const media =
+    item.file_type === "video" ? (
+      <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+    ) : (
+      <img
+        src={item.file_url}
+        alt={item.title ?? "Gallery image"}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
+    );
+  return { style, media };
+}
+
+export default function GalleryGrid({ items, layout = "masonry" }: Props) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 text-center">
+        <p className="text-2xl font-light text-white/40 tracking-widest uppercase">Coming Soon</p>
+        <p className="mt-3 text-sm text-white/25 tracking-wider">The portfolio is being built. Check back soon.</p>
+      </div>
+    );
+  }
+
+  if (layout === "grid") {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={`aspect-square overflow-hidden rounded-lg ${item.show_bg ? "bg-black" : "bg-transparent"}`}
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+            }}
+          >
+            {item.file_type === "video" ? (
+              <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+            ) : (
+              <img
+                src={item.file_url}
+                alt={item.title ?? "Gallery image"}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (layout === "fullwidth") {
+    return (
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="w-full overflow-hidden rounded-xl"
+            style={{
+              animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+              animationDelay: `${index * 80}ms`,
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+            }}
+          >
+            {item.file_type === "video" ? (
+              <video
+                src={item.file_url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full h-auto block"
+                style={{ maxHeight: "80vh" }}
+              />
+            ) : (
+              <img
+                src={item.file_url}
+                alt={item.title ?? "Gallery image"}
+                className="w-full h-auto block"
+                style={{ maxHeight: "80vh", objectFit: "cover" }}
+                loading="lazy"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default: masonry
+  return (
+    <div
+      style={{ columns: "var(--gallery-cols)", columnGap: "12px" }}
+      className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className="mb-3 break-inside-avoid overflow-hidden rounded-lg"
+          style={{
+            animation: `gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            animationDelay: `${index * 80}ms`,
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
+          }}
+        >
+          {item.file_type === "video" ? (
+            <video src={item.file_url} autoPlay muted loop playsInline className="w-full h-auto block" />
+          ) : (
+            <img
+              src={item.file_url}
+              alt={item.title ?? "Gallery image"}
+              className="w-full h-auto block"
+              loading="lazy"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+</file>
+
+<file path="app/gallery/page.tsx">
+// ─────────────────────────────────────────
+// SECTION: Gallery Page
+// WHAT: Fetches gallery items AND layout preference from Supabase, passes both to GalleryGrid.
+// WHY: Layout is barber-controlled via admin — public page must respect that choice.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { supabase, type DbGalleryItem } from "@/lib/supabase";
+import GalleryGrid from "./GalleryGrid";
+
+export const revalidate = 30;
+
+export default async function GalleryPage() {
+  let items: DbGalleryItem[] = [];
+  let layout: "masonry" | "grid" | "fullwidth" = "masonry";
+
+  try {
+    const [galleryResult, configResult] = await Promise.all([
+      supabase
+        .from("gallery")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+      supabase.from("site_config").select("value").eq("key", "gallery_layout").single(),
+    ]);
+    if (!galleryResult.error) items = galleryResult.data ?? [];
+    if (!configResult.error && configResult.data?.value) {
+      layout = configResult.data.value as "masonry" | "grid" | "fullwidth";
+    }
+  } catch (err) {
+    console.error("[Gallery] Fetch failed:", err);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
+      <div className="mb-12 text-center">
+        <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-3">Fades & Facials</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">The Work</h1>
+      </div>
+      <GalleryGrid items={items} layout={layout} />
+    </main>
+  );
+}
+</file>
+
+<file path="CLAUDE_HANDOFF.md">
+# Fades & Facials 2.0 — Claude Handoff Document
+> Written by Claude for the next Claude instance taking over this project.
+> Britton's email confirmed. Barber's email TBD — she'll be invited when ready.
+
+---
+
+## WHO IS BRITTON
+
+- Bachelor's in Web Dev, ~5 years rust. Refreshing, not starting from zero.
+- Calibrate to senior speed — skip conceptual basics, focus on modern patterns.
+- He works as Director, you work as Lead Architect.
+- He gives raw ideas, you write the precise Cursor prompts.
+- He uses Cursor IDE for all code generation. You write the prompts, he pastes them.
+- Always ask for architecture plan/prediction BEFORE telling him to run code.
+- No scaffolded solutions — give him the goal, let him fill in what he can.
+
+---
+
+## THE PROJECT
+
+**Fades & Facials Barbershop** — Suwanee, GA
+Real client site being rebuilt from scratch. Deployed on Vercel.
+
+**Stack:**
+- Next.js 16.2.4 (App Router, Turbopack)
+- TypeScript
+- Tailwind CSS v4 (no tailwind.config.ts — configured via @theme in globals.css)
+- Supabase (PostgreSQL + Auth + Storage)
+- Vercel (deployment)
+- Vagaro (third-party booking system, iframe embed only)
+
+**Repo:** https://github.com/source0999/Crash-Course
+**Vercel URL:** https://fades-and-facials-6x0rscn7e-sources-projects-0aed7c2a.vercel.app
+
+---
+
+## CURRENT FILE STRUCTURE
+
+```
+fades-and-facials/
+├── app/
+│   ├── layout.tsx          ← root shell, Navbar imported here
+│   ├── page.tsx            ← homepage (async Server Component, fetches from Supabase)
+│   ├── globals.css         ← Tailwind v4 @import + @theme tokens + body styles
+│   ├── admin/
+│   │   ├── page.tsx              ← magic link login form (use client)
+│   │   ├── callback/
+│   │   │   └── route.ts          ← exchanges magic link code for session, redirects to dashboard
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx          ← protected hub, links to Gallery + Services admin
+│   │   │   └── LogoutButton.tsx  ← use client, calls supabase.auth.signOut()
+│   │   ├── services/
+│   │   │   └── page.tsx          ← stub only
+│   │   └── gallery/
+│   │       └── page.tsx          ← full client CRUD manager (upload/replace/toggle/delete)
+│   ├── booking/
+│   │   └── page.tsx        ← Vagaro iframe (production) / placeholder (localhost)
+│   ├── gallery/
+│   │   ├── page.tsx              ← async Server Component, fetches gallery table, revalidate=60
+│   │   └── GalleryGrid.tsx       ← use client, masonry CSS columns, stagger animation
+│   └── services/
+│       └── page.tsx        ← async Server Component, fetches from Supabase
+├── components/
+│   └── Navbar.tsx          ← "use client", scroll-aware floating navbar, iOS-fixed
+├── lib/
+│   ├── services.ts         ← hardcoded fallback data (used if Supabase fails)
+│   └── supabase.ts         ← Supabase client + DbService + DbGalleryItem + server/middleware helpers
+├── middleware.ts           ← protects /admin/* routes, allows /admin and /admin/callback through
+├── public/
+│   └── images/
+│       ├── logo.png
+│       ├── logo.ico
+│       ├── lele1.gif       ← current hero background (to be replaced with video)
+│       ├── lele2.gif
+│       ├── cuts/
+│       ├── hair/
+│       └── services/
+│           ├── fade.gif
+│           ├── facial.gif
+│           └── barbergif1.gif
+└── next.config.ts          ← allowedDevOrigins: ['10.0.0.126'] for mobile dev
+```
+
+---
+
+## ENVIRONMENT VARIABLES
+
+In `.env.local` (gitignored) and Vercel dashboard:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://[project-id].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=[anon-key]
+```
+
+`.gitignore` has `.env*` — all env files are safe.
+
+Note: @supabase/ssr is installed. createBrowserClient used in client components, createServerSupabaseClient used in server components and route handlers, createMiddlewareSupabaseClient used in middleware.ts.
+
+---
+
+## SUPABASE STATE
+
+**Project:** fades-and-facials (source0999's Org)
+
+**Tables created and seeded:**
+
+`services` (10 rows, live)
+- id, name, category, price, description, image, is_active, created_at
+- RLS: public read, authenticated write
+- Categories: "Cuts", "Beard Care", "Hair Care"
+
+`profiles` (created, trigger attached)
+- id (references auth.users), email, role (default 'admin'), created_at
+- Auto-populated via trigger on_auth_user_created
+- RLS: authenticated read/write
+
+`gallery` (created, live with uploaded rows)
+- id, title, file_url, file_type ('image'|'video'), category, sort_order, is_active, created_at
+- RLS: public read (is_active=true), authenticated write
+
+`site_config` (created, seeded with defaults)
+- key (primary), value, updated_at
+- Seeded: hero_media_url='/images/lele1.gif', hero_media_type='gif', featured_service_ids='1,4,6'
+- RLS: public read, authenticated write
+
+**Storage buckets:** CREATED ✅
+- `gallery` bucket (public)
+- `hero` bucket (public)
+- Policies set: public read + authenticated upload/delete
+
+**Auth:**
+- Magic link only (no passwords)
+- Site URL: set to Vercel URL ✅
+- Redirect URLs: `/admin/callback` working ✅
+- Britton's user: confirmed and working ✅
+- Magic link flow tested end-to-end ✅
+- Barber's user: NOT yet created (no email yet)
+
+---
+
+## WHAT'S BUILT AND WORKING
+
+✅ Navbar — floating scroll-aware, transparent on hero, solid on other pages
+✅ iOS scroll fixes — passive listeners on window+document+documentElement+body, translateZ(0) GPU layer, 44px touch targets, onTouchEnd handlers
+✅ Homepage — hero GIF background with overlay, services preview (3 cards zigzag)
+✅ Services page — live Supabase data, grouped by category, responsive grid
+✅ Booking page — Vagaro iframe on production (HTTPS), placeholder on localhost
+✅ Public gallery page (/gallery) — masonry grid, staggered entrance animation, live Supabase data
+✅ Admin auth — magic link login, callback route, middleware protection, session-aware dashboard
+✅ Admin gallery manager — upload (multi-file), delete (with confirm), replace/swap, toggle visibility (show/hide)
+✅ Supabase connection — live data pipeline working
+✅ Supabase Storage — gallery + hero buckets created, public read + authenticated write policies set
+✅ DbGalleryItem type — added to lib/supabase.ts
+✅ createServerSupabaseClient + createMiddlewareSupabaseClient — added to lib/supabase.ts
+✅ @supabase/ssr installed — cookie-aware auth for App Router
+✅ Vercel deployment — live and working
+✅ allowedDevOrigins — mobile dev testing works on local network
+✅ lib/services.ts — fallback data if Supabase fails
+✅ lib/supabase.ts — Supabase client with DbService type
+✅ Debug overlays — ALL removed, clean codebase
+
+---
+
+## DESIGN SYSTEM
+
+```css
+/* globals.css @theme tokens */
+--color-brand-navy: #1e3a5f
+--color-brand-white: #f8fafc
+--color-brand-bg: #0f1e2e       ← page background
+--color-brand-text: #f8fafc
+--color-brand-accent: #c9a96e   ← gold accent (prices, highlights)
+```
+
+**Inspiration:** lifetime.life — premium, cinematic, minimal text, bold headers
+**Mobile-first:** 375px base, scale up. iOS WebKit nuclear rules enforced throughout.
+
+**iOS WebKit rules (CRITICAL — never violate):**
+- No `backdrop-filter` or `backdrop-blur` — silently breaks on iOS
+- All animations use `translate3d`/`scale3d`, never `translateX`/`scaleX`
+- Every interactive element has `onTouchEnd` with `e.preventDefault()`
+- Minimum 44×44px touch targets (`min-h-[44px] min-w-[44px]`)
+- `touch-manipulation` on all clickable elements
+- No `opacity-0` for "hidden" — use conditional DOM mounting (`{condition && <Component />}`)
+
+---
+
+## WHAT'S NOT BUILT YET — PRIORITY ORDER
+
+### 1. Gallery Ordering + Layout Presets (Admin)
+- Drag-to-reorder updates sort_order in gallery table
+- Layout preset picker: Masonry / Grid / Fullwidth
+- Layout choice persists to site_config table (key: gallery_layout)
+- Public /gallery page reads layout from site_config and renders accordingly
+
+### 2. Services CRUD (/admin/services)
+- List all services from Supabase
+- List all services, inline edit name/price/description
+- Toggle is_active per service
+- Add new service
+- Delete service (with confirmation)
+
+### 3. Homepage Controls (/admin/homepage)
+- Change hero background: upload new video/gif → saves URL to site_config
+- Select which 3 services appear in the preview section
+
+### 4. Mobile-First Admin Pass (after all features functional)
+- Full /admin/* mobile redesign for iPhone use
+- Bottom-sheet controls, thumb-friendly layout, camera roll optimized
+
+### 5. Public Site Design Overhaul (Phase 3 polish — do LAST)
+- lifetime.life aesthetic applied section by section
+- Full-bleed cinematic layouts, bold typography, scroll animations
+
+---
+
+## VAGARO BOOKING
+
+**The embed works on HTTPS only** (Vercel URL, not localhost). This is expected — Vagaro requires HTTPS for iframe.
+
+The iframe src URL is hardcoded in `app/booking/page.tsx`. If the barber regenerates the widget in Vagaro (Promote → Booking Widget → Embed), update the `src` attribute with the new `enc=` parameter.
+
+**Vagaro does NOT have a public API.** Cannot pull service data from Vagaro programmatically. Supabase is the source of truth for services.
+
+---
+
+## KEY ARCHITECTURAL DECISIONS (don't re-debate these)
+
+1. **Services data source:** Supabase `services` table. `lib/services.ts` is fallback only.
+2. **Booking:** Vagaro iframe only. No custom booking system.
+3. **Auth:** Supabase magic link. No passwords.
+4. **Images/Videos:** Native `<video>` tags for motion content, not GIFs. Better performance.
+5. **Admin invite:** Supabase `auth.admin.inviteUserByEmail()` — requires service role key in server-only context.
+6. **No `src/` directory** — all files at root level of their directories.
+7. **Tailwind v4** — no `tailwind.config.ts`, use `@theme` in globals.css.
+8. **Server Components by default** — only add `"use client"` when state/interactivity is required.
+9. **Gallery:** Pinterest masonry, native video support, no GIF conversion needed.
+
+---
+
+## GIT WORKFLOW
+
+Branch naming: `feature/`, `fix/`, `docs/`, `chore/`
+Commit format: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`)
+Never commit directly to `main`. Branch → PR → merge.
+
+Current branch state: Should be on `main` with everything pushed.
+Next branch to create: `feature/admin-auth`
+
+---
+
+## CURSOR PROMPT RULES (for writing prompts)
+
+Always end prompts with:
+```
+Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
+Mobile-first. No external CSS files. All styling via Tailwind classes.
+```
+
+Always specify:
+- Exact files to edit (and files NOT to touch)
+- No new packages unless explicitly needed
+- Comment block format above every major section
+- TypeScript strict — no `any` types
+
+Comment format required in all files:
+```typescript
+// ─────────────────────────────────────────
+// SECTION: [name]
+// WHAT: [one sentence]
+// WHY: [one sentence]
+// PHASE 4: [what changes when database is connected]
+// ─────────────────────────────────────────
+```
+
+---
+
+## MOBILE DEV TESTING
+
+Britton's local IP: `10.0.0.126`
+`next.config.ts` has `allowedDevOrigins: ['10.0.0.126']`
+Phone accesses dev server at: `http://10.0.0.126:3000`
+Eruda (mobile console) was used but removed — don't add it again unless debugging.
+
+**If scroll/interaction bugs appear on iOS:**
+1. Check `allowedDevOrigins` first — if missing, phone loads cached version
+2. Check for `backdrop-blur` — remove it
+3. Check touch targets are 44×44px minimum
+4. Check `onTouchEnd` exists on all interactive elements
+5. Add `{ passive: true }` to all scroll listeners
+
+---
+
+## PHASE 1 CURRICULUM STATUS (Britton's learning)
+
+Britton completed Phase 1 fundamentals in crash-course practice files:
+✅ Terminal & Git (init, branch, merge, push, conventional commits)
+✅ const vs let, data types
+✅ Conditionals (if/else, ===)
+✅ Functions, arrow functions
+✅ Arrays, loops, forEach, map, filter
+✅ Objects, destructuring
+✅ Scope, closures
+✅ Async/Await, event loop
+✅ Error handling (try/catch/throw)
+
+Practice files in `/c/projects/crash-course/`:
+functions.js, arrays.js, objects.js, scope.js, async.js, errors.js
+
+Phase 2 (Architecture) and Phase 3 (Frontend) are COMPLETE via the actual project.
+Phase 4 (Admin Backend) is IN PROGRESS — Supabase set up, auth not yet built.
+Phase 5 (Advanced — Docker, TypeScript, Zustand, Linux) — NOT started.
+Phase 6 (AI + Deployment) — Vercel deployed ✅, rest not started.
+</file>
+
+<file path="CLAUDE.md">
+# Fades & Facials — AI Agent Guide
+
+## Project
+Barbershop site for Fades & Facials, Suwanee GA. Real client. Deployed on Vercel.
+Repo: https://github.com/source0999/Crash-Course
+
+## Stack
+- Next.js 16.2.4 (App Router, Turbopack)
+- TypeScript strict
+- Tailwind CSS v4 (no tailwind.config.ts — @theme in globals.css only)
+- Supabase (PostgreSQL + Auth + Storage)
+- @supabase/ssr for cookie-aware auth
+- Vercel deployment
+
+## Critical Rules — Never Violate
+1. No backdrop-filter or backdrop-blur anywhere — breaks iOS WebKit silently
+2. All animations use translate3d/scale3d — never translateX/scaleX
+3. Every interactive element needs onTouchEnd with e.preventDefault()
+4. Minimum 44x44px touch targets on all clickable elements
+5. touch-manipulation class on all buttons/links
+6. No opacity-0 for hidden — use conditional DOM mounting
+7. No new packages without explicit instruction
+8. Server Components by default — use client only when state/interactivity needed
+9. No tailwind.config.ts — all tokens in globals.css @theme block
+10. No src/ directory — files at root of their directories
+11. Comment block required above every major section (see format below)
+
+## Comment Format (required in all files)
+// ─────────────────────────────────────────
+// SECTION: [name]
+// WHAT: [one sentence]
+// WHY: [one sentence]
+// PHASE 4: [what changes when database is connected]
+// ─────────────────────────────────────────
+
+## Auth Pattern
+- Browser client: createBrowserClient from @supabase/ssr (in use client components)
+- Server client: createServerSupabaseClient() from @/lib/supabase (in server components/route handlers)
+- Middleware client: createMiddlewareSupabaseClient() from @/lib/supabase (in middleware.ts only)
+- Magic link only — no passwords
+
+## Cursor Prompt Footer (always append to prompts)
+Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
+Mobile-first. No external CSS files. All styling via Tailwind classes.
+</file>
+
 <file path="lessonPlan.md">
 Architecture Plan — Gallery Ordering + Layout Presets
 Two features, one page update + one public page update:
@@ -5648,183 +6934,6 @@ Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
 Mobile-first. No external CSS files. All styling via Tailwind classes.
 </file>
 
-<file path="lib/services.ts">
-// ─────────────────────────────────────────
-// SECTION: Service Data Contract
-// WHAT: Defines the shared TypeScript shape for every service record.
-// WHY: Keeps homepage previews and the full services page consistent with one typed model.
-// PHASE 4: Replace static typing source with generated types from Supabase queries if preferred.
-// ─────────────────────────────────────────
-export type Service = {
-  id: number;
-  category: "Cuts" | "Beard Care" | "Hair Care";
-  name: string;
-  price: number;
-  description: string;
-  image: string; // path to gif or jpg in /public/images/
-};
-
-// ─────────────────────────────────────────
-// SECTION: All Services Source of Truth
-// WHAT: Exposes the complete service catalog used by multiple routes.
-// WHY: Centralizing this list makes migration to database-backed reads straightforward.
-// PHASE 4: Replace this exported array with API/database calls that return the same Service shape.
-// ─────────────────────────────────────────
-export const allServices: Service[] = [
-  { id: 1, category: "Cuts", name: "Fade Cut", price: 42, description: "Clean, precise fades tailored to your style.", image: "/images/services/fade.gif" },
-  { id: 2, category: "Cuts", name: "Specialty Fade Cut", price: 42, description: "Advanced fade techniques for a signature look.", image: "/images/services/fade.gif" },
-  { id: 3, category: "Cuts", name: "Children's Fade", price: 32, description: "Kid-friendly cuts with the same precision.", image: "/images/services/fade.gif" },
-  { id: 4, category: "Beard Care", name: "Beard Care", price: 35, description: "Shape and condition your beard to perfection.", image: "/images/services/facial.gif" },
-  { id: 5, category: "Beard Care", name: "Fade and Shave", price: 60, description: "Full fade paired with a clean straight razor shave.", image: "/images/services/fade.gif" },
-  { id: 6, category: "Beard Care", name: "Hot Shave", price: 35, description: "Classic hot towel straight razor shave.", image: "/images/lele2.gif"},
-  { id: 7, category: "Hair Care", name: "Shampoo", price: 12, description: "Deep cleanse and scalp treatment.", image: "/images/services/fade.gif" },
-  { id: 8, category: "Hair Care", name: "Line Up", price: 26, description: "Sharp, defined edges for a clean finish.", image: "/images/services/barbergif1.gif" },
-  { id: 9, category: "Hair Care", name: "Enhancement", price: 12, description: "Color and texture enhancements.", image: "/images/services/fade.gif" },
-  { id: 10, category: "Hair Care", name: "Bald Fade", price: 40, description: "Seamless fade down to skin.", image: "/images/services/fade.gif" },
-];
-
-// NOTE: This array is the single source of truth for all service data.
-// When the admin dashboard and database are implemented in Phase 4,
-// replace this file with API calls to fetch services from Supabase.
-// The Service type above maps directly to the database schema.
-</file>
-
-<file path="middleware.ts">
-// ─────────────────────────────────────────
-// SECTION: Admin Route Protection Middleware
-// WHAT: Guards all /admin/* routes — redirects to /admin login if no session.
-// WHY: Prevents unauthenticated access to admin dashboard and sub-pages.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-import { NextRequest, NextResponse } from "next/server";
-import { createMiddlewareSupabaseClient } from "@/lib/supabase";
-
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const { pathname } = request.nextUrl;
-
-  // Always allow the callback route through — it sets the session
-  if (pathname === "/admin/callback") {
-    return response;
-  }
-
-  // Allow the login page itself through unauthenticated
-  if (pathname === "/admin") {
-    return response;
-  }
-
-  // For all other /admin/* routes, check session
-  const supabase = createMiddlewareSupabaseClient(request, response);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    const loginUrl = new URL("/admin", request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return response;
-}
-
-export const config = {
-  matcher: ["/admin/:path*"],
-};
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
-}
-</file>
-
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.vercel
-</file>
-
 <file path="app/admin/gallery/page.tsx">
 "use client";
 
@@ -6358,186 +7467,6 @@ export default function AdminGalleryPage() {
 }
 </file>
 
-<file path="app/admin/page.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: Admin Login Page
-// WHAT: Magic link email form — sends OTP via Supabase Auth.
-// WHY: Password-free auth. Barber enters email, clicks link, session is created.
-// PHASE 4: No changes needed — already wired to Supabase Auth.
-// ─────────────────────────────────────────
-import { Suspense, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { useSearchParams } from "next/navigation";
-
-function AdminLoginForm() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get("error");
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
-  async function handleSubmit() {
-    if (!email.trim()) return;
-    setLoading(true);
-    setError(null);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/admin/callback`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(false);
-  }
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
-            Fades & Facials
-          </p>
-          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
-        </div>
-
-        {!submitted ? (
-          <div className="flex flex-col gap-4">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
-            />
-
-            {(error || urlError) && (
-              <p className="text-red-400 text-sm text-center">
-                {error ??
-                  (urlError === "otp_expired"
-                    ? "Link expired — request a new one."
-                    : "Auth failed — try again.")}
-              </p>
-            )}
-
-            <button
-              onClick={handleSubmit}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                handleSubmit();
-              }}
-              disabled={loading}
-              className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
-            >
-              {loading ? "Sending..." : "Send Magic Link"}
-            </button>
-          </div>
-        ) : (
-          <div className="text-center">
-            <p className="text-white text-lg font-light">Check your email.</p>
-            <p className="mt-2 text-white/50 text-sm">
-              Click the link we sent to{" "}
-              <span className="text-brand-accent">{email}</span> to sign in.
-            </p>
-          </div>
-        )}
-      </div>
-    </main>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense>
-      <AdminLoginForm />
-    </Suspense>
-  );
-}
-</file>
-
-<file path="app/booking/page.tsx">
-export default function BookingPage() {
-  const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.NEXT_PUBLIC_VERCEL_URL !== undefined;
-
-  // ─────────────────────────────────────────
-  // SECTION: Vagaro Booking Widget
-  // WHAT: Renders live Vagaro booking iframe on production, placeholder on localhost.
-  // WHY: Vagaro's iframe requires HTTPS — it silently fails on http://localhost.
-  //      Showing a clear message prevents confusion during development.
-  // PRODUCTION: The iframe src URL comes from Vagaro dashboard → Promote →
-  //             Booking Widget. If the barber regenerates the widget, update the src.
-  // ─────────────────────────────────────────
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] text-white">
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
-          Book Your Appointment
-        </h1>
-
-        {isProduction ? (
-          <div className="mt-10 bg-white rounded-2xl overflow-hidden text-left shadow-xl">
-            {/* VAGARO EMBED — live booking widget for Fades & Facials Barbershop, Suwanee GA
-                To update: log into Vagaro dashboard → Promote → Booking Widget → copy new src URL
-                The enc= parameter is unique to this business account */}
-            <iframe
-              src="https://www.vagaro.com/Users/BusinessWidget.aspx?enc=MMLjhIwJMcwFQhXLL7ifVCGo+Ra0FiSg17zHqo8Cvgt5dx5q5uTy3XYvAHiBYwCT6NRx6QAfMibDNs+0/QQlBOcfdqL5Ol+0o9meGD1BMLds5HBOy3IQA2df/ex8RHErqgA+46Edc5NzPu3sGXbtRDXut1UEqiFOk7soZssDsQJw2AIoPOYNxp83BlmaFnaKtHtZJI6ZldMd9steX8SnCF2eBNpsIXUnFT54S8Uxb0xVQ1SzRu69h0yaMYx+ReHNbuTQpzWremtAEw2ns9ztoMPIHulfhz3leV75xjRrswup17TEOQlKhLsIVYJ3zLohvtTd9JX0qT6KP+DMrD/C8k0GgCJQrcsS5u6mLLD0IDs/daxL544lWraK2UQAXXdofd++Dd+/MBCV4dx/PT16rYH7IB1bTRmY5floTs1x7NQ="
-              width="100%"
-              height="900"
-              frameBorder="0"
-              scrolling="auto"
-              title="Book an appointment at Fades and Facials Barbershop"
-            />
-          </div>
-        ) : (
-          <div className="mt-10 rounded-2xl border-2 border-dashed border-white/20 bg-white/5 p-12 text-center">
-            <p className="text-lg font-semibold text-white">
-              Vagaro Booking Widget
-            </p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Live booking is only available on the production URL.
-            </p>
-            <p className="mt-1 font-mono text-xs text-zinc-600">
-              Requires HTTPS — deploy to Vercel to test the full booking flow.
-            </p>
-            <a
-              href={
-                process.env.NEXT_PUBLIC_VERCEL_URL
-                  ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/booking`
-                  : "https://fades-and-facials.vercel.app/booking"
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-block rounded-xl border border-amber-500/50 px-6 py-3 font-semibold text-amber-400 transition-colors hover:bg-amber-500/10"
-            >
-              Open on Vercel to test booking →
-            </a>
-          </div>
-        )}
-      </div>
-    </main>
-  );
-}
-</file>
-
 <file path="app/services/page.tsx">
 import { allServices, type Service } from "@/lib/services";
 import { supabase, type DbService } from "@/lib/supabase";
@@ -6665,120 +7594,6 @@ export default async function ServicesPage() {
         })}
       </div>
     </main>
-  );
-}
-</file>
-
-<file path="lib/supabase.ts">
-import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
-
-// ─────────────────────────────────────────
-// SECTION: Supabase Client
-// WHAT: Creates a single reusable Supabase client instance.
-// WHY: One client shared across the app prevents multiple connections.
-// PHASE 4: This client is already configured for admin auth —
-//   the service role key will be added in a separate server-only client
-//   when the admin dashboard is built.
-// ─────────────────────────────────────────
-
-const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
-
-// createClient throws if the URL is empty or not http(s) — use a dummy URL so
-// import succeeds when env is unset (e.g. CI); queries fail and pages use fallback data.
-const supabaseUrl =
-  envUrl && /^https?:\/\//i.test(envUrl) ? envUrl : "https://invalid.invalid";
-
-export const supabase = createClient(supabaseUrl, envKey);
-
-export type DbService = {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  description: string | null;
-  image: string | null;
-  is_active: boolean;
-  created_at: string;
-};
-
-// ─────────────────────────────────────────
-// SECTION: Gallery Type
-// WHAT: Mirrors the gallery table schema in Supabase.
-// WHY: Provides type safety for all gallery data fetched from the database.
-// PHASE 4: No changes needed — this IS the Phase 4 shape.
-// ─────────────────────────────────────────
-export type DbGalleryItem = {
-  id: number;
-  title: string | null;
-  file_url: string;
-  file_type: "image" | "video";
-  category: string | null;
-  sort_order: number;
-  show_bg: boolean;
-  is_active: boolean;
-  created_at: string;
-};
-
-// ─────────────────────────────────────────
-// SECTION: Server Supabase Client (App Router)
-// WHAT: Creates a cookie-aware Supabase client for Server Components and Route Handlers.
-// WHY: The default anon client has no cookie access — auth sessions require cookies.
-// PHASE 4: No changes needed — this IS the Phase 4 auth client.
-// ─────────────────────────────────────────
-export async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {}
-        },
-      },
-    },
-  );
-}
-
-// ─────────────────────────────────────────
-// SECTION: Middleware Supabase Client
-// WHAT: Creates a Supabase client that works inside Next.js middleware (no cookies() API).
-// WHY: Middleware runs on the Edge — needs request/response objects to read/write cookies.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-export function createMiddlewareSupabaseClient(
-  request: NextRequest,
-  response: NextResponse,
-) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
   );
 }
 </file>
@@ -6922,6 +7737,121 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - [ ] Live deployment
 - [ ] AI architecture deep dive (prompting, agents, agentic patterns)
 >>>>>>> 7b383ae1b632149e3ae9d5ae8ac1f77b497ecc37
+</file>
+
+<file path="lib/supabase.ts">
+import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+
+// ─────────────────────────────────────────
+// SECTION: Supabase Client
+// WHAT: Creates a single reusable Supabase client instance.
+// WHY: One client shared across the app prevents multiple connections.
+// PHASE 4: This client is already configured for admin auth —
+//   the service role key will be added in a separate server-only client
+//   when the admin dashboard is built.
+// ─────────────────────────────────────────
+
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
+// createClient throws if the URL is empty or not http(s) — use a dummy URL so
+// import succeeds when env is unset (e.g. CI); queries fail and pages use fallback data.
+const supabaseUrl =
+  envUrl && /^https?:\/\//i.test(envUrl) ? envUrl : "https://invalid.invalid";
+
+export const supabase = createClient(supabaseUrl, envKey);
+
+export type DbService = {
+  id: number;
+  name: string;
+  category: string;
+  price: string | number;
+  description: string | null;
+  image: string | null;
+  is_active: boolean;
+  sort_order?: number;
+  created_at: string;
+};
+
+// ─────────────────────────────────────────
+// SECTION: Gallery Type
+// WHAT: Mirrors the gallery table schema in Supabase.
+// WHY: Provides type safety for all gallery data fetched from the database.
+// PHASE 4: No changes needed — this IS the Phase 4 shape.
+// ─────────────────────────────────────────
+export type DbGalleryItem = {
+  id: number;
+  title: string | null;
+  file_url: string;
+  file_type: "image" | "video";
+  category: string | null;
+  sort_order: number;
+  show_bg: boolean;
+  is_active: boolean;
+  created_at: string;
+};
+
+// ─────────────────────────────────────────
+// SECTION: Server Supabase Client (App Router)
+// WHAT: Creates a cookie-aware Supabase client for Server Components and Route Handlers.
+// WHY: The default anon client has no cookie access — auth sessions require cookies.
+// PHASE 4: No changes needed — this IS the Phase 4 auth client.
+// ─────────────────────────────────────────
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options),
+            );
+          } catch {}
+        },
+      },
+    },
+  );
+}
+
+// ─────────────────────────────────────────
+// SECTION: Middleware Supabase Client
+// WHAT: Creates a Supabase client that works inside Next.js middleware (no cookies() API).
+// WHY: Middleware runs on the Edge — needs request/response objects to read/write cookies.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+export function createMiddlewareSupabaseClient(
+  request: NextRequest,
+  response: NextResponse,
+) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+}
 </file>
 
 <file path="app/page.tsx">
