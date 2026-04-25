@@ -7,7 +7,7 @@
 // PHASE 4: No changes needed — already wired to live Supabase services table.
 // ─────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { DbService } from "@/lib/supabase";
 
@@ -33,36 +33,9 @@ export default function AdminServicesPage() {
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [draggedServiceId, setDraggedServiceId] = useState<number | null>(null);
-  const [dragOverServiceId, setDragOverServiceId] = useState<number | null>(null);
+  const dragOverServiceIdRef = useRef<number | null>(null);
   const [draggedCat, setDraggedCat] = useState<string | null>(null);
   const [dragOverCat, setDragOverCat] = useState<string | null>(null);
-
-  // #region agent log
-  function logDebug(
-    runId: string,
-    hypothesisId: string,
-    location: string,
-    message: string,
-    data: Record<string, unknown>,
-  ) {
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "e7a726",
-      },
-      body: JSON.stringify({
-        sessionId: "e7a726",
-        runId,
-        hypothesisId,
-        location,
-        message,
-        data,
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
 
   // ── Feedback auto-clear ──
   useEffect(() => {
@@ -263,71 +236,42 @@ export default function AdminServicesPage() {
 
   // ── Drag: services within category ──
   function handleServiceDragStart(e: React.DragEvent, id: number) {
-    // #region agent log
-    logDebug("run-services-drag-1", "H1", "app/admin/services/page.tsx:handleServiceDragStart", "service drag start", {
-      id,
-    });
-    // #endregion
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("application/x-service-id", String(id));
     setDraggedServiceId(id);
   }
   function handleServiceDragOver(e: React.DragEvent, id: number) {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
-    // #region agent log
-    logDebug("run-services-drag-1", "H2", "app/admin/services/page.tsx:handleServiceDragOver", "service drag over", {
-      id,
-      draggedServiceId,
-      targetTag: (e.target as HTMLElement | null)?.tagName ?? null,
-    });
-    // #endregion
-    setDragOverServiceId(id);
+    dragOverServiceIdRef.current = id;
   }
   function handleServiceDragEnd() {
-    // #region agent log
-    logDebug("run-services-drag-1", "H3", "app/admin/services/page.tsx:handleServiceDragEnd", "service drag end", {
-      draggedServiceId,
-      dragOverServiceId,
-      draggedCat,
-      dragOverCat,
-    });
-    // #endregion
     setDraggedServiceId(null);
-    setDragOverServiceId(null);
+    dragOverServiceIdRef.current = null;
     setDraggedCat(null);
     setDragOverCat(null);
   }
 
   async function handleServiceDrop(targetId: number) {
-    // #region agent log
-    logDebug("run-services-drag-1", "H2", "app/admin/services/page.tsx:handleServiceDrop", "service drop attempt", {
-      targetId,
-      draggedServiceId,
-      draggedCat,
-    });
-    // #endregion
-    if (draggedServiceId === null || draggedServiceId === targetId) {
+    const overServiceId = dragOverServiceIdRef.current;
+    dragOverServiceIdRef.current = null;
+    if (draggedServiceId === null) {
       setDraggedServiceId(null);
-      setDragOverServiceId(null);
+      return;
+    }
+    const actualTargetId = overServiceId ?? targetId;
+    if (draggedServiceId === actualTargetId) {
+      setDraggedServiceId(null);
       return;
     }
 
     const dragged = services.find((s) => s.id === draggedServiceId);
-    const target = services.find((s) => s.id === targetId);
+    const target = services.find((s) => s.id === actualTargetId);
 
     // Only allow reordering within the same category
     if (!dragged || !target || dragged.category !== target.category) {
-      // #region agent log
-      logDebug("run-services-drag-1", "H4", "app/admin/services/page.tsx:handleServiceDrop", "service drop rejected", {
-        hasDragged: Boolean(dragged),
-        hasTarget: Boolean(target),
-        draggedCategory: dragged?.category ?? null,
-        targetCategory: target?.category ?? null,
-      });
-      // #endregion
       setDraggedServiceId(null);
-      setDragOverServiceId(null);
       return;
     }
 
@@ -342,7 +286,6 @@ export default function AdminServicesPage() {
 
     setServices(withUpdatedOrder);
     setDraggedServiceId(null);
-    setDragOverServiceId(null);
 
     // Update Supabase (use row updates; services.id is identity and rejects upsert inserts)
     const updates = withUpdatedOrder.map((s) =>
@@ -352,30 +295,13 @@ export default function AdminServicesPage() {
     const anyError = results.find((r) => r.error);
 
     if (anyError?.error) {
-      // #region agent log
-      logDebug("run-services-drag-1", "H5", "app/admin/services/page.tsx:handleServiceDrop", "service drop db sync failed", {
-        message: anyError.error.message,
-      });
-      // #endregion
       setFeedback({ type: "error", msg: "Failed to sync order to database." });
       fetchServices();
-    } else {
-      // #region agent log
-      logDebug("run-services-drag-1", "H5", "app/admin/services/page.tsx:handleServiceDrop", "service drop db sync success", {
-        count: withUpdatedOrder.length,
-      });
-      // #endregion
     }
   }
 
   // ── Drag: categories ──
   function handleCatDragStart(cat: string) {
-    // #region agent log
-    logDebug("run-services-drag-1", "H1", "app/admin/services/page.tsx:handleCatDragStart", "category drag start", {
-      cat,
-      draggedServiceId,
-    });
-    // #endregion
     setDraggedCat(cat);
   }
   function handleCatDragOver(e: React.DragEvent, cat: string) {
@@ -386,7 +312,7 @@ export default function AdminServicesPage() {
     setDraggedCat(null);
     setDragOverCat(null);
     setDraggedServiceId(null);
-    setDragOverServiceId(null);
+    dragOverServiceIdRef.current = null;
   }
 
   async function handleCatDrop(targetCat: string) {
@@ -479,11 +405,9 @@ export default function AdminServicesPage() {
               ? ""
               : "hover:scale-[1.02]"
         } ${
-          dragOverServiceId === service.id && draggedServiceId !== service.id
-            ? "border-brand-accent"
-            : service.is_active
-              ? "border-white/10"
-              : "border-white/5 opacity-60"
+          service.is_active
+            ? "border-white/10"
+            : "border-white/5 opacity-60"
         }`}
       >
         {/* Drag handle hint */}
@@ -654,18 +578,28 @@ export default function AdminServicesPage() {
                     draggedServiceId !== null ||
                     e.dataTransfer.types.includes("application/x-service-id")
                   ) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
                     return;
                   }
                   e.preventDefault();
                   handleCatDragOver(e, cat);
                 }}
-                onDrop={() => {
-                  if (draggedServiceId !== null) return;
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedServiceId !== null) {
+                    if (dragOverServiceIdRef.current !== null) {
+                      handleServiceDrop(dragOverServiceIdRef.current);
+                    } else {
+                      handleServiceDragEnd();
+                    }
+                    return;
+                  }
                   handleCatDrop(cat);
                 }}
                 onDragEnd={() => {
                   setDraggedServiceId(null);
-                  setDragOverServiceId(null);
+                  dragOverServiceIdRef.current = null;
                   setDraggedCat(null);
                   setDragOverCat(null);
                 }}

@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   //      and look for your IPv4 address under your WiFi adapter.
   // PRODUCTION: This setting only affects the dev server. It has zero effect on builds.
   // ─────────────────────────────────────────
-  allowedDevOrigins: ['10.0.0.126'],
+  allowedDevOrigins: ['10.0.0.126', '100.82.31.124'],
   images: {
     qualities: [75, 100],
   },
