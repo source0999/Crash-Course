@@ -83,10 +83,12 @@ export default function AdminGalleryPage() {
   const uploadRef = useRef<HTMLInputElement>(null);
   const replaceRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  // ── PointerSensor: 5px distance for mouse/stylus ──
+  // ── TouchSensor: 250ms hold + 5px tolerance — iOS Safari needs the delay to ──
+  //    distinguish a drag intent from a page scroll before picking up the gesture. ──
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   useEffect(() => {
@@ -405,10 +407,11 @@ export default function AdminGalleryPage() {
                             item.is_active ? "border-white/10" : "border-white/5 opacity-50"
                           } bg-white/5 transition-all ${isDragging ? "opacity-40" : ""}`}
                         >
-                          {/* Drag grip */}
+                          {/* Drag grip — touch-action:none stops iOS from stealing the gesture */}
                           <div
                             {...listeners}
-                            className="absolute top-2 right-2 z-10 rounded-md border border-cyan-400/40 bg-cyan-500/10 p-1.5 text-cyan-300 cursor-grab active:cursor-grabbing touch-manipulation select-none"
+                            style={{ touchAction: "none" }}
+                            className="absolute top-2 right-2 z-10 rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-cyan-300 cursor-grab active:cursor-grabbing touch-manipulation select-none"
                           >
                             ⠿
                           </div>
