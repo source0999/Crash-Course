@@ -10,6 +10,7 @@ import { Suspense, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+// Shared URL resolver (prod domain -> preview URL -> localhost fallback).
 import { getURL } from "@/lib/url";
 
 function AdminLoginForm() {
@@ -26,6 +27,7 @@ function AdminLoginForm() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
+  // Simple resend cooldown timer (1s tick) to prevent rapid OTP requests.
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
@@ -33,24 +35,28 @@ function AdminLoginForm() {
   }, [cooldown]);
 
   async function handleSubmit() {
+    // Guard empty input and disabled resend window.
     if (!email.trim() || cooldown > 0) return;
     setLoading(true);
     setError(null);
     setSent(false);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${getURL()}/admin/callback`,
-      },
-    });
-
+    // Supabase magic-link login; callback URL must match allowed redirect URLs.
+// Inside your handleLogin function in app/admin/page.tsx
+const { error } = await supabase.auth.signInWithOtp({
+  email,
+  options: {
+    // This dynamically picks up the current URL (localhost, preview, or production)
+    emailRedirectTo: `${window.location.origin}/admin/callback`,
+  },
+})
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
 
+    // Success state + throttle resends for better UX and fewer rate-limit issues.
     setSent(true);
     setCooldown(60);
     setLoading(false);
