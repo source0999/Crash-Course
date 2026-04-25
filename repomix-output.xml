@@ -40,6 +40,7 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.claude/settings.local.json
 .cursorrules
 .gitignore
 AGENTS.md
@@ -69,6 +70,7 @@ hero-homepage.png
 lessonPlan.md
 lib/services.ts
 lib/supabase.ts
+lib/url.ts
 middleware.ts
 next.config.ts
 package.json
@@ -92,6 +94,16 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)"
+    ]
+  }
+}
+</file>
 
 <file path=".cursorrules">
 # Project Architecture & Workflow Rules
@@ -4494,6 +4506,25 @@ export const allServices: Service[] = [
 // The Service type above maps directly to the database schema.
 </file>
 
+<file path="lib/url.ts">
+// ─────────────────────────────────────────
+// SECTION: URL Helper
+// WHAT: Returns the canonical site URL for auth redirect targets.
+// WHY: Hardcoded URLs break across localhost / Vercel preview / production.
+// PHASE 4: No changes needed — env vars cover all environments.
+// ─────────────────────────────────────────
+export function getURL(): string {
+  let url =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_VERCEL_URL ??
+    "http://localhost:3000";
+
+  url = url.includes("http") ? url : `https://${url}`;
+  url = url.endsWith("/") ? url.slice(0, -1) : url;
+  return url;
+}
+</file>
+
 <file path="middleware.ts">
 // ─────────────────────────────────────────
 // SECTION: Admin Route Protection Middleware
@@ -7095,88 +7126,6 @@ export default function AdminServicesPage() {
 }
 </file>
 
-<file path="package.json">
-{
-  "name": "fades-and-facials",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.104.1",
-    "next": "16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "resend": "^6.12.2"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
-}
-</file>
-
-<file path="README.md">
-# Fades & Facials 2.0 — Learning Roadmap
-> **Phase 1 Status:** In progress — Terminal & Git complete.
-> Britton's full-stack rebuild. Built the right way, from scratch.
-
----
-
-## Phase 1: Coding Fundamentals
-- [ ] Terminal basics, Linux commands, Markdown, Git workflows
-- [ ] Variables & Data Types (let vs const, memory concepts)
-- [ ] Conditionals (if/else, switch, ternary)
-- [ ] Functions (declarations, expressions, arrow functions, scope, closures)
-- [ ] Arrays & Loops (for, while, do-while, nested)
-- [ ] Iterators (map, filter, reduce, forEach)
-- [ ] Objects (properties, methods, `this`, destructuring)
-- [ ] Classes & OOP (constructors, inheritance)
-- [ ] Modules (import/export)
-- [ ] Promises & Async/Await (event loop)
-- [ ] Error Handling & Debugging Mindset
-
-## Phase 2: Project Architecture & Setup
-- [ ] Project initialized in terminal with correct structure
-- [ ] File/folder architecture explained and implemented
-- [ ] Teaching UI scaffold built
-
-## Phase 3: Frontend (Mobile-First)
-- [ ] Low-fidelity planning & component architecture
-- [ ] UI built (Lifetime.life inspired)
-- [ ] Vagaro booking integration
-
-## Phase 4: Admin Backend
-- [ ] Data structure planned for services & images
-- [ ] Authentication implemented
-- [ ] Admin dashboard built
-
-## Phase 5: Advanced Engineering
-- [ ] Docker / Containerization (The Magic Backpack)
-- [ ] Advanced TypeScript (The Strict Spellchecker)
-- [ ] React Architecture & Zustand (Organizing the Brain)
-- [ ] Ubuntu Linux (Building the Treehouse)
-
-## Phase 6: AI Systems & Deployment
-- [ ] SEO optimization & polish
-- [ ] Live deployment
-- [ ] AI architecture deep dive (prompting, agents, agentic patterns)
-</file>
-
 <file path="app/services/page.tsx">
 // ─────────────────────────────────────────
 // SECTION: Public Services Page
@@ -7366,135 +7315,86 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 </file>
 
-<file path="app/admin/page.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: Admin Login Page
-// WHAT: Magic link email form — sends OTP via Supabase Auth.
-// WHY: Password-free auth. Barber enters email, clicks link, session is created.
-// PHASE 4: No changes needed — already wired to Supabase Auth.
-// ─────────────────────────────────────────
-import { Suspense, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
-
-function AdminLoginForm() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get("error");
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
-  async function handleSubmit() {
-    if (!email.trim() || cooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    setSent(false);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: "https://fades-and-facials.vercel.app/admin/callback",
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    setSent(true);
-    setCooldown(60);
-    setLoading(false);
+<file path="package.json">
+{
+  "name": "fades-and-facials",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.1",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "resend": "^6.12.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
-            Fades & Facials
-          </p>
-          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
-        </div>
-
-        {sent && (
-          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
-            ✅ Magic link sent! Check your email and click the link.
-            {cooldown > 0 && (
-              <p className="mt-1 text-green-300/60 text-xs">
-                Need another? Wait {cooldown}s before resending.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
-          />
-
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
-          {urlError && !error && (
-            <p className="text-red-400 text-sm text-center">
-              {urlError === "otp_expired"
-                ? "Link expired — request a new one below."
-                : "Auth failed — try again."}
-            </p>
-          )}
-
-          <button
-            onClick={handleSubmit}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-            disabled={loading || cooldown > 0}
-            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
-          >
-            {loading
-              ? "Sending..."
-              : cooldown > 0
-                ? `Wait ${cooldown}s to resend`
-                : sent
-                  ? "Resend Magic Link"
-                  : "Send Magic Link"}
-          </button>
-        </div>
-      </div>
-    </main>
-  );
 }
+</file>
 
-export default function AdminLoginPage() {
-  return (
-    <Suspense>
-      <AdminLoginForm />
-    </Suspense>
-  );
-}
+<file path="README.md">
+# Fades & Facials 2.0 — Learning Roadmap
+> **Phase 1 Status:** In progress — Terminal & Git complete.
+> Britton's full-stack rebuild. Built the right way, from scratch.
+
+---
+
+## Phase 1: Coding Fundamentals
+- [ ] Terminal basics, Linux commands, Markdown, Git workflows
+- [ ] Variables & Data Types (let vs const, memory concepts)
+- [ ] Conditionals (if/else, switch, ternary)
+- [ ] Functions (declarations, expressions, arrow functions, scope, closures)
+- [ ] Arrays & Loops (for, while, do-while, nested)
+- [ ] Iterators (map, filter, reduce, forEach)
+- [ ] Objects (properties, methods, `this`, destructuring)
+- [ ] Classes & OOP (constructors, inheritance)
+- [ ] Modules (import/export)
+- [ ] Promises & Async/Await (event loop)
+- [ ] Error Handling & Debugging Mindset
+
+## Phase 2: Project Architecture & Setup
+- [ ] Project initialized in terminal with correct structure
+- [ ] File/folder architecture explained and implemented
+- [ ] Teaching UI scaffold built
+
+## Phase 3: Frontend (Mobile-First)
+- [ ] Low-fidelity planning & component architecture
+- [ ] UI built (Lifetime.life inspired)
+- [ ] Vagaro booking integration
+
+## Phase 4: Admin Backend
+- [ ] Data structure planned for services & images
+- [ ] Authentication implemented
+- [ ] Admin dashboard built
+
+## Phase 5: Advanced Engineering
+- [ ] Docker / Containerization (The Magic Backpack)
+- [ ] Advanced TypeScript (The Strict Spellchecker)
+- [ ] React Architecture & Zustand (Organizing the Brain)
+- [ ] Ubuntu Linux (Building the Treehouse)
+
+## Phase 6: AI Systems & Deployment
+- [ ] SEO optimization & polish
+- [ ] Live deployment
+- [ ] AI architecture deep dive (prompting, agents, agentic patterns)
 </file>
 
 <file path="app/page.tsx">
@@ -7757,11 +7657,223 @@ export default function Navbar() {
 }
 </file>
 
+<file path="app/admin/page.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: Admin Login Page
+// WHAT: Magic link email form — sends OTP via Supabase Auth.
+// WHY: Password-free auth. Barber enters email, clicks link, session is created.
+// PHASE 4: No changes needed — already wired to Supabase Auth.
+// ─────────────────────────────────────────
+import { Suspense, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { getURL } from "@/lib/url";
+
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function handleSubmit() {
+    if (!email.trim() || cooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    setSent(false);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${getURL()}/admin/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    setSent(true);
+    setCooldown(60);
+    setLoading(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Fades & Facials
+          </p>
+          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+        </div>
+
+        {sent && (
+          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
+            ✅ Magic link sent! Check your email and click the link.
+            {cooldown > 0 && (
+              <p className="mt-1 text-green-300/60 text-xs">
+                Need another? Wait {cooldown}s before resending.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+          />
+
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {urlError && !error && (
+            <p className="text-red-400 text-sm text-center">
+              {urlError === "otp_expired"
+                ? "Link expired — request a new one below."
+                : "Auth failed — try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            disabled={loading || cooldown > 0}
+            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+          >
+            {loading
+              ? "Sending..."
+              : cooldown > 0
+                ? `Wait ${cooldown}s to resend`
+                : sent
+                  ? "Resend Magic Link"
+                  : "Send Magic Link"}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #1e3a5f;
+  --color-brand-white: #f8fafc;
+  --color-brand-bg: #0f1e2e;
+  --color-brand-text: #f8fafc;
+  --color-brand-accent: #c9a96e;
+}
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-y: auto;
+  background-color: #0f1e2e;
+  color: #f8fafc;
+}
+
+/* ─── Gallery entrance animation ─── */
+@keyframes gallery-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(1.18, 1.18, 1);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import Navbar from "../components/Navbar";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Fades and Facials",
+  description: "It's an experience",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-auto antialiased`}
+    >
+      <body className="min-h-screen flex flex-col overflow-y-auto">
+        <Navbar />
+        {children}
+      </body>
+    </html>
+  );
+}
+</file>
+
 <file path="lib/supabase.ts">
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+
+export { getURL } from "@/lib/url";
 
 // ─────────────────────────────────────────
 // SECTION: Supabase Client
@@ -7868,84 +7980,6 @@ export function createMiddlewareSupabaseClient(
         },
       },
     },
-  );
-}
-</file>
-
-<file path="app/globals.css">
-@import "tailwindcss";
-
-@theme {
-  --color-brand-navy: #1e3a5f;
-  --color-brand-white: #f8fafc;
-  --color-brand-bg: #0f1e2e;
-  --color-brand-text: #f8fafc;
-  --color-brand-accent: #c9a96e;
-}
-
-html,
-body {
-  height: auto;
-  min-height: 100%;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-body {
-  overflow-y: auto;
-  background-color: #0f1e2e;
-  color: #f8fafc;
-}
-
-/* ─── Gallery entrance animation ─── */
-@keyframes gallery-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) scale3d(1.18, 1.18, 1);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
-  }
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navbar from "../components/Navbar";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-auto antialiased`}
-    >
-      <body className="min-h-screen flex flex-col overflow-y-auto">
-        <Navbar />
-        {children}
-      </body>
-    </html>
   );
 }
 </file>
