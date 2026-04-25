@@ -15,6 +15,7 @@ import {
   PointerSensor,
   TouchSensor,
   closestCenter,
+  rectIntersection,
   useSensor,
   useSensors,
   type UniqueIdentifier,
@@ -73,10 +74,12 @@ export default function AdminServicesPage() {
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
 
-  // ── Pointer + Touch sensors with 5px activation — prevents drag on tap ──
+  // ── PointerSensor: 5px distance for mouse/stylus ──
+  // ── TouchSensor: 250ms hold + 5px tolerance — iOS Safari needs the delay to ──
+  //    distinguish a drag intent from a page scroll before picking up the gesture. ──
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   useEffect(() => {
@@ -130,7 +133,6 @@ export default function AdminServicesPage() {
     return services.filter((s) => s.category === cat);
   }
 
-  // ── Save layout ──
   async function saveLayout(newLayout: Layout) {
     setLayoutSaving(true);
     setLayout(newLayout);
@@ -143,7 +145,6 @@ export default function AdminServicesPage() {
     setFeedback({ type: "success", msg: `Layout set to ${newLayout}` });
   }
 
-  // ── Inline edit ──
   function startEdit(id: number, field: EditingField["field"], current: string | number) {
     setEditing({ id, field });
     setEditValue(String(current));
@@ -172,7 +173,6 @@ export default function AdminServicesPage() {
     setEditValue("");
   }
 
-  // ── Toggle is_active ──
   async function handleToggle(service: DbService) {
     const { error } = await supabase
       .from("services")
@@ -187,7 +187,6 @@ export default function AdminServicesPage() {
     }
   }
 
-  // ── Delete service ──
   async function handleDelete(id: number) {
     const { error } = await supabase.from("services").delete().eq("id", id);
     if (error) {
@@ -199,7 +198,6 @@ export default function AdminServicesPage() {
     setConfirmDelete(null);
   }
 
-  // ── Delete category (all services in it) ──
   async function handleDeleteCategory(cat: string) {
     const ids = servicesInCategory(cat).map((s) => s.id);
     const { error } = await supabase.from("services").delete().in("id", ids);
@@ -218,7 +216,6 @@ export default function AdminServicesPage() {
     setConfirmDeleteCat(null);
   }
 
-  // ── Add new service to category ──
   async function handleAddService(cat: string) {
     const maxOrder =
       services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
@@ -243,7 +240,6 @@ export default function AdminServicesPage() {
     }
   }
 
-  // ── Add new category ──
   async function handleAddCategory() {
     const newCat = "New Category";
     const maxOrder =
@@ -319,7 +315,7 @@ export default function AdminServicesPage() {
     });
   }
 
-  // ── Editable field component ──
+  // ── Editable field ──
   function EditableField({
     serviceId,
     field,
@@ -377,10 +373,11 @@ export default function AdminServicesPage() {
           isDragging ? "opacity-40" : "hover:scale-[1.02]"
         } ${service.is_active ? "border-white/10" : "border-white/5 opacity-60"}`}
       >
-        {/* Drag handle */}
+        {/* Drag handle — touch-action:none prevents iOS scroll from stealing the gesture */}
         <div className="mb-3 flex items-center gap-2 text-xs select-none">
           <span
             {...dragListeners}
+            style={{ touchAction: "none" }}
             className="rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-cyan-300 transition-colors hover:bg-cyan-500/20 hover:text-cyan-200 cursor-grab active:cursor-grabbing touch-manipulation"
           >
             ⠿
@@ -546,6 +543,7 @@ export default function AdminServicesPage() {
         {loading ? (
           <p className="text-white/40 text-center py-20">Loading services...</p>
         ) : (
+          // ── Outer context: category ordering (vertical list, closestCenter) ──
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -556,30 +554,35 @@ export default function AdminServicesPage() {
                 {orderedCategories.map((cat) => (
                   <SortableItem key={cat} id={cat}>
                     {(catListeners, isCatDragging) => (
+                      // ── Category container — relative so the grip badge can be pinned ──
                       <div
-                        className={`rounded-2xl border p-5 transition-all ${
+                        className={`relative rounded-2xl border transition-all pt-12 px-5 pb-5 ${
                           isCatDragging ? "opacity-40" : ""
                         } border-white/10 bg-white/3`}
                       >
-                        {/* Category header */}
-                        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-                          <div className="flex items-center gap-3">
-                            <span
-                              {...catListeners}
-                              className="text-white/20 cursor-grab active:cursor-grabbing select-none text-lg touch-manipulation"
-                            >
-                              ⠿
-                            </span>
-                            <h2 className="text-xl font-bold text-white">
-                              <EditableField
-                                serviceId={-1}
-                                field="category"
-                                value={cat}
-                                className="text-xl font-bold"
-                              />
-                            </h2>
-                            <span className="text-white/30 text-xs">drag to reorder category</span>
-                          </div>
+                        {/*
+                         * Category drag handle — pinned to top-left, visually separate
+                         * from the per-service ⠿ grips below. touch-action:none is
+                         * required so iOS Safari doesn't intercept the touchstart as scroll.
+                         */}
+                        <span
+                          {...catListeners}
+                          style={{ touchAction: "none" }}
+                          className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-white/40 hover:text-white hover:bg-white/15 cursor-grab active:cursor-grabbing select-none text-xs transition touch-manipulation"
+                        >
+                          ⠿ <span className="hidden sm:inline">move category</span>
+                        </span>
+
+                        {/* Category header — title + action buttons */}
+                        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                          <h2 className="text-xl font-bold text-white">
+                            <EditableField
+                              serviceId={-1}
+                              field="category"
+                              value={cat}
+                              className="text-xl font-bold"
+                            />
+                          </h2>
                           <div className="flex gap-2 items-center">
                             <button
                               onClick={() => handleAddService(cat)}
@@ -625,10 +628,15 @@ export default function AdminServicesPage() {
                           </div>
                         </div>
 
-                        {/* Services grid — each category gets its own DndContext */}
+                        {/*
+                         * Inner context: service ordering within this category.
+                         * Uses rectIntersection (not closestCenter) so the two nested
+                         * contexts use distinct hit-testing strategies and don't compete
+                         * for the same dragged item.
+                         */}
                         <DndContext
                           sensors={sensors}
-                          collisionDetection={closestCenter}
+                          collisionDetection={rectIntersection}
                           onDragEnd={(e) => handleServiceDragEnd(e, cat)}
                         >
                           <SortableContext
