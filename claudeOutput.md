@@ -1,0 +1,1 @@
+-no we need to delte all preloaded data so i can start to load data manually thru new fixed upload services fixed keep categories but delte all services guesing were doig that i sqal command right?

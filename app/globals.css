@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-navy: #1e3a5f;
-  --color-brand-white: #f8fafc;
-  --color-brand-bg: #0f1e2e;
-  --color-brand-text: #f8fafc;
-  --color-brand-accent: #c9a96e;
+  /* The Homey Luxury Palette */
+  --color-alabaster: #f9f7f2; /* Warm, inviting background */
+  --color-ink: #0b132b; /* Midnight Blue (softer than pure black) */
+  --color-sage: #7e9a7e; /* Calming accent green */
+
+  /* Typography */
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Montserrat", sans-serif;
 }
 
 html,
@@ -18,8 +21,9 @@ body {
 
 body {
   overflow-y: auto;
-  background-color: #0f1e2e;
-  color: #f8fafc;
+  background-color: var(--color-alabaster);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ─── Gallery entrance animation ─── */

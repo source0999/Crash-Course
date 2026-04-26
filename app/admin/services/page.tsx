@@ -28,7 +28,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DbService } from "@/lib/supabase";
+import { uploadServiceMedia, type DbService } from "@/lib/supabase";
 
 // ── Module-level Supabase client ──
 const supabase = createBrowserClient(
@@ -40,6 +40,15 @@ const supabase = createBrowserClient(
 type EditingField = { id: number; field: "name" | "price" | "description" | "category" };
 type Layout = "cards" | "list" | "minimal";
 type DndListeners = ReturnType<typeof useSortable>["listeners"];
+type DraftServiceData = {
+  name: string;
+  category: string;
+  price: string;
+  image: string | null;
+};
+
+const MAX_MEDIA_BYTES = 1024 * 1024;
+const LELE_GIF_URL = "/lele.gif";
 
 // ── Reusable sortable wrapper — applies dnd-kit positioning, passes listeners to children ──
 function SortableItem({
@@ -73,6 +82,20 @@ export default function AdminServicesPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
+  const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [draftData, setDraftData] = useState<DraftServiceData>({
+    name: "",
+    category: "",
+    price: "",
+    image: null,
+  });
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isUploadingDraftMedia, setIsUploadingDraftMedia] = useState(false);
+  const [uploadedPhotoByService, setUploadedPhotoByService] = useState<Record<number, string>>({});
+  const [activeSwapSlot, setActiveSwapSlot] = useState<number | null>(null);
+  const [swapSearch, setSwapSearch] = useState("");
+  const [swappingSlot, setSwappingSlot] = useState<number | null>(null);
 
   // ── PointerSensor: 5px distance for mouse/stylus ──
   // ── TouchSensor: 250ms hold + 5px tolerance — iOS Safari needs the delay to ──
@@ -105,6 +128,13 @@ export default function AdminServicesPage() {
       setFeedback({ type: "error", msg: "Failed to load services." });
     } else {
       setServices(data ?? []);
+      const uploadedPhotos = (data ?? []).reduce<Record<number, string>>((acc, service) => {
+        if (service.image && service.image !== LELE_GIF_URL) {
+          acc[service.id] = service.image;
+        }
+        return acc;
+      }, {});
+      setUploadedPhotoByService(uploadedPhotos);
     }
     setLoading(false);
   }
@@ -128,6 +158,9 @@ export default function AdminServicesPage() {
     ...categoryOrder.filter((c) => allCategories.includes(c)),
     ...allCategories.filter((c) => !categoryOrder.includes(c)),
   ];
+  const featuredServices = services.filter((s) => Boolean(s.is_premium)).slice(0, 3);
+  const featuredIds = new Set(featuredServices.map((s) => s.id));
+  const featuredSlots: Array<DbService | null> = [0, 1, 2].map((index) => featuredServices[index] ?? null);
 
   function servicesInCategory(cat: string) {
     return services.filter((s) => s.category === cat);
@@ -187,6 +220,213 @@ export default function AdminServicesPage() {
     }
   }
 
+  function getDefaultStaticImage(service: DbService) {
+    const uploadedPhoto = uploadedPhotoByService[service.id];
+    if (uploadedPhoto) return uploadedPhoto;
+    if (
+      service.image &&
+      service.image !== LELE_GIF_URL &&
+      !/\.(gif|mp4|webm)(\?|$)/i.test(service.image)
+    ) {
+      return service.image;
+    }
+    return null;
+  }
+
+  async function handleSwapFeaturedSlot(slotIndex: number, incomingServiceId: number) {
+    const outgoingService = featuredSlots[slotIndex];
+    if (outgoingService?.id === incomingServiceId) {
+      setActiveSwapSlot(null);
+      return;
+    }
+
+    setSwappingSlot(slotIndex);
+    try {
+      const outgoingStaticImage = outgoingService ? getDefaultStaticImage(outgoingService) : null;
+      const updates = [
+        supabase
+          .from("services")
+          .update({ is_premium: true })
+          .eq("id", incomingServiceId),
+      ];
+
+      if (outgoingService) {
+        updates.push(
+          supabase
+            .from("services")
+            .update({ is_premium: false, image: outgoingStaticImage })
+            .eq("id", outgoingService.id),
+        );
+      }
+
+      const results = await Promise.all(updates);
+      const failed = results.find((result) => result.error);
+      if (failed?.error) {
+        throw new Error(failed.error.message);
+      }
+
+      setServices((prev) =>
+        prev.map((service) => {
+          if (service.id === incomingServiceId) {
+            return { ...service, is_premium: true };
+          }
+          if (outgoingService && service.id === outgoingService.id) {
+            return {
+              ...service,
+              is_premium: false,
+              image: outgoingStaticImage,
+            };
+          }
+          return service;
+        }),
+      );
+      setFeedback({ type: "success", msg: "Featured slot updated." });
+      setActiveSwapSlot(null);
+      setSwapSearch("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to swap featured slot.";
+      setFeedback({ type: "error", msg: message });
+    } finally {
+      setSwappingSlot(null);
+    }
+  }
+
+  async function handleMediaUpload(service: DbService, file: File) {
+    // #region agent log
+    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
+      body: JSON.stringify({
+        sessionId: "e7a726",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "app/admin/services/page.tsx:handleMediaUpload:entry",
+        message: "Upload handler entered",
+        data: { serviceId: service.id, fileType: file.type, fileSize: file.size },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ type: "error", msg: "Please upload an image file." });
+      return;
+    }
+
+    if (!service.is_premium && file.type === "image/gif") {
+      setFeedback({
+        type: "error",
+        msg: "GIF media is allowed only for featured services.",
+      });
+      return;
+    }
+
+    if (file.size > MAX_MEDIA_BYTES) {
+      setFeedback({ type: "error", msg: "Please use an image under 1MB." });
+      return;
+    }
+
+    setUploadingServiceId(service.id);
+    try {
+      const publicUrl = await uploadServiceMedia(file);
+      // #region agent log
+      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
+        body: JSON.stringify({
+          sessionId: "e7a726",
+          runId: "pre-fix",
+          hypothesisId: "H4",
+          location: "app/admin/services/page.tsx:handleMediaUpload:afterUploadServiceMedia",
+          message: "Storage helper returned URL",
+          data: { serviceId: service.id, hasPublicUrl: Boolean(publicUrl), publicUrl },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      const { error } = await supabase
+        .from("services")
+        .update({ image: publicUrl })
+        .eq("id", service.id);
+
+      if (error) {
+        throw new Error(
+          JSON.stringify({
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          }),
+        );
+      }
+
+      setUploadedPhotoByService((prev) => ({ ...prev, [service.id]: publicUrl }));
+      setServices((prev) =>
+        prev.map((s) => (s.id === service.id ? { ...s, image: publicUrl } : s)),
+      );
+      setFeedback({ type: "success", msg: "Service media uploaded." });
+    } catch (err) {
+      // #region agent log
+      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
+        body: JSON.stringify({
+          sessionId: "e7a726",
+          runId: "pre-fix",
+          hypothesisId: "H3",
+          location: "app/admin/services/page.tsx:handleMediaUpload:catch",
+          message: "Upload flow failed",
+          data: {
+            serviceId: service.id,
+            errorName: err instanceof Error ? err.name : "Unknown",
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+      console.error("[service-media upload error]", err);
+      const message = err instanceof Error ? err.message : "Failed to upload media.";
+      if (message.includes("404")) {
+        setFeedback({
+          type: "error",
+          msg: "Upload failed: Please ensure the 'service-media' bucket exists in Supabase.",
+        });
+      } else {
+        setFeedback({ type: "error", msg: message });
+      }
+    } finally {
+      setUploadingServiceId(null);
+    }
+  }
+
+  async function handleToggleCinematicMode(service: DbService) {
+    const isCurrentlyCinematic = service.image === LELE_GIF_URL;
+    const fallbackPhoto = uploadedPhotoByService[service.id] ?? null;
+    const nextImage = isCurrentlyCinematic ? fallbackPhoto : LELE_GIF_URL;
+
+    const { error } = await supabase
+      .from("services")
+      .update({ image: nextImage })
+      .eq("id", service.id);
+
+    if (error) {
+      setFeedback({ type: "error", msg: "Failed to update cinematic mode." });
+      return;
+    }
+
+    if (!isCurrentlyCinematic && service.image && service.image !== LELE_GIF_URL) {
+      setUploadedPhotoByService((prev) => ({ ...prev, [service.id]: service.image as string }));
+    }
+
+    setServices((prev) =>
+      prev.map((s) => (s.id === service.id ? { ...s, image: nextImage } : s)),
+    );
+    setFeedback({
+      type: "success",
+      msg: isCurrentlyCinematic ? "Using uploaded media." : "Cinematic mode enabled.",
+    });
+  }
+
   async function handleDelete(id: number) {
     const { error } = await supabase.from("services").delete().eq("id", id);
     if (error) {
@@ -217,26 +457,93 @@ export default function AdminServicesPage() {
   }
 
   async function handleAddService(cat: string) {
+    setIsCreating(true);
+    setDraftData({
+      name: "",
+      category: cat,
+      price: "",
+      image: null,
+    });
+  }
+
+  function handleCancelDraft() {
+    setIsCreating(false);
+    setIsSavingDraft(false);
+    setIsUploadingDraftMedia(false);
+    setDraftData({ name: "", category: "", price: "", image: null });
+  }
+
+  async function handleDraftMediaUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ type: "error", msg: "Please upload an image file." });
+      return;
+    }
+    if (file.size > MAX_MEDIA_BYTES) {
+      setFeedback({ type: "error", msg: "Please use an image under 1MB." });
+      return;
+    }
+
+    setIsUploadingDraftMedia(true);
+    try {
+      const publicUrl = await uploadServiceMedia(file);
+      setDraftData((prev) => ({ ...prev, image: publicUrl }));
+      setFeedback({ type: "success", msg: "Draft media uploaded." });
+    } catch (err) {
+      console.error("[draft service-media upload error]", err);
+      setFeedback({
+        type: "error",
+        msg: "Upload failed: Please ensure the 'service-media' bucket exists in Supabase.",
+      });
+    } finally {
+      setIsUploadingDraftMedia(false);
+    }
+  }
+
+  async function handleCommitService() {
+    const trimmedName = draftData.name.trim();
+    const trimmedCategory = draftData.category.trim();
+    const parsedPrice = Number(draftData.price);
+    const isPriceValid = Number.isFinite(parsedPrice) && parsedPrice >= 0;
+
+    if (!trimmedName || !trimmedCategory || !isPriceValid) {
+      setFeedback({
+        type: "error",
+        msg: "Name, category, and a valid numeric price are required.",
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
     const maxOrder =
       services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
-    const { data, error } = await supabase
-      .from("services")
-      .insert({
-        name: "New Service",
-        category: cat,
-        price: "$0",
-        description: "",
-        image: null,
-        is_active: true,
-        sort_order: maxOrder + 1,
-      })
-      .select()
-      .single();
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to add service." });
-    } else {
+    const payload = {
+      name: trimmedName,
+      category: trimmedCategory,
+      price: parsedPrice,
+      description: "",
+      image: draftData.image,
+      is_premium: false,
+      is_active: true,
+      sort_order: maxOrder + 1,
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from("services")
+        .insert(payload)
+        .select()
+        .single();
+      if (error) {
+        throw new Error(error.message);
+      }
+
       setServices((prev) => [...prev, data]);
-      setFeedback({ type: "success", msg: "New service added — tap to edit." });
+      handleCancelDraft();
+      setFeedback({ type: "success", msg: "Service created." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create service.";
+      setFeedback({ type: "error", msg: message });
+      setIsSavingDraft(false);
     }
   }
 
@@ -249,9 +556,11 @@ export default function AdminServicesPage() {
       .insert({
         name: "New Service",
         category: newCat,
-        price: "$0",
+          // Keep category bootstrap inserts schema-compatible with numeric price.
+          price: 0,
         description: "",
         image: null,
+        is_premium: false,
         is_active: true,
         sort_order: maxOrder + 1,
       })
@@ -371,7 +680,7 @@ export default function AdminServicesPage() {
       <div
         className={`rounded-xl border bg-white/5 p-4 transition-all select-none ${
           isDragging ? "opacity-40" : "hover:scale-[1.02]"
-        } ${service.is_active ? "border-white/10" : "border-white/5 opacity-60"}`}
+        } ${service.is_active !== false ? "border-white/10" : "border-white/5 opacity-60"}`}
       >
         {/* Drag handle — touch-action:none prevents iOS scroll from stealing the gesture */}
         <div className="mb-3 flex items-center gap-2 text-xs select-none">
@@ -406,8 +715,78 @@ export default function AdminServicesPage() {
           />
         </div>
 
+        {/* Media Upload + live preview */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-white/70 text-xs uppercase tracking-widest">Media Upload</span>
+            <label
+              className={`cursor-pointer ${uploadingServiceId === service.id ? "pointer-events-none" : ""}`}
+            >
+              <span
+                className={`inline-flex items-center justify-center rounded-lg border border-brand-accent/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
+                  uploadingServiceId === service.id
+                    ? "bg-brand-accent/10 text-brand-accent/60"
+                    : "bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/25"
+                }`}
+              >
+                {uploadingServiceId === service.id ? "Uploading..." : "Upload Photo"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={uploadingServiceId === service.id}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  handleMediaUpload(service, file);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
+          </div>
+
+          {service.is_premium ? (
+            <button
+              onClick={() => handleToggleCinematicMode(service)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                handleToggleCinematicMode(service);
+              }}
+              className={`mb-2 w-full rounded-lg px-3 py-2 text-xs font-semibold min-h-[44px] touch-manipulation transition ${
+                service.image === LELE_GIF_URL
+                  ? "bg-purple-500/25 text-purple-200 border border-purple-400/40"
+                  : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+              }`}
+            >
+              {service.image === LELE_GIF_URL
+                ? "Cinematic Mode (GIF): On"
+                : "Cinematic Mode (GIF): Off"}
+            </button>
+          ) : (
+            <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 min-h-[44px] text-xs text-white/40 flex items-center">
+              Cinematic Mode locked (only featured slots).
+            </div>
+          )}
+
+          {service.image ? (
+            <img
+              src={service.image}
+              alt={`${service.name} preview`}
+              className="h-20 w-full rounded-lg object-cover border border-white/10"
+            />
+          ) : (
+            <div className="h-20 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
+              No Image
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
         <div className="flex flex-col gap-2 mt-2">
+          <div className="w-full rounded-lg py-2 px-3 text-xs font-semibold min-h-[44px] flex items-center bg-white/5 border border-white/10 text-white/50">
+            Featured state managed in top slots.
+          </div>
           <button
             onClick={() => handleToggle(service)}
             onTouchEnd={(e) => {
@@ -416,7 +795,7 @@ export default function AdminServicesPage() {
             }}
             className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
           >
-            {service.is_active ? "👁 Hide Service" : "✅ Show Service"}
+            {service.is_active !== false ? "👁 Hide Service" : "✅ Show Service"}
           </button>
 
           {confirmDelete === service.id ? (
@@ -486,6 +865,114 @@ export default function AdminServicesPage() {
           </div>
         )}
 
+        {/* ── Featured Slot Manager ── */}
+        <div className="mb-8 rounded-xl border border-amber-300/30 bg-amber-500/10 p-5">
+          <p className="text-amber-200 font-semibold mb-1">Featured Layout (Exactly 3)</p>
+          <p className="text-amber-100/70 text-xs mb-4">
+            Assign exactly three featured services. Only these can use Cinematic GIF mode.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {featuredSlots.map((slotService, slotIndex) => {
+              const filteredOptions = services.filter((candidate) =>
+                candidate.name.toLowerCase().includes(swapSearch.toLowerCase()),
+              );
+              return (
+                <div
+                  key={`featured-slot-${slotIndex}`}
+                  className="rounded-lg border border-white/15 bg-white/5 p-3"
+                >
+                  <p className="text-xs uppercase tracking-widest text-white/50 mb-2">
+                    Slot {slotIndex + 1}
+                  </p>
+                  {slotService ? (
+                    <>
+                      {slotService.image ? (
+                        <img
+                          src={slotService.image}
+                          alt={`${slotService.name} featured preview`}
+                          className="mb-2 h-24 w-full rounded-lg object-cover border border-white/10"
+                        />
+                      ) : (
+                        <div className="mb-2 h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
+                          No Media
+                        </div>
+                      )}
+                      <p className="text-sm font-semibold text-white truncate">{slotService.name}</p>
+                    </>
+                  ) : (
+                    <div className="mb-2 h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/40 text-xs uppercase tracking-widest">
+                      Empty Slot
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setActiveSwapSlot(slotIndex);
+                      setSwapSearch("");
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setActiveSwapSlot(slotIndex);
+                      setSwapSearch("");
+                    }}
+                    disabled={swappingSlot === slotIndex}
+                    className="mt-3 w-full rounded-lg px-3 py-2 min-h-[44px] text-xs font-semibold touch-manipulation bg-white/10 hover:bg-white/20 text-white transition disabled:opacity-60"
+                  >
+                    {swappingSlot === slotIndex ? "Swapping..." : "Swap Service"}
+                  </button>
+
+                  {activeSwapSlot === slotIndex && (
+                    <div className="mt-3 rounded-lg border border-white/15 bg-[#0b1624] p-3">
+                      <input
+                        value={swapSearch}
+                        onChange={(e) => setSwapSearch(e.target.value)}
+                        placeholder="Search services..."
+                        className="mb-2 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 min-h-[44px] text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                      />
+                      <div className="max-h-44 overflow-y-auto space-y-2">
+                        {filteredOptions.length > 0 ? (
+                          filteredOptions.map((candidate) => {
+                            const isAlreadyInOtherSlot =
+                              featuredIds.has(candidate.id) && candidate.id !== slotService?.id;
+                            return (
+                              <button
+                                key={candidate.id}
+                                onClick={() => handleSwapFeaturedSlot(slotIndex, candidate.id)}
+                                onTouchEnd={(e) => {
+                                  e.preventDefault();
+                                  handleSwapFeaturedSlot(slotIndex, candidate.id);
+                                }}
+                                disabled={isAlreadyInOtherSlot}
+                                className="w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-left text-sm text-white bg-white/5 hover:bg-white/15 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {candidate.name}
+                                {isAlreadyInOtherSlot ? " (Already Featured)" : ""}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <p className="text-xs text-white/40 px-1 py-2">No matching services.</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setActiveSwapSlot(null)}
+                        className="mt-2 w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-xs text-white/70 hover:text-white hover:bg-white/10 transition"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {featuredServices.length < 3 && (
+          <div className="mb-8 rounded-lg border border-amber-300/40 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-100">
+            Action Required: 3 Featured Services must be assigned to go live.
+          </div>
+        )}
+
         {/* ── Layout Preset Picker ── */}
         <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
           <p className="text-white font-semibold mb-1">Public Services Layout</p>
@@ -543,23 +1030,124 @@ export default function AdminServicesPage() {
         {loading ? (
           <p className="text-white/40 text-center py-20">Loading services...</p>
         ) : (
-          // ── Outer context: category ordering (vertical list, closestCenter) ──
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleCategoryDragEnd}
-          >
-            <SortableContext items={orderedCategories} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col gap-10">
-                {orderedCategories.map((cat) => (
-                  <SortableItem key={cat} id={cat}>
-                    {(catListeners, isCatDragging) => (
-                      // ── Category container — relative so the grip badge can be pinned ──
-                      <div
-                        className={`relative rounded-2xl border transition-all pt-12 px-5 pb-5 ${
-                          isCatDragging ? "opacity-40" : ""
-                        } border-white/10 bg-white/3`}
+          <>
+            {isCreating && (
+              <div className="mb-8 rounded-2xl border border-brand-accent/40 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-widest text-brand-accent mb-2">New Service</p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <input
+                    value={draftData.name}
+                    onChange={(e) => setDraftData((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder="Service Name"
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                  />
+                  <input
+                    value={draftData.category}
+                    onChange={(e) =>
+                      setDraftData((prev) => ({ ...prev, category: e.target.value }))
+                    }
+                    placeholder="Category"
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                  />
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={draftData.price}
+                    onChange={(e) => setDraftData((prev) => ({ ...prev, price: e.target.value }))}
+                    placeholder="Price"
+                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                  />
+                </div>
+
+                <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-white/70 text-xs uppercase tracking-widest">Upload Media</span>
+                    <label
+                      className={`cursor-pointer ${isUploadingDraftMedia ? "pointer-events-none" : ""}`}
+                    >
+                      <span
+                        className={`inline-flex items-center justify-center rounded-lg border border-brand-accent/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
+                          isUploadingDraftMedia
+                            ? "bg-brand-accent/10 text-brand-accent/60"
+                            : "bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/25"
+                        }`}
                       >
+                        {isUploadingDraftMedia ? "Uploading..." : "Upload Photo"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        disabled={isUploadingDraftMedia}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          handleDraftMediaUpload(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {draftData.image ? (
+                    <img
+                      src={draftData.image}
+                      alt="Draft service preview"
+                      className="h-24 w-full rounded-lg object-cover border border-white/10"
+                    />
+                  ) : (
+                    <div className="h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
+                      No Media Uploaded
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={handleCommitService}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleCommitService();
+                    }}
+                    disabled={isSavingDraft}
+                    className="rounded-lg bg-brand-accent px-4 py-2 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSavingDraft ? "Saving..." : "Save Service"}
+                  </button>
+                  <button
+                    onClick={handleCancelDraft}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleCancelDraft();
+                    }}
+                    disabled={isSavingDraft}
+                    className="rounded-lg bg-white/10 px-4 py-2 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Outer context: category ordering (vertical list, closestCenter) ── */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCategoryDragEnd}
+            >
+              <SortableContext items={orderedCategories} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col gap-10">
+                  {orderedCategories.map((cat) => (
+                    <SortableItem key={cat} id={cat}>
+                      {(catListeners, isCatDragging) => (
+                        // ── Category container — relative so the grip badge can be pinned ──
+                        <div
+                          className={`relative rounded-2xl border transition-all pt-12 px-5 pb-5 ${
+                            isCatDragging ? "opacity-40" : ""
+                          } border-white/10 bg-white/3`}
+                        >
                         {/*
                          * Category drag handle — pinned to top-left, visually separate
                          * from the per-service ⠿ grips below. touch-action:none is
@@ -590,9 +1178,10 @@ export default function AdminServicesPage() {
                                 e.preventDefault();
                                 handleAddService(cat);
                               }}
-                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                              disabled={isCreating}
+                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              + Add Service
+                              {isCreating ? "Draft Open" : "+ Add Service"}
                             </button>
                             {confirmDeleteCat === cat ? (
                               <>
@@ -658,13 +1247,14 @@ export default function AdminServicesPage() {
                             </div>
                           </SortableContext>
                         </DndContext>
-                      </div>
-                    )}
-                  </SortableItem>
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+                        </div>
+                      )}
+                    </SortableItem>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </>
         )}
       </div>
     </main>

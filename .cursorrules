@@ -16,3 +16,8 @@
 - Mobile-first approach.
 - No external CSS files. All styling via Tailwind classes.
 - Do not invent dependencies. Ask before running npm install.
+
+### Documentation & Commenting Mandate
+- EVERY functional component, hook, and utility must have a JSDoc block detailing its purpose, parameters, and execution context.
+- Leave explicit inline comments explaining complex state management, database interactions, and UI flows.
+- ALL `/admin` routes must be heavily commented to explain data-fetching, RLS assumptions, and error handling.
