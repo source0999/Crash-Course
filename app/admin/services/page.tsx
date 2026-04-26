@@ -48,9 +48,10 @@ type DraftServiceData = {
   price: string;
   image: string | null;
 };
+type FeaturedPairing = { serviceId: number | null; mediaUrl: string | null };
 type DbCategory = { id: number; name: string; sort_order?: number; created_at?: string };
 
-const MAX_MEDIA_BYTES = 1024 * 1024;
+const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
 const MAX_SERVICES_PER_CATEGORY = 5;
 const LELE_GIF_URL = "/lele.gif";
 const DEBUG_ENDPOINT = "http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413";
@@ -144,7 +145,7 @@ function CategoryModal({
     // WebKit silently (CLAUDE.md Rule #1). A semi-opaque solid overlay achieves
     // the same visual depth without triggering the Safari compositing bug.
     // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
-    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+    <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70">
       <div className="mx-4 w-full max-w-md rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
         <h2 className="mb-1 text-xl font-bold text-white">{title}</h2>
@@ -205,7 +206,7 @@ function PurgeServicesModal({
 }) {
   return (
     // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
-    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+    <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70">
       <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
         <h2 className="mb-2 text-xl font-bold text-white">Purge Services</h2>
@@ -247,8 +248,8 @@ function DeleteServiceDangerModal({
   isDeleting: boolean;
 }) {
   return (
-    // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
-    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+    // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
+    <div className="fixed inset-0 z-[100000] flex h-screen w-screen items-center justify-center bg-black/70">
       <div className="mx-4 w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#0f1e2e] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-red-300">Danger Zone</p>
         <h2 className="mb-2 text-xl font-bold text-white">Delete Service</h2>
@@ -286,8 +287,8 @@ function ActionRequiredModal({
   onClose: () => void;
 }) {
   return (
-    // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
-    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+    // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
+    <div className="fixed inset-0 z-[100000] flex h-screen w-screen items-center justify-center bg-black/70">
       <div className="mx-4 w-full max-w-lg rounded-2xl border border-amber-400/35 bg-[#0f1e2e] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-amber-300">Action Required</p>
         <p className="mb-6 text-base font-semibold text-white">{message}</p>
@@ -301,6 +302,152 @@ function ActionRequiredModal({
         >
           Understood
         </button>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedSlotModal({
+  slotNumber,
+  selectedServiceId,
+  selectedMediaUrl,
+  services,
+  featuredPairings,
+  mediaLibrary,
+  isSaving,
+  isUploadingMedia,
+  onSelectService,
+  onSelectMedia,
+  onUploadMedia,
+  onSave,
+  onCancel,
+}: {
+  slotNumber: number;
+  selectedServiceId: number | null;
+  selectedMediaUrl: string | null;
+  services: DbService[];
+  featuredPairings: FeaturedPairing[];
+  mediaLibrary: string[];
+  isSaving: boolean;
+  isUploadingMedia: boolean;
+  onSelectService: (serviceId: number | null) => void;
+  onSelectMedia: (mediaUrl: string | null) => void;
+  onUploadMedia: (file: File) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  // WHY: Filter before grouping so services already assigned to a different slot
+  // never appear in the dropdown — prevents React key collisions at the source
+  // rather than catching them reactively at save time.
+  const availableServices = services.filter(
+    (s) => !featuredPairings.some((p, idx) => p.serviceId === s.id && idx !== slotNumber - 1),
+  );
+  const groupedServices = availableServices.reduce<Record<string, DbService[]>>((acc, service) => {
+    if (!acc[service.category]) acc[service.category] = [];
+    acc[service.category].push(service);
+    return acc;
+  }, {});
+  const canSave = selectedServiceId !== null && Boolean(selectedMediaUrl);
+
+  return (
+    // WHY: Strict z-index hierarchy ensures errors are visible. Duplicate guards prevent React key collisions. Dynamic wiring fully integrates the DB-first cinematic media.
+    // WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering.
+    <div className="fixed inset-0 z-[95000] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f1e2e] p-6 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Featured Slot</p>
+        <h2 className="mb-4 text-xl font-bold text-white">Assign / Edit Slot {slotNumber}</h2>
+
+        <div className="space-y-3">
+          <div>
+            <p className="mb-1 text-xs uppercase tracking-widest text-white/50">Service</p>
+            <select
+              value={selectedServiceId ?? ""}
+              onChange={(e) => onSelectService(Number(e.target.value) || null)}
+              className="w-full rounded-lg border border-white/20 bg-[#0b1624] px-3 py-2 min-h-[44px] text-sm text-white focus:outline-none focus:border-brand-accent"
+            >
+              <option value="">Select Service</option>
+              {Object.entries(groupedServices).map(([categoryName, categoryServices]) => (
+                <optgroup key={`modal-${slotNumber}-${categoryName}`} label={categoryName}>
+                  {categoryServices.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs uppercase tracking-widest text-white/50">Cinematic Media</p>
+            <select
+              value={selectedMediaUrl ?? ""}
+              onChange={(e) => onSelectMedia(e.target.value || null)}
+              className="w-full rounded-lg border border-purple-400/30 bg-[#0b1624] px-3 py-2 min-h-[44px] text-sm text-white focus:outline-none focus:border-purple-300"
+            >
+              <option value="">Select from Preload Library</option>
+              {mediaLibrary.map((mediaUrl) => (
+                <option key={`modal-media-${mediaUrl}`} value={mediaUrl}>
+                  {mediaUrl.split("/").pop()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className={`block ${isUploadingMedia ? "pointer-events-none" : "cursor-pointer"}`}>
+            <span
+              className={`w-full inline-flex items-center justify-center rounded-lg border border-purple-400/40 px-3 py-2 min-h-[44px] text-xs font-semibold touch-manipulation transition ${
+                isUploadingMedia
+                  ? "bg-purple-500/10 text-purple-200/60"
+                  : "bg-purple-500/20 text-purple-200 hover:bg-purple-500/30"
+              }`}
+            >
+              {isUploadingMedia ? "Uploading..." : "Upload GIF/Video"}
+            </span>
+            <input
+              type="file"
+              accept="image/gif,video/mp4"
+              className="sr-only"
+              disabled={isUploadingMedia}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                onUploadMedia(file);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+        </div>
+
+        {!canSave && (
+          <p className="mt-3 text-xs text-amber-300/90">
+            Please select both a service and cinematic media to save.
+          </p>
+        )}
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onSave}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              if (canSave) onSave();
+            }}
+            disabled={!selectedServiceId || !selectedMediaUrl || isSaving}
+            className="flex-1 rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving..." : "Save Assignment"}
+          </button>
+          <button
+            onClick={onCancel}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onCancel();
+            }}
+            disabled={isSaving}
+            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -331,9 +478,18 @@ export default function AdminServicesPage() {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isUploadingDraftMedia, setIsUploadingDraftMedia] = useState(false);
   const [uploadedPhotoByService, setUploadedPhotoByService] = useState<Record<number, string>>({});
-  const [activeSwapSlot, setActiveSwapSlot] = useState<number | null>(null);
-  const [swapSearch, setSwapSearch] = useState("");
-  const [swappingSlot, setSwappingSlot] = useState<number | null>(null);
+  const [featuredPairings, setFeaturedPairings] = useState<FeaturedPairing[]>([
+    { serviceId: null, mediaUrl: null },
+    { serviceId: null, mediaUrl: null },
+    { serviceId: null, mediaUrl: null },
+  ]);
+  const [mediaLibrary, setMediaLibrary] = useState<string[]>([]);
+  const [isUploadingLibraryMedia, setIsUploadingLibraryMedia] = useState(false);
+  const [editingFeaturedSlotIndex, setEditingFeaturedSlotIndex] = useState<number | null>(null);
+  const [modalSelectedServiceId, setModalSelectedServiceId] = useState<number | null>(null);
+  const [modalSelectedMediaUrl, setModalSelectedMediaUrl] = useState<string | null>(null);
+  const [isSavingFeaturedAssignment, setIsSavingFeaturedAssignment] = useState(false);
+  const [isUploadingFeaturedModalMedia, setIsUploadingFeaturedModalMedia] = useState(false);
   // Tracks which newly-promoted featured service still needs a GIF/Video upload.
   // Cleared when that service successfully uploads media.
   const [pendingGifUploadId, setPendingGifUploadId] = useState<number | null>(null);
@@ -412,9 +568,11 @@ export default function AdminServicesPage() {
   }
 
   async function fetchConfig() {
-    const [layoutRes, orderRes] = await Promise.all([
+    const [layoutRes, orderRes, featuredRes, mediaLibraryRes] = await Promise.all([
       supabase.from("site_config").select("value").eq("key", "services_layout").single(),
       supabase.from("site_config").select("value").eq("key", "category_order").single(),
+      supabase.from("site_config").select("value").eq("key", "featured_services").single(),
+      supabase.from("site_config").select("value").eq("key", "media_library").single(),
     ]);
     if (layoutRes.data?.value) setLayout(layoutRes.data.value as Layout);
     if (orderRes.data?.value) {
@@ -438,6 +596,47 @@ export default function AdminServicesPage() {
         // #endregion
         setCategoryOrder(dedupedOrder);
       } catch {}
+    }
+    if (!featuredRes.data?.value) {
+      // WHY: Prevent stale UI state from showing 'Ghost' selections after a DB purge.
+      setFeaturedPairings([
+        { serviceId: null, mediaUrl: null },
+        { serviceId: null, mediaUrl: null },
+        { serviceId: null, mediaUrl: null },
+      ]);
+    } else {
+      try {
+        const parsedFeatured = JSON.parse(featuredRes.data.value) as
+          | Array<number | null>
+          | FeaturedPairing[];
+        const normalized: FeaturedPairing[] = [0, 1, 2].map((index) => {
+          const row = parsedFeatured[index];
+          if (typeof row === "number" || row === null) {
+            return { serviceId: row ?? null, mediaUrl: null };
+          }
+          return {
+            serviceId: row?.serviceId ?? null,
+            mediaUrl: row?.mediaUrl ?? null,
+          };
+        });
+        setFeaturedPairings(normalized);
+      } catch {
+        setFeaturedPairings([
+          { serviceId: null, mediaUrl: null },
+          { serviceId: null, mediaUrl: null },
+          { serviceId: null, mediaUrl: null },
+        ]);
+      }
+    }
+    if (!mediaLibraryRes.data?.value) {
+      setMediaLibrary([]);
+    } else {
+      try {
+        const parsedLibrary = JSON.parse(mediaLibraryRes.data.value) as string[];
+        setMediaLibrary(parsedLibrary.filter(Boolean));
+      } catch {
+        setMediaLibrary([]);
+      }
     }
   }
 
@@ -473,9 +672,14 @@ export default function AdminServicesPage() {
     });
     // #endregion
   }, [categoryOrder, categoryNames, dedupedOrderedCategories]);
-  const featuredServices = services.filter((s) => Boolean(s.is_premium)).slice(0, 3);
-  const featuredIds = new Set(featuredServices.map((s) => s.id));
-  const featuredSlots: Array<DbService | null> = [0, 1, 2].map((index) => featuredServices[index] ?? null);
+  const featuredIds = new Set(
+    featuredPairings
+      .map((pairing) => pairing.serviceId)
+      .filter((id): id is number => id !== null),
+  );
+  const featuredSlots: Array<DbService | null> = featuredPairings.map(
+    (pairing) => services.find((service) => service.id === pairing.serviceId) ?? null,
+  );
 
   function servicesInCategory(cat: string) {
     return services.filter((s) => s.category === cat);
@@ -535,90 +739,15 @@ export default function AdminServicesPage() {
     }
   }
 
-  function getDefaultStaticImage(service: DbService) {
-    const uploadedPhoto = uploadedPhotoByService[service.id];
-    if (uploadedPhoto) return uploadedPhoto;
-    if (
-      service.image &&
-      service.image !== LELE_GIF_URL &&
-      !/\.(gif|mp4|webm)(\?|$)/i.test(service.image)
-    ) {
-      return service.image;
-    }
-    return null;
+  async function upsertFeaturedPairings(nextPairings: FeaturedPairing[]) {
+    const { error } = await supabase.from("site_config").upsert({
+      key: "featured_services",
+      value: JSON.stringify(nextPairings),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
   }
 
-  async function handleSwapFeaturedSlot(slotIndex: number, incomingServiceId: number) {
-    const outgoingService = featuredSlots[slotIndex];
-    if (outgoingService?.id === incomingServiceId) {
-      setActiveSwapSlot(null);
-      return;
-    }
-
-    setSwappingSlot(slotIndex);
-    try {
-      const outgoingStaticImage = outgoingService ? getDefaultStaticImage(outgoingService) : null;
-
-      // Promote the incoming service. Reset media_type to 'image' — the admin
-      // must explicitly upload a GIF/Video to activate Cinematic Mode.
-      const updates = [
-        supabase
-          .from("services")
-          .update({ is_premium: true, media_type: "image" })
-          .eq("id", incomingServiceId),
-      ];
-
-      if (outgoingService) {
-        // Demote the outgoing service: revert its image to the last static photo
-        // and reset media_type to 'image' — GIF/Video is only valid while featured.
-        updates.push(
-          supabase
-            .from("services")
-            .update({ is_premium: false, image: outgoingStaticImage, media_type: "image" })
-            .eq("id", outgoingService.id),
-        );
-      }
-
-      const results = await Promise.all(updates);
-      const failed = results.find((result) => result.error);
-      if (failed?.error) {
-        throw new Error(failed.error.message);
-      }
-
-      setServices((prev) =>
-        prev.map((service) => {
-          if (service.id === incomingServiceId) {
-            return { ...service, is_premium: true, media_type: "image" as const };
-          }
-          if (outgoingService && service.id === outgoingService.id) {
-            return {
-              ...service,
-              is_premium: false,
-              image: outgoingStaticImage,
-              media_type: "image" as const,
-            };
-          }
-          return service;
-        }),
-      );
-
-      // Signal that this newly-featured service needs a GIF or Video uploaded
-      // before Cinematic Mode can be activated.
-      setPendingGifUploadId(incomingServiceId);
-      setFeedback({
-        type: "success",
-        msg: "Featured slot updated. Upload a GIF or Video in the service card to activate Cinematic Mode.",
-      });
-      setActiveSwapSlot(null);
-      setSwapSearch("");
-    } catch (err) {
-      console.error("[service-media:handleSwapFeaturedSlot]", err);
-      const message = err instanceof Error ? err.message : "Failed to swap featured slot.";
-      setFeedback({ type: "error", msg: message });
-    } finally {
-      setSwappingSlot(null);
-    }
-  }
 
   async function handleMediaUpload(service: DbService, file: File) {
     if (!file.type.startsWith("image/")) {
@@ -626,7 +755,7 @@ export default function AdminServicesPage() {
       return;
     }
 
-    if (!service.is_premium && file.type === "image/gif") {
+    if (!featuredIds.has(service.id) && file.type === "image/gif") {
       setFeedback({
         type: "error",
         msg: "GIF media is allowed only for featured services.",
@@ -635,7 +764,7 @@ export default function AdminServicesPage() {
     }
 
     if (file.size > MAX_MEDIA_BYTES) {
-      setFeedback({ type: "error", msg: "Please use an image under 1MB." });
+      setFeedback({ type: "error", msg: "File must be less than 5MB" });
       return;
     }
 
@@ -692,40 +821,160 @@ export default function AdminServicesPage() {
     }
   }
 
-  async function handleFeaturedMediaUpload(service: DbService, file: File) {
-    if (!file.type.startsWith("image/")) {
-      setFeedback({ type: "error", msg: "Please upload an image file." });
+  async function handleFeaturedMediaUpload(file: File) {
+    const isGif = file.type === "image/gif";
+    const isMp4 = file.type === "video/mp4";
+    if (!isGif && !isMp4) {
+      setFeedback({ type: "error", msg: "Please upload a GIF or MP4 file." });
       return;
     }
     if (file.size > MAX_MEDIA_BYTES) {
-      setFeedback({ type: "error", msg: "Please use media under 1MB." });
+      setFeedback({ type: "error", msg: "File must be less than 5MB" });
       return;
     }
 
-    setUploadingServiceId(service.id);
+    setIsUploadingFeaturedModalMedia(true);
     try {
-      // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+      // WHY: Preload Library decouples cinematic media from standard service data, allowing the barber to swap high-end visuals independently of the service list.
+      // WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering.
       const publicUrl = await uploadServiceMedia(file, supabase);
-      const { error } = await supabase
-        .from("services")
-        .update({ image: publicUrl, media_type: "gif" })
-        .eq("id", service.id);
-
+      const nextLibrary = [...new Set([...mediaLibrary, publicUrl])];
+      const { error } = await supabase.from("site_config").upsert({
+        key: "media_library",
+        value: JSON.stringify(nextLibrary),
+        updated_at: new Date().toISOString(),
+      });
       if (error) throw new Error(error.message);
-
-      setServices((prev) =>
-        prev.map((s) =>
-          s.id === service.id ? { ...s, image: publicUrl, media_type: "gif" as const } : s,
-        ),
-      );
-      setUploadedPhotoByService((prev) => ({ ...prev, [service.id]: publicUrl }));
-      setPendingGifUploadId(null);
-      setFeedback({ type: "success", msg: "High-Fidelity media uploaded." });
+      setModalSelectedMediaUrl(publicUrl);
+      await fetchConfig();
+      setFeedback({ type: "success", msg: "Cinematic media uploaded to library." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to upload high-fidelity media.";
       setFeedback({ type: "error", msg: message });
     } finally {
-      setUploadingServiceId(null);
+      setIsUploadingFeaturedModalMedia(false);
+    }
+  }
+
+  async function handleUploadLibraryMedia(file: File) {
+    const isGif = file.type === "image/gif";
+    const isMp4 = file.type === "video/mp4";
+    if (!isGif && !isMp4) {
+      setFeedback({ type: "error", msg: "Please upload a GIF or MP4 file." });
+      return;
+    }
+    if (file.size > MAX_MEDIA_BYTES) {
+      setFeedback({ type: "error", msg: "File must be less than 5MB" });
+      return;
+    }
+
+    setIsUploadingLibraryMedia(true);
+    try {
+      // WHY: Preload Library decouples cinematic media from standard service data, allowing the barber to swap high-end visuals independently of the service list.
+      const publicUrl = await uploadServiceMedia(file, supabase);
+      const nextLibrary = [...new Set([...mediaLibrary, publicUrl])];
+      const { error } = await supabase.from("site_config").upsert({
+        key: "media_library",
+        value: JSON.stringify(nextLibrary),
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw new Error(error.message);
+      await fetchConfig();
+      setFeedback({ type: "success", msg: "Added media to preload library." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to upload preload media.";
+      setFeedback({ type: "error", msg: message });
+    } finally {
+      setIsUploadingLibraryMedia(false);
+    }
+  }
+
+  async function handleDeleteLibraryMedia(mediaUrl: string) {
+    try {
+      const nextLibrary = mediaLibrary.filter((item) => item !== mediaUrl);
+      const { error } = await supabase.from("site_config").upsert({
+        key: "media_library",
+        value: JSON.stringify(nextLibrary),
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw new Error(error.message);
+
+      const nextPairings = featuredPairings.map((pairing) =>
+        pairing.mediaUrl === mediaUrl ? { ...pairing, mediaUrl: null } : pairing,
+      );
+      await upsertFeaturedPairings(nextPairings);
+      await fetchConfig();
+      setFeedback({ type: "success", msg: "Removed media from preload library." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete preload media.";
+      setFeedback({ type: "error", msg: message });
+    }
+  }
+
+  function handleOpenFeaturedSlotModal(slotIndex: number) {
+    const pairing = featuredPairings[slotIndex];
+    setEditingFeaturedSlotIndex(slotIndex);
+    setModalSelectedServiceId(pairing?.serviceId ?? null);
+    setModalSelectedMediaUrl(pairing?.mediaUrl ?? null);
+  }
+
+  function handleCloseFeaturedSlotModal() {
+    setEditingFeaturedSlotIndex(null);
+    setModalSelectedServiceId(null);
+    setModalSelectedMediaUrl(null);
+  }
+
+  async function handleSaveFeaturedSlotAssignment() {
+    if (editingFeaturedSlotIndex === null) return;
+    if (modalSelectedServiceId === null || !modalSelectedMediaUrl) return;
+    setIsSavingFeaturedAssignment(true);
+    try {
+      const nextPairings = [...featuredPairings];
+      const existingIndex = nextPairings.findIndex(
+        (pairing, index) =>
+          pairing.serviceId === modalSelectedServiceId && index !== editingFeaturedSlotIndex,
+      );
+      if (existingIndex !== -1) {
+        // WHY: Strict z-index hierarchy ensures errors are visible. Duplicate guards prevent React key collisions. Dynamic wiring fully integrates the DB-first cinematic media.
+        setFeedback({ type: "error", msg: "This service is already featured in another slot." });
+        return;
+      }
+      nextPairings[editingFeaturedSlotIndex] = {
+        serviceId: modalSelectedServiceId,
+        mediaUrl: modalSelectedMediaUrl,
+      };
+      // WHY: DB-First mutation flow ensures the UI never shows selections that don't exist in Supabase.
+      // WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering.
+      await upsertFeaturedPairings(nextPairings);
+      await fetchConfig();
+      handleCloseFeaturedSlotModal();
+      setFeedback({ type: "success", msg: "Featured slot saved." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save featured assignment.";
+      setFeedback({ type: "error", msg: message });
+    } finally {
+      setIsSavingFeaturedAssignment(false);
+    }
+  }
+
+  async function handleFeaturedDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const toSlotIndex = (id: UniqueIdentifier) =>
+      Number(String(id).replace("featured-slot-", ""));
+    const oldIndex = toSlotIndex(active.id);
+    const newIndex = toSlotIndex(over.id);
+    if (!Number.isFinite(oldIndex) || !Number.isFinite(newIndex)) return;
+
+    const reordered = arrayMove(featuredPairings, oldIndex, newIndex);
+    try {
+      // WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering.
+      await upsertFeaturedPairings(reordered);
+      await fetchConfig();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reorder featured slots.";
+      setFeedback({ type: "error", msg: message });
     }
   }
 
@@ -851,7 +1100,7 @@ export default function AdminServicesPage() {
       return;
     }
     if (file.size > MAX_MEDIA_BYTES) {
-      setFeedback({ type: "error", msg: "Please use an image under 1MB." });
+      setFeedback({ type: "error", msg: "File must be less than 5MB" });
       return;
     }
 
@@ -1301,7 +1550,15 @@ export default function AdminServicesPage() {
             <input
               autoFocus
               value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+              onChange={(e) => {
+                if (isPriceField) {
+                  // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
+                  const numericValue = e.target.value.replace(/[^0-9.]/g, "");
+                  setEditValue(numericValue);
+                  return;
+                }
+                setEditValue(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitEdit();
               }}
@@ -1420,7 +1677,7 @@ export default function AdminServicesPage() {
             </label>
           </div>
 
-          {service.is_premium ? (
+          {featuredIds.has(service.id) ? (
             <button
               onClick={() => handleToggleCinematicMode(service)}
               onTouchEnd={(e) => {
@@ -1528,6 +1785,23 @@ export default function AdminServicesPage() {
           onClose={() => setActionRequiredMessage(null)}
         />
       )}
+      {editingFeaturedSlotIndex !== null && (
+        <FeaturedSlotModal
+          slotNumber={editingFeaturedSlotIndex + 1}
+          selectedServiceId={modalSelectedServiceId}
+          selectedMediaUrl={modalSelectedMediaUrl}
+          services={services}
+          featuredPairings={featuredPairings}
+          mediaLibrary={mediaLibrary}
+          isSaving={isSavingFeaturedAssignment}
+          isUploadingMedia={isUploadingFeaturedModalMedia}
+          onSelectService={setModalSelectedServiceId}
+          onSelectMedia={setModalSelectedMediaUrl}
+          onUploadMedia={handleFeaturedMediaUpload}
+          onSave={handleSaveFeaturedSlotAssignment}
+          onCancel={handleCloseFeaturedSlotModal}
+        />
+      )}
       <div className="max-w-5xl mx-auto">
         {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
@@ -1543,7 +1817,8 @@ export default function AdminServicesPage() {
         {/* ── Feedback ── */}
         {feedback && (
           // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
-          <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center pointer-events-none px-4">
+          // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
+          <div className="fixed inset-0 z-[100000] flex h-screen w-screen items-center justify-center pointer-events-none px-4">
             <div
               className={`rounded-lg px-4 py-3 text-sm font-medium shadow-xl pointer-events-auto ${
                 feedback.type === "success"
@@ -1556,159 +1831,169 @@ export default function AdminServicesPage() {
           </div>
         )}
 
+        {/* ── Cinematic Preload Library ── */}
+        <div className="mb-8 rounded-xl border border-purple-300/30 bg-purple-500/10 p-5">
+          <p className="text-purple-200 font-semibold mb-1">Cinematic Preload Library</p>
+          <p className="text-purple-100/70 text-xs mb-4">
+            Upload reusable GIF/Video media and assign it independently to featured slots.
+          </p>
+          <label
+            className={`inline-block cursor-pointer ${
+              isUploadingLibraryMedia ? "pointer-events-none" : ""
+            }`}
+          >
+            <span
+              className={`inline-flex items-center justify-center rounded-lg border border-purple-400/40 px-4 py-2 min-h-[44px] text-xs font-semibold touch-manipulation transition ${
+                isUploadingLibraryMedia
+                  ? "bg-purple-500/10 text-purple-200/60"
+                  : "bg-purple-500/20 text-purple-200 hover:bg-purple-500/30"
+              }`}
+            >
+              {isUploadingLibraryMedia ? "Uploading..." : "Upload to Library"}
+            </span>
+            <input
+              type="file"
+              accept="image/gif,video/mp4"
+              className="sr-only"
+              disabled={isUploadingLibraryMedia}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                handleUploadLibraryMedia(file);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {mediaLibrary.length > 0 ? (
+              mediaLibrary.map((mediaUrl) => {
+                const isVideo = /\.mp4(\?|$)/i.test(mediaUrl);
+                return (
+                  <div
+                    key={mediaUrl}
+                    className="rounded-lg border border-white/15 bg-white/5 p-3"
+                  >
+                    {isVideo ? (
+                      <video
+                        src={mediaUrl}
+                        className="h-24 w-full rounded-lg border border-white/10 object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={mediaUrl}
+                        alt="Library cinematic preview"
+                        className="h-24 w-full rounded-lg border border-white/10 object-cover"
+                      />
+                    )}
+                    <button
+                      onClick={() => handleDeleteLibraryMedia(mediaUrl)}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        handleDeleteLibraryMedia(mediaUrl);
+                      }}
+                      className="mt-2 w-full rounded-lg bg-red-500/70 px-3 py-2 min-h-[44px] text-xs font-semibold text-white touch-manipulation transition hover:bg-red-500"
+                    >
+                      Delete from Library
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-xs text-white/40">No cinematic preloads uploaded yet.</p>
+            )}
+          </div>
+        </div>
+
         {/* ── Featured Slot Manager ── */}
         <div className="mb-8 rounded-xl border border-amber-300/30 bg-amber-500/10 p-5">
           <p className="text-amber-200 font-semibold mb-1">Featured Layout (Exactly 3)</p>
           <p className="text-amber-100/70 text-xs mb-4">
             Assign exactly three featured services. Only these can use Cinematic GIF mode.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {featuredSlots.map((slotService, slotIndex) => {
-              const filteredOptions = services.filter((candidate) =>
-                candidate.name.toLowerCase().includes(swapSearch.toLowerCase()),
-              );
-              const groupedOptions = filteredOptions.reduce<Record<string, DbService[]>>((acc, service) => {
-                if (!acc[service.category]) acc[service.category] = [];
-                acc[service.category].push(service);
-                return acc;
-              }, {});
-              return (
-                <div
-                  key={`featured-slot-${slotIndex}`}
-                  className="rounded-lg border border-white/15 bg-white/5 p-3"
-                >
-                  <p className="text-xs uppercase tracking-widest text-white/50 mb-2">
-                    Slot {slotIndex + 1}
-                  </p>
-                  {slotService ? (
-                    <>
-                      {slotService.image ? (
-                        <img
-                          src={slotService.image}
-                          alt={`${slotService.name} featured preview`}
-                          className="mb-2 h-24 w-full rounded-lg object-cover border border-white/10"
-                        />
-                      ) : (
-                        <div className="mb-2 h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
-                          No Media
-                        </div>
-                      )}
-                      <p className="text-sm font-semibold text-white truncate">{slotService.name}</p>
-                      {/* Shown after a swap until the admin uploads a GIF/Video for this service */}
-                      {pendingGifUploadId === slotService.id && (
-                        <div className="mt-2 rounded-lg border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200">
-                          Action required: Upload a GIF or Video in this service&apos;s card below to unlock Cinematic Mode.
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="mb-2 h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/40 text-xs uppercase tracking-widest">
-                      Empty Slot
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      setActiveSwapSlot(slotIndex);
-                      setSwapSearch("");
-                    }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      setActiveSwapSlot(slotIndex);
-                      setSwapSearch("");
-                    }}
-                    disabled={swappingSlot === slotIndex}
-                    className="mt-3 w-full rounded-lg px-3 py-2 min-h-[44px] text-xs font-semibold touch-manipulation bg-white/10 hover:bg-white/20 text-white transition disabled:opacity-60"
-                  >
-                    {swappingSlot === slotIndex ? "Swapping..." : "Swap Service"}
-                  </button>
-                  {slotService && (
-                    <label
-                      className={`mt-2 block cursor-pointer ${
-                        uploadingServiceId === slotService.id ? "pointer-events-none" : ""
-                      }`}
-                    >
-                      <span
-                        className={`w-full inline-flex items-center justify-center rounded-lg border border-purple-400/40 px-3 py-2 min-h-[44px] text-xs font-semibold touch-manipulation transition ${
-                          uploadingServiceId === slotService.id
-                            ? "bg-purple-500/10 text-purple-200/60"
-                            : "bg-purple-500/20 text-purple-200 hover:bg-purple-500/30"
+          {/* WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering. */}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFeaturedDragEnd}>
+            <SortableContext
+              items={[0, 1, 2].map((index) => `featured-slot-${index}`)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {featuredSlots.map((slotService, slotIndex) => (
+                  <SortableItem key={`featured-slot-${slotIndex}`} id={`featured-slot-${slotIndex}`}>
+                    {(slotListeners, isSlotDragging) => (
+                      <div
+                        className={`rounded-lg border border-white/15 bg-white/5 p-3 ${
+                          isSlotDragging ? "opacity-40" : ""
                         }`}
                       >
-                        {uploadingServiceId === slotService.id
-                          ? "Uploading..."
-                          : "High-Fidelity Media"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        disabled={uploadingServiceId === slotService.id}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          handleFeaturedMediaUpload(slotService, file);
-                          e.currentTarget.value = "";
-                        }}
-                      />
-                    </label>
-                  )}
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-xs uppercase tracking-widest text-white/50">
+                            Slot {slotIndex + 1}
+                          </p>
+                          <span
+                            {...slotListeners}
+                            style={{ touchAction: "none" }}
+                            className="rounded-md border border-white/15 bg-white/8 px-2 py-1 text-xs text-white/60 cursor-grab active:cursor-grabbing touch-manipulation"
+                          >
+                            ⠿
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-white truncate">
+                          {slotService ? slotService.name : "Empty"}
+                        </p>
+                        <p className="mt-1 text-xs text-white/45">
+                          {slotService
+                            ? `Status: Slot ${slotIndex + 1}: ${slotService.name}`
+                            : `Status: Slot ${slotIndex + 1}: Empty`}
+                        </p>
 
-                  {activeSwapSlot === slotIndex && (
-                    <div className="mt-3 rounded-lg border border-white/15 bg-[#0b1624] p-3">
-                      <input
-                        value={swapSearch}
-                        onChange={(e) => setSwapSearch(e.target.value)}
-                        placeholder="Search services..."
-                        className="mb-2 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 min-h-[44px] text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
-                      />
-                      <div className="max-h-44 overflow-y-auto space-y-2">
-                        {filteredOptions.length > 0 ? (
-                          Object.entries(groupedOptions).map(([categoryName, categoryServices]) => (
-                            <div key={`${slotIndex}-${categoryName}`} className="space-y-2">
-                              {/* WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation. */}
-                              <p className="px-1 pt-1 text-[11px] font-bold uppercase tracking-widest text-brand-accent/90">
-                                {categoryName}
-                              </p>
-                              {categoryServices.map((candidate) => {
-                                const isAlreadyInOtherSlot =
-                                  featuredIds.has(candidate.id) && candidate.id !== slotService?.id;
-                                return (
-                                  <button
-                                    key={candidate.id}
-                                    onClick={() => handleSwapFeaturedSlot(slotIndex, candidate.id)}
-                                    onTouchEnd={(e) => {
-                                      e.preventDefault();
-                                      handleSwapFeaturedSlot(slotIndex, candidate.id);
-                                    }}
-                                    disabled={isAlreadyInOtherSlot}
-                                    className="w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-left text-sm text-white bg-white/5 hover:bg-white/15 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                                  >
-                                    {candidate.name}
-                                    {isAlreadyInOtherSlot ? " (Already Featured)" : ""}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ))
+                        {featuredPairings[slotIndex]?.mediaUrl ? (
+                          /\.mp4(\?|$)/i.test(featuredPairings[slotIndex]?.mediaUrl ?? "") ? (
+                            <video
+                              src={featuredPairings[slotIndex]?.mediaUrl ?? ""}
+                              className="mt-2 h-24 w-full rounded-lg border border-white/10 object-cover"
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                            />
+                          ) : (
+                            <img
+                              src={featuredPairings[slotIndex]?.mediaUrl ?? ""}
+                              alt={`Slot ${slotIndex + 1} cinematic preview`}
+                              className="mt-2 h-24 w-full rounded-lg border border-white/10 object-cover"
+                            />
+                          )
                         ) : (
-                          <p className="text-xs text-white/40 px-1 py-2">No matching services.</p>
+                          <div className="mt-2 h-24 w-full rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center justify-center text-white/35 text-xs uppercase tracking-widest">
+                            No Cinematic Media
+                          </div>
                         )}
+
+                        <button
+                          onClick={() => handleOpenFeaturedSlotModal(slotIndex)}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            handleOpenFeaturedSlotModal(slotIndex);
+                          }}
+                          className="mt-3 w-full rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 min-h-[44px] text-xs font-semibold text-white touch-manipulation transition"
+                        >
+                          Assign / Edit Slot
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setActiveSwapSlot(null)}
-                        className="mt-2 w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-xs text-white/70 hover:text-white hover:bg-white/10 transition"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    )}
+                  </SortableItem>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
-        {featuredServices.length < 3 && (
+        {featuredIds.size < 3 && (
           <div className="mb-8 rounded-lg border border-amber-300/40 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-100">
             Action Required: 3 Featured Services must be assigned to go live.
           </div>
@@ -1779,7 +2064,7 @@ export default function AdminServicesPage() {
             )}
             {isCreating && (
               // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
-              <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
+              <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
                 <div className="w-full max-w-4xl rounded-2xl border border-brand-accent/40 bg-[#0f1e2e] p-4 shadow-2xl">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <input
@@ -1809,7 +2094,11 @@ export default function AdminServicesPage() {
                     min="0"
                     step="0.01"
                     value={draftData.price}
-                    onChange={(e) => setDraftData((prev) => ({ ...prev, price: e.target.value }))}
+                    onChange={(e) => {
+                      // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
+                      const numericValue = e.target.value.replace(/[^0-9.]/g, "");
+                      setDraftData((prev) => ({ ...prev, price: numericValue }));
+                    }}
                     placeholder="Price"
                     className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
                   />
