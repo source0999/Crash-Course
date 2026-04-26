@@ -95,6 +95,7 @@ public/images/services/barbergif1.gif
 public/images/services/facial.gif
 public/images/services/fade.gif
 README.md
+TODO.md
 tsconfig.json
 </directory_structure>
 
@@ -1703,483 +1704,6 @@ Blueprints captured before this date should be updated on next touch.
 - OTP 5-minute expiry must be noted in any flow where the user could be slow (mobile email apps)
 </file>
 
-<file path="claudeOutput.md">
--no we need to delte all preloaded data so i can start to load data manually thru new fixed upload services fixed keep categories but delte all services guesing were doig that i sqal command right?
-</file>
-
-<file path="curourOutput.md">
-<span>
- why is this button big af still
-
-<span>
- get rid of arrow
-
-give text more brather room
-
-make button smaller
-
-chane font of website looks boring
-
-Done — I applied all requested changes and tightened the button significantly.
-
-Button fixes (BookNowPill)
-Removed the arrow icon.
-Made it smaller and less bulky:
-px-3.5 py-1.5
-text-[11px]
-min-h-[40px]
-Gave text more breathing room without making it huge:
-tracking-[0.24em]
-small inner pad on label (px-1)
-Kept the pulse ring effect.
-Font overhaul (site aesthetic)
-I switched to a new premium pairing:
-
-Serif: Bodoni Moda (--font-serif)
-Sans: Manrope (--font-sans)
-Updated:
-
-app/layout.tsx font imports/config
-Homepage inline font-family references in app/page.tsx from:
-Cormorant Garamond → Bodoni Moda
-Montserrat → Manrope
-Note on font weights
-Bodoni Moda does not support 300 in Next’s Google font package.
-So I used the closest valid elegant range: 400, 500, 600, 700 (while Manrope keeps 300, 400, 500, 600).
-
-Validation
-Ran npx tsc --noEmit ✅ passes
-the button is same color as site background for masp sections adn map section bakground is too dark. I also noticed you too out the featured services section put that back in
-
-I’ll fix all three now: make the Book Now pill contrast against the map block, lighten the map section background, and restore the featured services section to the homepage flow.
-
-You’re right — I’ll fix all three together: increase contrast between CTA and map area, lighten the map block, and restore a visible featured-services section in the homepage flow.
-
-        style={{
-          background: "#0B132B",
-          color: "#F9F7F2",
-          background: "#7E9A7E",
-          color: "#0B132B",
-          fontFamily: "'Manrope', sans-serif",
-          className="absolute inset-0 rounded-full border animate-ping opacity-20"
-          style={{ borderColor: "#0B132B" }}
-          style={{ borderColor: "#7E9A7E" }}
-        />
-      className="relative z-20 px-6 py-24"
-      style={{ background: "#0B132B", color: "#F9F7F2" }}
-      style={{ background: "#14223D", color: "#F9F7F2" }}
-    >
-Fixed — all three points are now addressed in app/page.tsx.
-
-What I changed
-Book button contrast
-
-Changed CTA background from Ink to Sage (#7E9A7E) with dark text.
-Updated ping border to match Sage.
-This makes it stand out against dark map areas.
-Map block too dark
-
-Lightened the map section background from #0B132B to #14223D.
-Also updated the shared dark wrapper to #14223D for consistency.
-Featured services restored
-
-Added a new FeaturedServicesSection component.
-It uses the existing SERVICES data (first 3 entries) and renders a clean card row.
-Inserted it back into the home flow so it always appears below the active layout and above the map/footer block.
-Validation
-Ran npx tsc --noEmit ✅ passes.
-</file>
-
-<file path="gptEval.md">
-Alright, I’m going to treat this like I just reviewed your repo in a real senior-level code review.
-
-## **Current Grade: B+**
-
-You’re ahead of where most people are after a 7-day sprint, no question. But this is **“high-performing junior / early mid-level energy”**, not quite senior yet. The gap isn’t effort or direction, it’s **depth, consistency, and system thinking under pressure**.
-
----
-
-# **Top 3 Wins**
-
-### **1. You’re Building Real Systems, Not Tutorials**
-
-Most people stay stuck in “Phase 1 forever.” You jumped into:
-
-* Next.js App Router
-* Supabase
-* Auth flows
-* Mobile UX edge cases
-
-That alone puts you ahead of like 80% of devs trying to “break into AI.”
-
-**What this signals:**
-You’re thinking in **products**, not just code snippets.
-
----
-
-### **2. You’re Thinking About Edge Cases (Rare at Your Stage)**
-
-The fact you even touched:
-
-* PKCE auth flows
-* iOS touch quirks with `@dnd-kit`
-* Environment-aware redirects
-
-That’s not beginner thinking. That’s:
-
-> “How does this break in the real world?”
-
-**That mindset is senior-adjacent. Keep that.**
-
----
-
-### **3. The _Blueprints Strategy Is Actually Smart**
-
-This is the most “future architect” move you’ve made.
-
-Your `_blueprints/` idea =
-
-> internal pattern library + reusable IP + future agency leverage
-
-For a solo dev, this is huge:
-
-* Speeds up future builds
-* Standardizes decisions
-* Reduces cognitive load
-* Becomes sellable knowledge later
-
-**Strategic Rating: A**
-
-But execution matters more than the idea (more on that below).
-
----
-
-# **Top 3 Blind Spots (This Is Where I’d Push You Hard)**
-
-### **1. You’re Implementing Systems You Don’t Fully Understand Yet**
-
-This is the biggest one.
-
-Things like:
-
-* Supabase RLS
-* PKCE auth
-* Service role vs client role
-* Secure data fetching
-
-You likely *got them working*, but I’d bet:
-
-* You couldn’t confidently explain every security boundary
-* You don’t fully trust your own implementation yet
-
-**This will bite you in production. Hard.**
-
-Example failure mode:
-
-> “It works locally” → accidentally exposing data across users
-
----
-
-### **2. Error Handling Is Probably Surface-Level**
-
-Based on your roadmap + typical patterns at this stage:
-
-You’re likely doing:
-
-```js
-try {
-  // logic
-} catch (err) {
-  console.error(err)
-}
-```
-
-That’s not production-grade.
-
-What’s missing:
-
-* Structured error types
-* User-facing error states
-* Logging strategy (not just console)
-* Retry logic / fallbacks
-
-**Senior thinking is:**
-
-> “What happens when this fails at 2am on a customer’s phone?”
-
----
-
-### **3. Architecture Is Emerging, But Not Yet Intentional**
-
-Right now your app likely works, but:
-
-* Data fetching logic is probably scattered
-* Auth logic may be duplicated
-* Components might be tightly coupled to data sources
-
-This is normal at your stage.
-
-But senior-level architecture means:
-
-* Clear boundaries (UI vs data vs services)
-* Predictable patterns everywhere
-* Easy to extend without rewriting
-
-Right now you’re still in:
-
-> “Get it working” mode
-> Not yet:
-> “Make it scalable and boring”
-
----
-
-# **Targeted Evaluation of Your Key Areas**
-
-## **Authentication (Magic Link + PKCE)**
-
-**Rating: B**
-
-You picked a **modern and correct approach**, which is great.
-
-But the real question:
-
-* Do you understand **why PKCE exists**, or just followed docs?
-
-What I’d look for:
-
-* Clear separation of client vs server responsibilities
-* Secure handling of tokens
-* No leakage of sensitive keys
-* Clean redirect handling across environments
-
-**Likely issue:** works, but fragile.
-
----
-
-## **UX / Mobile (dnd-kit + TouchSensor)**
-
-**Rating: B+ to A-**
-
-This is one of your strongest areas.
-
-Most devs ignore mobile edge cases completely.
-
-If you actually tuned:
-
-* activation constraints
-* touch delays
-* scroll conflicts
-
-That’s legit real-world UX engineering.
-
----
-
-## **Data Integrity (Supabase + RLS)**
-
-**Rating: B- (high risk area)**
-
-This is where I’d slow you down.
-
-RLS is not something you “kind of get.”
-
-You either:
-
-* fully understand it
-  or
-* accidentally expose your database
-
-Questions you should be able to answer confidently:
-
-* What queries are blocked and why?
-* What happens if someone hits your API directly?
-* Are policies user-scoped or overly permissive?
-
-If you hesitate here, this is your biggest gap.
-
----
-
-## **Blueprint System (_blueprints/)**
-
-**Rating: A (strategy), B (execution risk)**
-
-Great idea, but here’s the trap:
-
-If your understanding is shallow, your blueprints will encode **bad patterns at scale**.
-
-That’s dangerous.
-
-Blueprints should only store:
-
-* things you deeply understand
-* patterns you’ve tested multiple times
-
-Otherwise you’re just:
-
-> automating your own mistakes
-
----
-
-# **Code Quality (Brutal Section)**
-
-### **JSDoc**
-
-Likely:
-
-* inconsistent
-* more descriptive than useful
-
-Senior-level JSDoc:
-
-* explains *why*, not just *what*
-* defines contracts, not restates code
-
----
-
-### **Error Handling**
-
-Weakest area.
-
-Missing:
-
-* domain-specific errors
-* UX fallback states
-* centralized handling
-
-Right now it’s probably:
-
-> “Don’t crash”
-
-It needs to become:
-
-> “Fail gracefully and predictably”
-
----
-
-### **Tailwind v4**
-
-Probably solid visually, but I’d check:
-
-* Are you using consistent spacing tokens?
-* Or just throwing classes until it looks right?
-
-Smell to watch for:
-
-```html
-class="mt-3 mb-2 px-4 py-1 text-sm flex items-center justify-between"
-```
-
-That’s not scalable design.
-
----
-
-# **The Real Diagnosis**
-
-You are:
-
-> **Moving at elite speed**
-
-But:
-
-> **Depth is lagging slightly behind velocity**
-
-That’s normal. But if you don’t correct it, you’ll plateau.
-
----
-
-# **Next Level Advice (The One Move That Changes Everything)**
-
-## **Build a “System Layer” (This Is Your Senior Leap)**
-
-Right now your app is probably:
-
-> UI ↔ Supabase directly
-
-You need to introduce:
-
-> **A Service Layer (API abstraction)**
-
-### What this looks like:
-
-Instead of:
-
-```js
-const { data } = await supabase.from('services').select('*')
-```
-
-You create:
-
-```js
-// services/serviceService.ts
-export async function getServices(userId) {
-  // validation
-  // auth checks
-  // query
-  // error handling
-  // return clean data
-}
-```
-
-Then your UI calls:
-
-```js
-const services = await getServices(user.id)
-```
-
----
-
-### Why this is the senior move:
-
-It gives you:
-
-* Centralized logic
-* Safer data access
-* Easier testing
-* Reusable patterns
-* Clean separation of concerns
-
-And most importantly:
-
-> It forces you to actually understand your system
-
----
-
-# **If I Were Guiding You Next Week**
-
-Focus ONLY on this:
-
-### 1. Audit your Supabase + RLS deeply
-
-* Understand every policy
-* Break your own app intentionally
-
-### 2. Introduce a service layer
-
-* No direct DB calls from UI
-
-### 3. Harden error handling
-
-* Define real failure states
-* Show them in UI
-
----
-
-# **Final Take**
-
-You’re not “behind.”
-
-You’re actually:
-
-> **ahead but slightly unstable**
-
-Which is the best place to be.
-
-Now your job is:
-
-> turn speed into structure
-
-Do that, and you’ll jump from B+ to A very quickly.
-</file>
-
 <file path=".claude/settings.local.json">
 {
   "permissions": {
@@ -2188,27 +1712,6 @@ Do that, and you’ll jump from B+ to A very quickly.
     ]
   }
 }
-</file>
-
-<file path=".cursorrules">
-# Project Architecture & Workflow Rules
-
-## Coding Standards
-- Break features into the smallest possible modular components. Never write monolithic files.
-- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
-- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
-- Build robust error handling on every feature. Fail gracefully.
-
-## Workflow Automation (CRITICAL)
-- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
-- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
-- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
-
-## Tech Stack Constraints
-- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
-- Mobile-first approach.
-- No external CSS files. All styling via Tailwind classes.
-- Do not invent dependencies. Ask before running npm install.
 </file>
 
 <file path="app/admin/callback/route.ts">
@@ -2350,6 +1853,10 @@ export default async function AdminDashboard() {
 }
 </file>
 
+<file path="claudeOutput.md">
+-no we need to delte all preloaded data so i can start to load data manually thru new fixed upload services fixed keep categories but delte all services guesing were doig that i sqal command right?
+</file>
+
 <file path="components/Eruda.tsx">
 "use client";
 
@@ -2478,6 +1985,89 @@ export default function Eruda() {
 - **TypeScript intro:** "TypeScript in 100 Seconds" — Fireship
 - **Docker intro:** "you need to learn Docker RIGHT NOW" — NetworkChuck
 - **Linux basics:** "Linux Commands for Beginners" — LearnLinuxTV
+</file>
+
+<file path="curourOutput.md">
+<span>
+ why is this button big af still
+
+<span>
+ get rid of arrow
+
+give text more brather room
+
+make button smaller
+
+chane font of website looks boring
+
+Done — I applied all requested changes and tightened the button significantly.
+
+Button fixes (BookNowPill)
+Removed the arrow icon.
+Made it smaller and less bulky:
+px-3.5 py-1.5
+text-[11px]
+min-h-[40px]
+Gave text more breathing room without making it huge:
+tracking-[0.24em]
+small inner pad on label (px-1)
+Kept the pulse ring effect.
+Font overhaul (site aesthetic)
+I switched to a new premium pairing:
+
+Serif: Bodoni Moda (--font-serif)
+Sans: Manrope (--font-sans)
+Updated:
+
+app/layout.tsx font imports/config
+Homepage inline font-family references in app/page.tsx from:
+Cormorant Garamond → Bodoni Moda
+Montserrat → Manrope
+Note on font weights
+Bodoni Moda does not support 300 in Next’s Google font package.
+So I used the closest valid elegant range: 400, 500, 600, 700 (while Manrope keeps 300, 400, 500, 600).
+
+Validation
+Ran npx tsc --noEmit ✅ passes
+the button is same color as site background for masp sections adn map section bakground is too dark. I also noticed you too out the featured services section put that back in
+
+I’ll fix all three now: make the Book Now pill contrast against the map block, lighten the map section background, and restore the featured services section to the homepage flow.
+
+You’re right — I’ll fix all three together: increase contrast between CTA and map area, lighten the map block, and restore a visible featured-services section in the homepage flow.
+
+        style={{
+          background: "#0B132B",
+          color: "#F9F7F2",
+          background: "#7E9A7E",
+          color: "#0B132B",
+          fontFamily: "'Manrope', sans-serif",
+          className="absolute inset-0 rounded-full border animate-ping opacity-20"
+          style={{ borderColor: "#0B132B" }}
+          style={{ borderColor: "#7E9A7E" }}
+        />
+      className="relative z-20 px-6 py-24"
+      style={{ background: "#0B132B", color: "#F9F7F2" }}
+      style={{ background: "#14223D", color: "#F9F7F2" }}
+    >
+Fixed — all three points are now addressed in app/page.tsx.
+
+What I changed
+Book button contrast
+
+Changed CTA background from Ink to Sage (#7E9A7E) with dark text.
+Updated ping border to match Sage.
+This makes it stand out against dark map areas.
+Map block too dark
+
+Lightened the map section background from #0B132B to #14223D.
+Also updated the shared dark wrapper to #14223D for consistency.
+Featured services restored
+
+Added a new FeaturedServicesSection component.
+It uses the existing SERVICES data (first 3 entries) and renders a clean card row.
+Inserted it back into the home flow so it always appears below the active layout and above the map/footer block.
+Validation
+Ran npx tsc --noEmit ✅ passes.
 </file>
 
 <file path="eslint.config.mjs">
@@ -6550,6 +6140,396 @@ http://localhost:3000/admin/callback
 When you open the new chat, paste the contents of CLAUDE_HANDOFF.md as your first message. The next Claude will have everything it needs to continue without re-explaining the whole project. Good work today — you went from zero to a live deployed site with a real database in one session.
 </file>
 
+<file path="gptEval.md">
+Alright, I’m going to treat this like I just reviewed your repo in a real senior-level code review.
+
+## **Current Grade: B+**
+
+You’re ahead of where most people are after a 7-day sprint, no question. But this is **“high-performing junior / early mid-level energy”**, not quite senior yet. The gap isn’t effort or direction, it’s **depth, consistency, and system thinking under pressure**.
+
+---
+
+# **Top 3 Wins**
+
+### **1. You’re Building Real Systems, Not Tutorials**
+
+Most people stay stuck in “Phase 1 forever.” You jumped into:
+
+* Next.js App Router
+* Supabase
+* Auth flows
+* Mobile UX edge cases
+
+That alone puts you ahead of like 80% of devs trying to “break into AI.”
+
+**What this signals:**
+You’re thinking in **products**, not just code snippets.
+
+---
+
+### **2. You’re Thinking About Edge Cases (Rare at Your Stage)**
+
+The fact you even touched:
+
+* PKCE auth flows
+* iOS touch quirks with `@dnd-kit`
+* Environment-aware redirects
+
+That’s not beginner thinking. That’s:
+
+> “How does this break in the real world?”
+
+**That mindset is senior-adjacent. Keep that.**
+
+---
+
+### **3. The _Blueprints Strategy Is Actually Smart**
+
+This is the most “future architect” move you’ve made.
+
+Your `_blueprints/` idea =
+
+> internal pattern library + reusable IP + future agency leverage
+
+For a solo dev, this is huge:
+
+* Speeds up future builds
+* Standardizes decisions
+* Reduces cognitive load
+* Becomes sellable knowledge later
+
+**Strategic Rating: A**
+
+But execution matters more than the idea (more on that below).
+
+---
+
+# **Top 3 Blind Spots (This Is Where I’d Push You Hard)**
+
+### **1. You’re Implementing Systems You Don’t Fully Understand Yet**
+
+This is the biggest one.
+
+Things like:
+
+* Supabase RLS
+* PKCE auth
+* Service role vs client role
+* Secure data fetching
+
+You likely *got them working*, but I’d bet:
+
+* You couldn’t confidently explain every security boundary
+* You don’t fully trust your own implementation yet
+
+**This will bite you in production. Hard.**
+
+Example failure mode:
+
+> “It works locally” → accidentally exposing data across users
+
+---
+
+### **2. Error Handling Is Probably Surface-Level**
+
+Based on your roadmap + typical patterns at this stage:
+
+You’re likely doing:
+
+```js
+try {
+  // logic
+} catch (err) {
+  console.error(err)
+}
+```
+
+That’s not production-grade.
+
+What’s missing:
+
+* Structured error types
+* User-facing error states
+* Logging strategy (not just console)
+* Retry logic / fallbacks
+
+**Senior thinking is:**
+
+> “What happens when this fails at 2am on a customer’s phone?”
+
+---
+
+### **3. Architecture Is Emerging, But Not Yet Intentional**
+
+Right now your app likely works, but:
+
+* Data fetching logic is probably scattered
+* Auth logic may be duplicated
+* Components might be tightly coupled to data sources
+
+This is normal at your stage.
+
+But senior-level architecture means:
+
+* Clear boundaries (UI vs data vs services)
+* Predictable patterns everywhere
+* Easy to extend without rewriting
+
+Right now you’re still in:
+
+> “Get it working” mode
+> Not yet:
+> “Make it scalable and boring”
+
+---
+
+# **Targeted Evaluation of Your Key Areas**
+
+## **Authentication (Magic Link + PKCE)**
+
+**Rating: B**
+
+You picked a **modern and correct approach**, which is great.
+
+But the real question:
+
+* Do you understand **why PKCE exists**, or just followed docs?
+
+What I’d look for:
+
+* Clear separation of client vs server responsibilities
+* Secure handling of tokens
+* No leakage of sensitive keys
+* Clean redirect handling across environments
+
+**Likely issue:** works, but fragile.
+
+---
+
+## **UX / Mobile (dnd-kit + TouchSensor)**
+
+**Rating: B+ to A-**
+
+This is one of your strongest areas.
+
+Most devs ignore mobile edge cases completely.
+
+If you actually tuned:
+
+* activation constraints
+* touch delays
+* scroll conflicts
+
+That’s legit real-world UX engineering.
+
+---
+
+## **Data Integrity (Supabase + RLS)**
+
+**Rating: B- (high risk area)**
+
+This is where I’d slow you down.
+
+RLS is not something you “kind of get.”
+
+You either:
+
+* fully understand it
+  or
+* accidentally expose your database
+
+Questions you should be able to answer confidently:
+
+* What queries are blocked and why?
+* What happens if someone hits your API directly?
+* Are policies user-scoped or overly permissive?
+
+If you hesitate here, this is your biggest gap.
+
+---
+
+## **Blueprint System (_blueprints/)**
+
+**Rating: A (strategy), B (execution risk)**
+
+Great idea, but here’s the trap:
+
+If your understanding is shallow, your blueprints will encode **bad patterns at scale**.
+
+That’s dangerous.
+
+Blueprints should only store:
+
+* things you deeply understand
+* patterns you’ve tested multiple times
+
+Otherwise you’re just:
+
+> automating your own mistakes
+
+---
+
+# **Code Quality (Brutal Section)**
+
+### **JSDoc**
+
+Likely:
+
+* inconsistent
+* more descriptive than useful
+
+Senior-level JSDoc:
+
+* explains *why*, not just *what*
+* defines contracts, not restates code
+
+---
+
+### **Error Handling**
+
+Weakest area.
+
+Missing:
+
+* domain-specific errors
+* UX fallback states
+* centralized handling
+
+Right now it’s probably:
+
+> “Don’t crash”
+
+It needs to become:
+
+> “Fail gracefully and predictably”
+
+---
+
+### **Tailwind v4**
+
+Probably solid visually, but I’d check:
+
+* Are you using consistent spacing tokens?
+* Or just throwing classes until it looks right?
+
+Smell to watch for:
+
+```html
+class="mt-3 mb-2 px-4 py-1 text-sm flex items-center justify-between"
+```
+
+That’s not scalable design.
+
+---
+
+# **The Real Diagnosis**
+
+You are:
+
+> **Moving at elite speed**
+
+But:
+
+> **Depth is lagging slightly behind velocity**
+
+That’s normal. But if you don’t correct it, you’ll plateau.
+
+---
+
+# **Next Level Advice (The One Move That Changes Everything)**
+
+## **Build a “System Layer” (This Is Your Senior Leap)**
+
+Right now your app is probably:
+
+> UI ↔ Supabase directly
+
+You need to introduce:
+
+> **A Service Layer (API abstraction)**
+
+### What this looks like:
+
+Instead of:
+
+```js
+const { data } = await supabase.from('services').select('*')
+```
+
+You create:
+
+```js
+// services/serviceService.ts
+export async function getServices(userId) {
+  // validation
+  // auth checks
+  // query
+  // error handling
+  // return clean data
+}
+```
+
+Then your UI calls:
+
+```js
+const services = await getServices(user.id)
+```
+
+---
+
+### Why this is the senior move:
+
+It gives you:
+
+* Centralized logic
+* Safer data access
+* Easier testing
+* Reusable patterns
+* Clean separation of concerns
+
+And most importantly:
+
+> It forces you to actually understand your system
+
+---
+
+# **If I Were Guiding You Next Week**
+
+Focus ONLY on this:
+
+### 1. Audit your Supabase + RLS deeply
+
+* Understand every policy
+* Break your own app intentionally
+
+### 2. Introduce a service layer
+
+* No direct DB calls from UI
+
+### 3. Harden error handling
+
+* Define real failure states
+* Show them in UI
+
+---
+
+# **Final Take**
+
+You’re not “behind.”
+
+You’re actually:
+
+> **ahead but slightly unstable**
+
+Which is the best place to be.
+
+Now your job is:
+
+> turn speed into structure
+
+Do that, and you’ll jump from B+ to A very quickly.
+</file>
+
 <file path="lib/services.ts">
 // ─────────────────────────────────────────
 // SECTION: Service Data Contract
@@ -6663,6 +6643,26 @@ const config = {
 export default config;
 </file>
 
+<file path="TODO.md">
+# Fades & Facials 2.0 - Active Backlog & Bug Tracker
+
+## 🐛 High Priority Bugs (Next Session)
+- [ ] **Fix Draft Card Image Upload State:** - *Issue:* Selecting an image doesn't update the UI preview in the "Add Service" draft card.
+  - *Fix:* Ensure `uploadServiceMedia` response is bound to `setDraftData(prev => ({ ...prev, image: url }))`. Add verbose toast error handling.
+- [ ] **Category Combobox Implementation:** - *Issue:* Category input is a blind text field.
+  - *Fix:* Fetch distinct categories from Supabase on mount. Implement a UI that allows selecting an existing category from a dropdown OR typing a new one.
+
+## 🏗️ Technical Debt & Architecture
+- [ ] **Enforce Admin Route Comments:** - *Issue:* `/admin/services` is lacking JSDoc and inline logic comments.
+  - *Fix:* Run a documentation audit via Cursor Composer specifically on the admin routes.
+- [ ] **Update `.cursorrules`:** - *Fix:* Add explicit instructions that all new frontend logic must include JSDoc, Error Boundaries, and `try/catch` documentation.
+
+## 🎨 UI/UX Polish (Pending)
+- [ ] Execute the "Moody Luxury" color overhaul (Bone/Antique White backgrounds).
+- [ ] Change "Book Now" button color to muted Olive/Slate.
+- [ ] Ensure Google Maps iframe uses a lighter/softer blue dark-mode filter.
+</file>
+
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -6698,6 +6698,32 @@ export default config;
   ],
   "exclude": ["node_modules"]
 }
+</file>
+
+<file path=".cursorrules">
+# Project Architecture & Workflow Rules
+
+## Coding Standards
+- Break features into the smallest possible modular components. Never write monolithic files.
+- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
+- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
+- Build robust error handling on every feature. Fail gracefully.
+
+## Workflow Automation (CRITICAL)
+- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
+- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
+- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+
+## Tech Stack Constraints
+- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
+- Mobile-first approach.
+- No external CSS files. All styling via Tailwind classes.
+- Do not invent dependencies. Ask before running npm install.
+
+### Documentation & Commenting Mandate
+- EVERY functional component, hook, and utility must have a JSDoc block detailing its purpose, parameters, and execution context.
+- Leave explicit inline comments explaining complex state management, database interactions, and UI flows.
+- ALL `/admin` routes must be heavily commented to explain data-fetching, RLS assumptions, and error handling.
 </file>
 
 <file path=".gitignore">
@@ -8174,6 +8200,135 @@ export default function AdminGalleryPage() {
       </div>
     </main>
   );
+}
+</file>
+
+<file path="components/Navbar.tsx">
+"use client"
+
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+
+export default function Navbar() {
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Scroll on documentElement + body as scroll container
+  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
+  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    const getScrollY = (): number =>
+      window.scrollY ??
+      window.pageYOffset ??
+      document.documentElement.scrollTop ??
+      document.body.scrollTop ??
+      0
+
+    const handleScroll = () => {
+      const y = getScrollY()
+      setScrolled(y > 80)
+    }
+
+    // iOS Safari fires scroll on documentElement, not window
+    // All four targets are registered to cover every browser
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    document.addEventListener("scroll", handleScroll, { passive: true })
+    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
+    document.body.addEventListener("scroll", handleScroll, { passive: true })
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      document.removeEventListener("scroll", handleScroll)
+      document.documentElement.removeEventListener("scroll", handleScroll)
+      document.body.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Scrolled bar background (no backdrop-blur)
+  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
+  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
+  // ─────────────────────────────────────────
+
+  // ─────────────────────────────────────────
+  // iOS FIX: Hamburger touch target
+  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
+  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
+  // ─────────────────────────────────────────
+  const mobileMenuButton = (
+    <button
+      type="button"
+      aria-label={menuOpen ? "Close menu" : "Open menu"}
+      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
+      onClick={() => setMenuOpen((prev) => !prev)}
+      onTouchEnd={(e) => {
+        e.preventDefault()
+        setMenuOpen((prev) => !prev)
+      }}
+    >
+      <span className="text-2xl text-white select-none">
+        {menuOpen ? "✕" : "☰"}
+      </span>
+    </button>
+  )
+
+  return (
+    <nav
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+      }}
+      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 will-change-transform ${
+        scrolled
+          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
+          : isHomePage
+            ? "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25"
+            : "pt-4 mx-0 bg-[#1e3a5f] pb-4"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        
+        {/* Logo */}
+        <Link href="/">
+          <Image
+            src="/images/logo.png"
+            alt="Fades & Facials"
+            quality={100}
+            width={50}
+            height={30}
+          />
+        </Link>
+
+        {/* Desktop links — hidden on mobile */}
+        <div className="hidden md:flex gap-8">
+          <Link href="/" className="text-white">Home</Link>
+          <Link href="/services" className="text-white">Services</Link>
+          <Link href="/gallery" className="text-white">Gallery</Link>
+          <Link href="/booking" className="text-white">Book Now</Link>
+        </div>
+
+        {/* Hamburger — visible on mobile only */}
+        {mobileMenuButton}
+      </div>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="flex flex-col gap-4 mt-4 md:hidden">
+          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
+          <Link href="/gallery" className="text-white" onClick={() => setMenuOpen(false)}>Gallery</Link>
+          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+        </div>
+      )}
+    </nav>
+  )
 }
 </file>
 
@@ -10389,132 +10544,141 @@ export default function HomePage() {
 }
 </file>
 
-<file path="components/Navbar.tsx">
-"use client"
+<file path="app/admin/page.tsx">
+"use client";
 
-import { useEffect, useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+// ─────────────────────────────────────────
+// SECTION: Admin Login Page
+// WHAT: Magic link email form — sends OTP via Supabase Auth.
+// WHY: Password-free auth. Barber enters email, clicks link, session is created.
+// PHASE 4: No changes needed — already wired to Supabase Auth.
+// ─────────────────────────────────────────
+import { Suspense, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+// Shared URL resolver (prod domain -> preview URL -> localhost fallback).
+import { getURL } from "@/lib/url";
 
-export default function Navbar() {
-  const pathname = usePathname()
-  const isHomePage = pathname === "/"
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+function AdminLoginForm() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
 
-  // ─────────────────────────────────────────
-  // iOS FIX: Scroll on documentElement + body as scroll container
-  // CAUSE: iOS Safari often does not fire scroll on window/document; use documentElement/body scrollTop.
-  // FIX: getScrollY + listeners on window, document, documentElement, and body (globals.css overflow-y).
-  // ─────────────────────────────────────────
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  // Simple resend cooldown timer (1s tick) to prevent rapid OTP requests.
   useEffect(() => {
-    const getScrollY = (): number =>
-      window.scrollY ??
-      window.pageYOffset ??
-      document.documentElement.scrollTop ??
-      document.body.scrollTop ??
-      0
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
-    const handleScroll = () => {
-      const y = getScrollY()
-      setScrolled(y > 80)
+  async function handleSubmit() {
+    // Guard empty input and disabled resend window.
+    if (!email.trim() || cooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    setSent(false);
+
+    // Supabase magic-link login; callback URL must match allowed redirect URLs.
+// Inside your handleLogin function in app/admin/page.tsx
+const { error } = await supabase.auth.signInWithOtp({
+  email,
+  options: {
+    // This dynamically picks up the current URL (localhost, preview, or production)
+    emailRedirectTo: `${window.location.origin}/admin/callback`,
+  },
+})
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
     }
 
-    // iOS Safari fires scroll on documentElement, not window
-    // All four targets are registered to cover every browser
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    document.addEventListener("scroll", handleScroll, { passive: true })
-    document.documentElement.addEventListener("scroll", handleScroll, { passive: true })
-    document.body.addEventListener("scroll", handleScroll, { passive: true })
-    handleScroll()
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll)
-      document.removeEventListener("scroll", handleScroll)
-      document.documentElement.removeEventListener("scroll", handleScroll)
-      document.body.removeEventListener("scroll", handleScroll)
-    }
-  }, [])
-
-  // ─────────────────────────────────────────
-  // iOS FIX: Scrolled bar background (no backdrop-blur)
-  // CAUSE: backdrop-filter can fail under GPU memory pressure on iOS Safari, breaking navbar visibility.
-  // FIX: Use a higher-opacity frosted look with bg-white/40 and drop backdrop-blur entirely.
-  // ─────────────────────────────────────────
-
-  // ─────────────────────────────────────────
-  // iOS FIX: Hamburger touch target
-  // CAUSE: Small tap targets and iOS click delay make the hamburger feel unresponsive.
-  // FIX: 44pt min target, touch-manipulation, onTouchEnd with preventDefault, and functional setState toggles.
-  // ─────────────────────────────────────────
-  const mobileMenuButton = (
-    <button
-      type="button"
-      aria-label={menuOpen ? "Close menu" : "Open menu"}
-      className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] touch-manipulation cursor-pointer"
-      onClick={() => setMenuOpen((prev) => !prev)}
-      onTouchEnd={(e) => {
-        e.preventDefault()
-        setMenuOpen((prev) => !prev)
-      }}
-    >
-      <span className="text-2xl text-white select-none">
-        {menuOpen ? "✕" : "☰"}
-      </span>
-    </button>
-  )
+    // Success state + throttle resends for better UX and fewer rate-limit issues.
+    setSent(true);
+    setCooldown(60);
+    setLoading(false);
+  }
 
   return (
-    <nav
-      style={{
-        transform: "translateZ(0)",
-        WebkitTransform: "translateZ(0)",
-      }}
-      className={`fixed top-0 left-0 right-0 z-50 px-6 text-white transition-all duration-300 will-change-transform ${
-        scrolled
-          ? "mt-4 mx-4 md:mx-8 rounded-2xl bg-white/40 py-3 shadow-lg"
-          : isHomePage
-            ? "pt-4 mx-0 bg-transparent pb-4 border-b border-white/25"
-            : "pt-4 mx-0 bg-[#1e3a5f] pb-4"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        
-        {/* Logo */}
-        <Link href="/">
-          <Image
-            src="/images/logo.png"
-            alt="Fades & Facials"
-            quality={100}
-            width={50}
-            height={30}
+    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+            Fades & Facials
+          </p>
+          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+        </div>
+
+        {sent && (
+          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
+            ✅ Magic link sent! Check your email and click the link.
+            {cooldown > 0 && (
+              <p className="mt-1 text-green-300/60 text-xs">
+                Need another? Wait {cooldown}s before resending.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
           />
-        </Link>
 
-        {/* Desktop links — hidden on mobile */}
-        <div className="hidden md:flex gap-8">
-          <Link href="/" className="text-white">Home</Link>
-          <Link href="/services" className="text-white">Services</Link>
-          <Link href="/gallery" className="text-white">Gallery</Link>
-          <Link href="/booking" className="text-white">Book Now</Link>
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {urlError && !error && (
+            <p className="text-red-400 text-sm text-center">
+              {urlError === "otp_expired"
+                ? "Link expired — request a new one below."
+                : "Auth failed — try again."}
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+            disabled={loading || cooldown > 0}
+            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+          >
+            {loading
+              ? "Sending..."
+              : cooldown > 0
+                ? `Wait ${cooldown}s to resend`
+                : sent
+                  ? "Resend Magic Link"
+                  : "Send Magic Link"}
+          </button>
         </div>
-
-        {/* Hamburger — visible on mobile only */}
-        {mobileMenuButton}
       </div>
+    </main>
+  );
+}
 
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="flex flex-col gap-4 mt-4 md:hidden">
-          <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
-          <Link href="/gallery" className="text-white" onClick={() => setMenuOpen(false)}>Gallery</Link>
-          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
-        </div>
-      )}
-    </nav>
-  )
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
+  );
 }
 </file>
 
@@ -10998,6 +11162,9 @@ export function createMiddlewareSupabaseClient(
 - **Phase 2: Architecture** — **100% COMPLETE**
 - **Phase 3: Frontend Functionality** — **100% COMPLETE**
 - **Phase 4: Admin Backend** — **100% COMPLETE**
+- Architected a Slot-Based Featured Services CMS with a Mobile-First Draft Card UI.
+- Integrated Supabase Storage for client-side media pipelines.
+- Established the _blueprints IP library for rapid design generation.
 
 ---
 
@@ -11068,144 +11235,6 @@ export function createMiddlewareSupabaseClient(
 - [ ] Complete image/media optimization and layout stability checks (CLS/LCP)
 - [ ] Final accessibility sweep (contrast, keyboard flow, touch targets, semantics)
 - [ ] Production hardening, regression pass, and launch checklist sign-off
-</file>
-
-<file path="app/admin/page.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: Admin Login Page
-// WHAT: Magic link email form — sends OTP via Supabase Auth.
-// WHY: Password-free auth. Barber enters email, clicks link, session is created.
-// PHASE 4: No changes needed — already wired to Supabase Auth.
-// ─────────────────────────────────────────
-import { Suspense, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
-// Shared URL resolver (prod domain -> preview URL -> localhost fallback).
-import { getURL } from "@/lib/url";
-
-function AdminLoginForm() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get("error");
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
-  // Simple resend cooldown timer (1s tick) to prevent rapid OTP requests.
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
-  async function handleSubmit() {
-    // Guard empty input and disabled resend window.
-    if (!email.trim() || cooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    setSent(false);
-
-    // Supabase magic-link login; callback URL must match allowed redirect URLs.
-// Inside your handleLogin function in app/admin/page.tsx
-const { error } = await supabase.auth.signInWithOtp({
-  email,
-  options: {
-    // This dynamically picks up the current URL (localhost, preview, or production)
-    emailRedirectTo: `${window.location.origin}/admin/callback`,
-  },
-})
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    // Success state + throttle resends for better UX and fewer rate-limit issues.
-    setSent(true);
-    setCooldown(60);
-    setLoading(false);
-  }
-
-  return (
-    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
-            Fades & Facials
-          </p>
-          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
-        </div>
-
-        {sent && (
-          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
-            ✅ Magic link sent! Check your email and click the link.
-            {cooldown > 0 && (
-              <p className="mt-1 text-green-300/60 text-xs">
-                Need another? Wait {cooldown}s before resending.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
-          />
-
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-
-          {urlError && !error && (
-            <p className="text-red-400 text-sm text-center">
-              {urlError === "otp_expired"
-                ? "Link expired — request a new one below."
-                : "Auth failed — try again."}
-            </p>
-          )}
-
-          <button
-            onClick={handleSubmit}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              handleSubmit();
-            }}
-            disabled={loading || cooldown > 0}
-            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
-          >
-            {loading
-              ? "Sending..."
-              : cooldown > 0
-                ? `Wait ${cooldown}s to resend`
-                : sent
-                  ? "Resend Magic Link"
-                  : "Send Magic Link"}
-          </button>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-export default function AdminLoginPage() {
-  return (
-    <Suspense>
-      <AdminLoginForm />
-    </Suspense>
-  );
-}
 </file>
 
 </files>
