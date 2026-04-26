@@ -51,7 +51,7 @@
  */
 
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
 
 // ─────────────────────────────────────────
@@ -88,30 +88,22 @@ export const supabase = createClient(supabaseUrl, envKey);
 /**
  * Uploads a service image/video asset to Supabase Storage and returns a public URL.
  *
- * @param file - Raw browser File from an <input type="file"> control.
+ * @param file   - Raw browser File from an <input type="file"> control.
+ * @param client - An authenticated Supabase client. MUST be the browser client from
+ *                 `createBrowserClient` so the RLS policy sees `auth.uid()`. Passing
+ *                 the module-level anon singleton will fail with a 403 if the bucket
+ *                 requires an authenticated session.
  * @returns Public URL for the uploaded object in the `service-media` bucket.
  */
-export async function uploadServiceMedia(file: File): Promise<string> {
+export async function uploadServiceMedia(
+  file: File,
+  client: SupabaseClient = supabase,
+): Promise<string> {
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const safeName = sanitizedName.length > 0 ? sanitizedName : "service-media-upload";
   const filePath = `services/${Date.now()}-${safeName}`;
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-    body: JSON.stringify({
-      sessionId: "e7a726",
-      runId: "pre-fix",
-      hypothesisId: "H4",
-      location: "lib/supabase.ts:uploadServiceMedia:beforeUpload",
-      message: "Preparing storage upload",
-      data: { bucket: "service-media", filePath, fileType: file.type, fileSize: file.size },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await client.storage
     .from("service-media")
     .upload(filePath, file, {
       cacheControl: "3600",
@@ -119,46 +111,18 @@ export async function uploadServiceMedia(file: File): Promise<string> {
     });
 
   if (uploadError) {
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-      body: JSON.stringify({
-        sessionId: "e7a726",
-        runId: "pre-fix",
-        hypothesisId: "H4",
-        location: "lib/supabase.ts:uploadServiceMedia:uploadError",
-        message: "Storage upload failed",
-        data: {
-          filePath,
-          errorMessage: uploadError.message,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    console.error("[service-media:upload]", {
+      filePath,
+      message: uploadError.message,
+      statusCode: (uploadError as { statusCode?: string }).statusCode,
+    });
     throw new Error(uploadError.message);
   }
 
-  const { data } = supabase.storage.from("service-media").getPublicUrl(filePath);
+  const { data } = client.storage.from("service-media").getPublicUrl(filePath);
   if (!data.publicUrl) {
     throw new Error("Failed to resolve uploaded media URL.");
   }
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-    body: JSON.stringify({
-      sessionId: "e7a726",
-      runId: "pre-fix",
-      hypothesisId: "H4",
-      location: "lib/supabase.ts:uploadServiceMedia:success",
-      message: "Storage upload succeeded",
-      data: { filePath, publicUrl: data.publicUrl },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   return data.publicUrl;
 }
@@ -193,6 +157,13 @@ export type DbService = {
   is_active?: boolean;
   /** Legacy/admin ordering field still used by drag-reorder flows. */
   sort_order?: number;
+  /**
+   * Drives the featured-service media state machine.
+   * 'gif'/'video' are only valid when is_premium = true.
+   * On demotion (is_premium → false), this must be reset to 'image'.
+   * Requires DB migration: ALTER TABLE services ADD COLUMN media_type text NOT NULL DEFAULT 'image';
+   */
+  media_type?: "image" | "gif" | "video";
   created_at: string;
 };
 

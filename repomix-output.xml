@@ -67,8 +67,10 @@ CLAUDE.md
 claudeOutput.md
 components/Eruda.tsx
 components/Navbar.tsx
+consoleError.md
 CRASH_COURSE_README.md
 curourOutput.md
+cursorOutput.md
 eslint.config.mjs
 eval.md
 galleryEx.mp4
@@ -101,6 +103,309 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="consoleError.md">
+Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+page.tsx:36 GoTrueClient@sb-eioptwfwdgqnkcbeaoqp-auth-token:1 (2.104.1) 2026-04-26T16:57:30.111Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.
+forward-logs-shared.ts:95 [HMR] connected
+content-script.js:22 Document already loaded, running initialization immediately
+content-script.js:4 Attempting to initialize AdUnit
+content-script.js:6 AdUnit initialized successfully
+layout.tsx:79 A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/admin/ser..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" className="bodoni_mod...">
+                          <body
+                            className="min-h-screen flex flex-col overflow-y-auto"
+-                           __processed_5658413f-616c-46f4-9c16-b1d6a1324592__="true"
+-                           bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWll..."
+                          >
+                  ...
+Navbar.tsx:94 Image with src "/images/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+services:1 Access to fetch at 'https://dlnk.one/e?id=nol9RNkNdre4&type=1' from origin 'http://localhost:3000' has been blocked by CORS policy: The 'Access-Control-Allow-Origin' header has a value 'http://localhost' that is not equal to the supplied origin. Have the server send the header with a valid value.
+content.js:2 
+ POST https://dlnk.one/e?id=nol9RNkNdre4&type=1 net::ERR_FAILED 200 (OK)
+content.js:2 Listener init error TypeError: Failed to fetch
+    at content.js:2:91684
+    at Generator.next (<anonymous>)
+    at content.js:2:90359
+    at new Promise (<anonymous>)
+    at n (content.js:2:90104)
+    at a.fetchRequest (content.js:2:91634)
+    at content.js:2:91928
+    at Generator.next (<anonymous>)
+    at content.js:2:90359
+    at new Promise (<anonymous>)
+5
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+5
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+5
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+25
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+10
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+5
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+5
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+page.tsx:1420 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+4
+intercept-console-error.ts:48 Encountered two children with the same key, `Beard Care`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+intercept-console-error.ts:48 Encountered two children with the same key, `Facials`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+</file>
+
+<file path="cursorOutput.md">
+I’ll implement this directly in app/admin/services/page.tsx: add real cascading rename + purge handlers, add a centered purge confirmation modal, and wire header buttons to open rename flow via the existing modal.
+
+I’ve mapped the exact integration points. Next I’m adding a modal mode switch (create vs rename), implementing handleRenameCategory and handlePurgeServices, and wiring header buttons to those real handlers with a centered confirmation modal.
+
+  isSaving,
+  title,
+  description,
+  submitLabel,
+}: {
+  isSaving: boolean;
+  title: string;
+  description: string;
+  submitLabel: string;
+}) {
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
+        <h2 className="mb-1 text-xl font-bold text-white">New Category</h2>
+        <p className="mb-6 text-sm text-white/40">
+          Creates a new group in the Services Manager. You can rename it after.
+Implemented in app/admin/services/page.tsx with full wiring for cascading rename + purge services.
+
+What I changed
+Added handleRenameCategory(oldName, newName) with the exact flow:
+trims + toTitleCase() normalization
+case-insensitive duplicate check against categories state ("Name already exists" feedback)
+updates categories table row
+cascades rename into services rows (category old → new)
+updates site_config category_order by replacing old name
+finalizes with await fetchData() + await fetchConfig()
+Added handlePurgeServices(categoryName):
+executes supabase.from("services").delete().eq("category", categoryName)
+finalizes with await fetchData() + await fetchConfig()
+Added centered confirm modal component PurgeServicesModal with message:
+“Are you sure you want to delete ALL services in [categoryName]? This cannot be undone.”
+Upgraded category modal to support both create and rename modes:
+title, description, submitLabel props
+new state controls: categoryModalMode, renameSourceCategory
+handleSubmitCategoryModal() routes to create vs rename logic
+Wired header buttons:
+✏️ Rename opens modal prefilled with category name and saves through handleRenameCategory
+🗑️ Purge Services opens confirm modal and executes handlePurgeServices on confirm
+Added required comment tag in the new handlers:
+// WHY: Cascading Rename ensures referential integrity between categories and services. Purge Services resets category content without breaking the Rule of 3 layout.
+Notes
+Kept existing drag handle behavior intact (@dnd-kit handle remains untouched).
+Lint check for app/admin/services/page.tsx passes with no errors.
+Role: Senior UI/UX Architect and Full-Stack Engineer.
+
+Task: Implement Phase 4 - Master UX Polish and Persistence for the Services Manager.
+
+
+
+Step 1: Viewport-Centered Add Service Modal
+
+
+
+Find the AddServiceModal (or the "Add Service" form container).
+
+
+
+Apply the centering wrapper: fixed inset-0 flex items-center justify-center z-[9999] h-screen w-screen.
+
+
+
+Add a semi-transparent dark backdrop overlay so the user focuses only on the form.
+
+
+
+Step 2: Service Card Currency & Explicit Save
+
+
+
+Currency: In the service price display and the edit input, ensure a $ is always visible. The database should still store only the number/string, but the UI must show the currency symbol.
+
+
+
+Explicit Save: When a user clicks into a service name, price, or description to edit, display a small "Save" button or a green checkmark icon (✓) next to the field.
+
+
+
+Clicking the "Save/Checkmark" must trigger the database update and then remove the focus from the field.
+
+
+
+Step 3: Danger Modal for Single Service Deletion
+
+
+
+Replace the standard browser confirm() for deleting a single service with a custom centered DangerModal.
+
+
+
+Message: "Delete [ServiceName]? This action will remove the service and its associated media permanently."
+
+
+
+Step 4: Public Sync Persistence
+
+
+
+In admin-services-page.tsx, verify handleCategoryDragEnd is correctly updating the site_config table with the new category_order.
+
+
+
+In services-page.tsx (the public view), ensure the categories are rendered in the exact order defined by the category_order array in site_config.
+
+
+
+Step 5: Commenting
+
+
+
+Tag with // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+
+I’ll implement this in two files: app/admin/services/page.tsx for modal/edit/delete UX, and app/services/page.tsx for public category-order sync. I’ll first inspect both current implementations, then patch all five steps in one pass.
+
+I found all target areas. I’m now applying a multi-part patch: convert Add Service to a real centered modal, add explicit-save inline editing with $ price UI, replace single-delete with centered danger modal, and sync public category ordering from site_config.category_order.
+
+Implemented Phase 4 across app/admin/services/page.tsx and app/services/page.tsx.
+
+Admin UX upgrades (app/admin/services/page.tsx)
+Add Service is now a true centered modal
+
+The draft form now renders in a fullscreen overlay:
+fixed inset-0 flex items-center justify-center z-[9999] h-screen w-screen
+Includes dark backdrop for focus.
+Explicit save editing + currency UI
+
+EditableField now shows an explicit ✓ save button while editing.
+Save button calls commitEdit() (DB update path) and closes edit state.
+Price editing input now always shows a visible $ prefix.
+Price display now always renders with $ via formatPriceDisplay(...).
+Single-service delete now uses custom DangerModal
+
+Added DeleteServiceDangerModal.
+Message matches your spec:
+Delete [ServiceName]? This action will remove the service and its associated media permanently.
+Wired delete buttons to open this modal and confirm via handleDeleteService().
+Comment tag added
+
+Included:
+// WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+Persistence sync checks
+Category drag persistence (app/admin/services/page.tsx)
+
+handleCategoryDragEnd already upserts category_order into site_config; this remains intact.
+Public category order sync (app/services/page.tsx)
+
+Public page now fetches site_config.category_order.
+Categories are rendered in exact configured order, with fallback for uncategorized remainder:
+ordered configured categories first
+then any categories not present in category_order.
+Everything lint-checks clean.
+</file>
 
 <file path="_blueprints/designs/homey_luxury/design_system.md">
 # Design System: Homey Luxury
@@ -1708,7 +2013,8 @@ Blueprints captured before this date should be updated on next touch.
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }
@@ -1854,7 +2160,123 @@ export default async function AdminDashboard() {
 </file>
 
 <file path="claudeOutput.md">
--no we need to delte all preloaded data so i can start to load data manually thru new fixed upload services fixed keep categories but delte all services guesing were doig that i sqal command right?
+PS C:\Projects\fades-and-facials> claude
+ ▐▛███▜▌   Claude Code v2.1.119
+▝▜█████▛▘  Sonnet 4.6 · Claude Pro
+  ▘▘ ▝▝    C:\Projects\fades-and-facials
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Role: Senior Frontend Architect.
+  Task: Implement strict Single Source of Truth (SSOT) pattern to fix React state explosion and "ghost" duplicates in /admin/services.           
+
+  Step 1: Rip Out Optimistic Updates                                                                                                             
+
+  Inside handleAddCategory and handleCommitService, find and DELETE any logic that looks like setCategories((prev) => [...prev, newCategory])
+  or setServices((prev) => [...prev, newService]).
+
+  We are no longer allowing the frontend to guess what the data looks like.
+
+  Step 2: Enforce Database-First Sync
+
+  The only way the UI state should update after a successful Supabase insert is by calling await fetchData().
+
+  Flow must be: Insert -> Await 200 OK -> Clear Input Fields & Close Modal -> await fetchData().
+
+                                                                                                                                                   Ensure the count >= 3 (for categories) and count >= 10 (for services) checks happen before the insert.                                                                                                                                                                                            If the limit is reached, it must setCategoryError("Limit Reached") and explicitly return early so the execution physically cannot reach the      supabase.insert() command.                                                                                                                                                                                                                                                                        Step 4: Commenting                                                                                                                                                                                                                                                                                Tag these changes with // WHY: Implemented strict SSOT pattern. UI state only updates via fetchData() post-mutation to prevent React duplicate    key explosions.                                                                                                                               
+                
+● Reading the current admin services page to understand the existing implementation before making changes.                                       
+                                                                                                                                                 
+  Read 1 file (ctrl+o to expand)                                                                                                                 
+
+● Now I have a complete picture. Let me analyze what actually needs to change:                                                                   
+                                                           
+  - handleCommitService already calls handleCancelDraft() → fetchData() with no optimistic setServices push — mostly clean                       
+  - handleSubmitCategory has setCategoryOrder(updatedOrder) firing before fetchData() — this is the SSOT violation                               
+  - Both limit guards return early but the messages need to be "Limit Reached" per the spec                                                        - SSOT comment tags need to be added to both functions                                                                                         
+                                                                                                                                                 
+  Making all four targeted changes now.
+
+● Update(app\admin\services\page.tsx)
+  ⎿  Added 2 lines, removed 4 lines
+      666                                                                                                                                        
+      667        if (countError) throw new Error(countError.message);                                                                                  668  
+      669 +      // WHY: Implemented strict SSOT pattern. UI state only updates via fetchData() post-mutation to prevent React duplicate k                 +ey explosions.
+      670        if ((count ?? 0) >= 10) {                                                                                                       
+      670 -        setFeedback({                                                                                                               
+      671 -          type: "error",                                                                                                            
+      672 -          msg: "Maximum of 10 services allowed per category.",                                                                              673 -        });                                                                                                                                 671 +        setFeedback({ type: "error", msg: "Limit Reached" });                                                                               672          return;                                                                                                                       
+      673        }
+      674
+
+● Now fix the service commit flow — confirm there's no optimistic push and the clear → fetchData order is correct. The existing
+  handleCancelDraft() → setFeedback → fetchData() sequence is correct. Moving on to handleSubmitCategory.
+
+● Update(app\admin\services\page.tsx)                                                                                                            
+  ⎿  Added 8 lines, removed 7 lines
+      769                                                                                                                                        
+      770        if (countError) throw new Error(countError.message);                                                                                  771                                                                                                                                        
+      772 +      // WHY: Implemented strict SSOT pattern. UI state only updates via fetchData() post-mutation to prevent React duplicate k                 +ey explosions.                                                                                                                        
+      773        if ((count ?? 0) >= 3) {                                                                                                        
+      773 -        setCategoryModalError("Maximum of 3 categories allowed. Please delete one first.");                                         
+      774 +        setCategoryModalError("Limit Reached");
+      775          return;
+      776        }
+      777
+     ...
+      797          throw new Error(error.message);
+      798        }
+      799
+      799 -      // WHY: categoryOrder (site_config) is persisted manually because fetchData()                                                   
+      800 -      // does not query site_config — it only syncs the categories and services tables.                                               
+      801 -      // setCategories is intentionally omitted here; fetchData() is the single source                                                
+      802 -      // of truth and will return the row with its real DB id and timestamps.                                                         
+      800 +      // WHY: Persist category_order to site_config before closing the modal so the                                                   
+      801 +      // new order is durable in DB before the UI re-renders. setCategoryOrder is                                                     
+      802 +      // intentionally deferred until after fetchData() — strict SSOT means no data                                                   
+      803 +      // state updates before the DB round-trip confirms the insert.                                                                  
+      804        const updatedOrder = [...categoryOrder, trimmedName];
+      804 -      setCategoryOrder(updatedOrder);                                                                                                 
+      805        await supabase.from("site_config").upsert({
+      806          key: "category_order",
+      807          value: JSON.stringify(updatedOrder),
+     ...
+      811        setIsAddingCategory(false);
+      812        setNewCategoryName("");
+      813        setCategoryModalError(null);
+      814 -      setFeedback({ type: "success", msg: `Category "${trimmedName}" created.` });                                                    
+      814        await fetchData();
+      815 +      setCategoryOrder(updatedOrder);                                                                                                 
+      816 +      setFeedback({ type: "success", msg: `Category "${trimmedName}" created.` });                                                    
+      817      } catch (err) {
+      818        console.error("[categories:handleSubmitCategory]", err);
+      819        const message = err instanceof Error ? err.message : "Failed to create category.";
+
+● Now verify the final state of both functions looks correct.
+
+  Read 1 file (ctrl+o to expand)    
+                                                                                                                                                 
+● Both functions look correct. Here's a summary of every change made:
+                                                                                                                                                 
+  ---                                                                                                                                            
+  handleCommitService (lines 669–673)                                                                                                            
+  - Added // WHY: Implemented strict SSOT pattern... comment above the >= 10 guard                                                                 - Changed error message from "Maximum of 10 services allowed per category." → "Limit Reached"                                                  
+  - Guard already returned early before the insert — confirmed iron-clad ✓                                                                       
+  - No optimistic setServices push was present — confirmed ✓
+  - Post-insert flow was already correct: handleCancelDraft() → setFeedback → await fetchData() ✓
+
+  handleSubmitCategory (lines 772–816)
+  - Added // WHY: Implemented strict SSOT pattern... comment above the >= 3 guard
+  - Changed error message from "Maximum of 3 categories allowed. Please delete one first." → "Limit Reached"
+  - Guard already returned early before the insert — confirmed iron-clad ✓
+  - Removed setCategoryOrder(updatedOrder) from before fetchData() — this was the SSOT violation causing ghost duplicates (orderedCategories     
+  derived state would reflect the new category while categories state still held the pre-insert snapshot, then fetchData() would re-set
+  categories causing a React reconciliation mismatch)
+  - New post-insert order: upsert site_config (DB write, not state) → close modal/clear fields → await fetchData() →
+  setCategoryOrder(updatedOrder) → setFeedback
+
+✻ Cogitated for 2m 40s    
+
+※ recap: Implemented strict SSOT in /admin/services so UI state only updates via fetchData() after confirmed DB writes. Next: test by adding a     category and service in the browser to verify no ghost duplicates appear. (disable recaps in /config)
 </file>
 
 <file path="components/Eruda.tsx">
@@ -1988,86 +2410,155 @@ export default function Eruda() {
 </file>
 
 <file path="curourOutput.md">
-<span>
- why is this button big af still
+Implemented Phase 4 across app/admin/services/page.tsx and app/services/page.tsx.
 
-<span>
- get rid of arrow
+Admin UX upgrades (app/admin/services/page.tsx)
+Add Service is now a true centered modal
 
-give text more brather room
+The draft form now renders in a fullscreen overlay:
+fixed inset-0 flex items-center justify-center z-[9999] h-screen w-screen
+Includes dark backdrop for focus.
+Explicit save editing + currency UI
 
-make button smaller
+EditableField now shows an explicit ✓ save button while editing.
+Save button calls commitEdit() (DB update path) and closes edit state.
+Price editing input now always shows a visible $ prefix.
+Price display now always renders with $ via formatPriceDisplay(...).
+Single-service delete now uses custom DangerModal
 
-chane font of website looks boring
+Added DeleteServiceDangerModal.
+Message matches your spec:
+Delete [ServiceName]? This action will remove the service and its associated media permanently.
+Wired delete buttons to open this modal and confirm via handleDeleteService().
+Comment tag added
 
-Done — I applied all requested changes and tightened the button significantly.
+Included:
+// WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+Persistence sync checks
+Category drag persistence (app/admin/services/page.tsx)
 
-Button fixes (BookNowPill)
-Removed the arrow icon.
-Made it smaller and less bulky:
-px-3.5 py-1.5
-text-[11px]
-min-h-[40px]
-Gave text more breathing room without making it huge:
-tracking-[0.24em]
-small inner pad on label (px-1)
-Kept the pulse ring effect.
-Font overhaul (site aesthetic)
-I switched to a new premium pairing:
+handleCategoryDragEnd already upserts category_order into site_config; this remains intact.
+Public category order sync (app/services/page.tsx)
 
-Serif: Bodoni Moda (--font-serif)
-Sans: Manrope (--font-sans)
-Updated:
+Public page now fetches site_config.category_order.
+Categories are rendered in exact configured order, with fallback for uncategorized remainder:
+ordered configured categories first
+then any categories not present in category_order.
+Everything lint-checks clean.
 
-app/layout.tsx font imports/config
-Homepage inline font-family references in app/page.tsx from:
-Cormorant Garamond → Bodoni Moda
-Montserrat → Manrope
-Note on font weights
-Bodoni Moda does not support 300 in Next’s Google font package.
-So I used the closest valid elegant range: 400, 500, 600, 700 (while Manrope keeps 300, 400, 500, 600).
+Role: Lead Full-Stack Architect.
 
-Validation
-Ran npx tsc --noEmit ✅ passes
-the button is same color as site background for masp sections adn map section bakground is too dark. I also noticed you too out the featured services section put that back in
+Task: Implement Phase 5 - Media Hardening, Grouped Selection UX, and Featured Hero logic.
 
-I’ll fix all three now: make the Book Now pill contrast against the map block, lighten the map section background, and restore the featured services section to the homepage flow.
 
-You’re right — I’ll fix all three together: increase contrast between CTA and map area, lighten the map block, and restore a visible featured-services section in the homepage flow.
 
-        style={{
-          background: "#0B132B",
-          color: "#F9F7F2",
-          background: "#7E9A7E",
-          color: "#0B132B",
-          fontFamily: "'Manrope', sans-serif",
-          className="absolute inset-0 rounded-full border animate-ping opacity-20"
-          style={{ borderColor: "#0B132B" }}
-          style={{ borderColor: "#7E9A7E" }}
-        />
-      className="relative z-20 px-6 py-24"
-      style={{ background: "#0B132B", color: "#F9F7F2" }}
-      style={{ background: "#14223D", color: "#F9F7F2" }}
-    >
-Fixed — all three points are now addressed in app/page.tsx.
+Step 1: Strict Aesthetic Guards
 
-What I changed
-Book button contrast
 
-Changed CTA background from Ink to Sage (#7E9A7E) with dark text.
-Updated ping border to match Sage.
-This makes it stand out against dark map areas.
-Map block too dark
 
-Lightened the map section background from #0B132B to #14223D.
-Also updated the shared dark wrapper to #14223D for consistency.
-Featured services restored
+Update MAX_SERVICES_PER_CATEGORY to 5.
 
-Added a new FeaturedServicesSection component.
-It uses the existing SERVICES data (first 3 entries) and renders a clean card row.
-Inserted it back into the home flow so it always appears below the active layout and above the map/footer block.
-Validation
-Ran npx tsc --noEmit ✅ passes.
+
+
+In handleSubmitService, if draftData.image is empty, block the save and show a centered ActionRequiredModal stating: "An image is required to publish this service."
+
+
+
+Step 2: Grouped Featured Swapper UX
+
+
+
+Refactor the featured service selection menu. Group services by their Category name using a bold header for each category.
+
+
+
+Ensure the user can easily see which services belong where before picking their 3 featured slots.
+
+
+
+Step 3: Featured Media Override (GIF Support)
+
+
+
+In the Featured Manager, for each of the 3 slots, add a "High-Fidelity Media" upload button.
+
+
+
+If a file is uploaded here, save it to the service's image column but set media_type to 'gif' in the database.
+
+
+
+Ensure standard (non-featured) services default to media_type: 'image'.
+
+
+
+Step 4: Public Page Visual Update (/services)
+
+
+
+Image Display: In services-page.tsx, add the <img> tag to the cards and list layouts so service pictures are finally visible to users.
+
+
+
+Featured Hero: Create a "Featured Hero" section at the top of the page. It must fetch the 3 services marked as featured in site_config and display them in a Cinematic Full-Bleed row. If a service has a gif media type, loop it automatically.
+
+
+
+Step 5: Commenting
+
+
+
+Tag with // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+
+I’ll implement this in both admin and public pages now: enforce the new Rule-of-5 + image guard modal, grouped featured selection, featured GIF upload behavior, and then add card/list images plus a featured hero section on /services.
+
+I’m implementing the Phase 5 changes now with minimal-risk structure: add new guard/modal + constants in admin, then patch the featured swap UI and upload behavior, and finally add the featured hero + images on the public page.
+
+Implemented Phase 5 in both admin and public services flows.
+
+app/admin/services/page.tsx
+Rule of 5 enforced
+
+Added MAX_SERVICES_PER_CATEGORY = 5.
+handleCommitService() now blocks insert when category count reaches 5.
+Image guard before publish
+
+In handleCommitService(), if draftData.image is missing, save is blocked.
+Added centered ActionRequiredModal with:
+"An image is required to publish this service."
+Grouped Featured Swapper
+
+Featured swap list now groups candidates by category.
+Each group has a bold uppercase category header for faster scanning.
+High-Fidelity Media upload in each featured slot
+
+Added High-Fidelity Media upload control per featured slot.
+New handler handleFeaturedMediaUpload(...):
+uploads media URL to image
+sets media_type: "gif" in DB
+Standard service media uploads now explicitly set media_type: "image".
+Default non-featured media type
+
+New services inserted with media_type: "image".
+Required comment tag added
+
+// WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+app/services/page.tsx
+Public featured hero
+
+Added “Featured Hero” section at top.
+Fetches featured_services from site_config (JSON id list), with fallback to is_premium services.
+Renders 3 cinematic cards in a full-width row within page content.
+GIFs auto-loop naturally via <img>.
+Service images now visible
+
+Added <img> rendering in:
+cards layout
+list layout
+Category order persistence on public page
+
+Keeps rendering categories in site_config.category_order order (already present from prior phase).
+No linter errors on edited files.
 </file>
 
 <file path="eslint.config.mjs">
@@ -6643,26 +7134,6 @@ const config = {
 export default config;
 </file>
 
-<file path="TODO.md">
-# Fades & Facials 2.0 - Active Backlog & Bug Tracker
-
-## 🐛 High Priority Bugs (Next Session)
-- [ ] **Fix Draft Card Image Upload State:** - *Issue:* Selecting an image doesn't update the UI preview in the "Add Service" draft card.
-  - *Fix:* Ensure `uploadServiceMedia` response is bound to `setDraftData(prev => ({ ...prev, image: url }))`. Add verbose toast error handling.
-- [ ] **Category Combobox Implementation:** - *Issue:* Category input is a blind text field.
-  - *Fix:* Fetch distinct categories from Supabase on mount. Implement a UI that allows selecting an existing category from a dropdown OR typing a new one.
-
-## 🏗️ Technical Debt & Architecture
-- [ ] **Enforce Admin Route Comments:** - *Issue:* `/admin/services` is lacking JSDoc and inline logic comments.
-  - *Fix:* Run a documentation audit via Cursor Composer specifically on the admin routes.
-- [ ] **Update `.cursorrules`:** - *Fix:* Add explicit instructions that all new frontend logic must include JSDoc, Error Boundaries, and `try/catch` documentation.
-
-## 🎨 UI/UX Polish (Pending)
-- [ ] Execute the "Moody Luxury" color overhaul (Bone/Antique White backgrounds).
-- [ ] Change "Book Now" button color to muted Olive/Slate.
-- [ ] Ensure Google Maps iframe uses a lighter/softer blue dark-mode filter.
-</file>
-
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -6701,29 +7172,69 @@ export default config;
 </file>
 
 <file path=".cursorrules">
-# Project Architecture & Workflow Rules
+# Fades & Facials — AI Agent Rules
+# Stack: Next.js 16.2.4 App Router, TypeScript strict, Tailwind CSS v4, Supabase
 
 ## Coding Standards
 - Break features into the smallest possible modular components. Never write monolithic files.
-- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
-- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
-- Build robust error handling on every feature. Fail gracefully.
+- File structure: UI components in `/components`, pages in `/app`, utilities in `/lib`.
+- Build robust error handling on every feature. Use `try/catch` with exact terminal logging:
+  `console.error('[context:functionName]', { error, relevantData })` — never swallow errors silently.
+- No new packages without explicit instruction.
+- Server Components by default — `"use client"` only when state or interactivity is required.
+- No `tailwind.config.ts` — all design tokens in `globals.css` `@theme` block only.
+- No `src/` directory — files live at the root of their respective directories.
 
-## Workflow Automation (CRITICAL)
-- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
-- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
-- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+## Context-Driven Commenting (STRICT — No Exceptions)
+Comments explain WHY, never WHAT. Well-named code explains itself.
 
-## Tech Stack Constraints
-- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
-- Mobile-first approach.
-- No external CSS files. All styling via Tailwind classes.
-- Do not invent dependencies. Ask before running npm install.
+  CORRECT: `// iOS Safari intercepts touchstart as scroll — 250ms delay lets it resolve drag intent first`
+  WRONG:   `// Add TouchSensor with delay`
 
-### Documentation & Commenting Mandate
-- EVERY functional component, hook, and utility must have a JSDoc block detailing its purpose, parameters, and execution context.
-- Leave explicit inline comments explaining complex state management, database interactions, and UI flows.
-- ALL `/admin` routes must be heavily commented to explain data-fetching, RLS assumptions, and error handling.
+  CORRECT: `// Anon client has no session cookie — pass the browser client so the bucket RLS sees auth.uid()`
+  WRONG:   `// Pass supabase client to function`
+
+Every major section MUST use this exact block format:
+```
+// ─────────────────────────────────────────
+// SECTION: [name]
+// WHAT: [one sentence]
+// WHY: [one sentence]
+// PHASE 4: [what changes when database is connected, or "No changes needed"]
+// ─────────────────────────────────────────
+```
+
+## TODO.md Format (STRICT — Ticket Style)
+All `TODO.md` entries must follow this exact structure. Never add a task without an exact file path.
+
+```
+### [STATUS] TICKET-XXX: Short descriptive title
+**File:** `path/to/file.tsx:lineNumber`
+**Issue:** One sentence describing the bug or gap.
+**Fix:** One sentence describing the exact solution.
+**Blocked-by:** TICKET-XXX  ← only if applicable
+```
+
+Valid statuses: `[BLOCKER]`, `[IN PROGRESS]`, `[BACKLOG]`
+
+## Workflow Automation
+- **Git Commits:** After a successful feature or fix, suggest a commit message following Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`).
+- **Branching:** When building a new page or major feature, remind the user to branch first.
+
+## Mobile-First Rules (Never Violate)
+- Minimum 44×44px touch targets on all clickable elements.
+- `touch-manipulation` class on all buttons and links.
+- Every interactive element needs `onTouchEnd` with `e.preventDefault()`.
+- All animations use `translate3d`/`scale3d` — never `translateX`/`scaleX`.
+- No `backdrop-filter` or `backdrop-blur` — breaks iOS WebKit silently.
+- No `opacity-0` for hidden state — use conditional DOM mounting.
+
+## Database & Auth Rules
+- Browser client: `createBrowserClient` from `@supabase/ssr` (in `"use client"` components).
+- Server client: `createServerSupabaseClient()` from `@/lib/supabase` (in Server Components/Route Handlers).
+- Middleware client: `createMiddlewareSupabaseClient()` from `@/lib/supabase` (in `middleware.ts` only).
+- The module-level `supabase` singleton in `lib/supabase.ts` is anon-only — never use it for authenticated storage writes.
+- Magic link only — no passwords.
 </file>
 
 <file path=".gitignore">
@@ -7434,6 +7945,77 @@ Stack: Next.js 16 App Router, TypeScript, Tailwind CSS v4.
 Mobile-first. No external CSS files. All styling via Tailwind classes.
 </file>
 
+<file path="TODO.md">
+# Fades & Facials — Active Task Board
+
+---
+
+## [IN PROGRESS]
+
+### [IN PROGRESS] TICKET-001: Remove Injected Agent Telemetry
+**File:** `lib/supabase.ts:99,123,148` | `app/admin/services/page.tsx:295,331,368`
+**Issue:** Six unauthorized `fetch` calls to `http://127.0.0.1:7551` are leaking file paths, file sizes, and error stack traces to an unknown local debug service on every upload attempt.
+**Fix:** Delete all `#region agent log` blocks from both files — zero calls to that endpoint should remain.
+
+### [IN PROGRESS] TICKET-002: Fix Upload — Anon Client Has No Auth Session
+**File:** `lib/supabase.ts:94` (`uploadServiceMedia` function)
+**Issue:** `uploadServiceMedia` uses the module-level anon `supabase` singleton (no session cookie), so if `service-media` bucket policies require `auth.role() = 'authenticated'`, every upload silently returns a 403 with no user-visible error.
+**Fix:** Add a `client: SupabaseClient` parameter to `uploadServiceMedia`; all callers pass the auth-aware browser client so the bucket RLS sees `auth.uid()`.
+
+### [IN PROGRESS] TICKET-003: Featured Services — `media_type` State Machine
+**File:** `lib/supabase.ts:181` (DbService type) | `app/admin/services/page.tsx:236` (swap handler)
+**Issue:** Media type (image/gif/video) is inferred by inspecting the `image` URL string, which is fragile. There is no enforced DB-level state for what a featured service's media type is after a swap.
+**Fix:** Run `ALTER TABLE services ADD COLUMN media_type text NOT NULL DEFAULT 'image';`. Update `DbService` type. Set `media_type: 'image'` on promotion/demotion in `handleSwapFeaturedSlot`. Prompt admin to upload GIF/Video after promoting a service.
+
+---
+
+## [BLOCKER]
+
+### [BLOCKER] TICKET-004: Draft Card Upload State Never Binds to Preview
+**File:** `app/admin/services/page.tsx:488` (`handleDraftMediaUpload`)
+**Issue:** Draft card upload calls `uploadServiceMedia` — but since TICKET-002 means the upload likely fails silently with a 403, `draftData.image` never gets set, and the preview placeholder never clears.
+**Blocked-by:** TICKET-002 (fix the client first, then verify the state binding works)
+
+---
+
+## [BACKLOG]
+
+### [BACKLOG] TICKET-005: Category Input Is a Blind Text Field
+**File:** `app/admin/services/page.tsx:1046`
+**Issue:** The category field in the draft form is freehand text, making typo-duplicated categories ("Haircuts" vs "Haircut") easy to create and painful to clean up.
+**Fix:** On mount, fetch `SELECT DISTINCT category FROM services`. Render a combobox (`<datalist>` or custom) that autocompletes existing values but allows typing new ones.
+
+### [BACKLOG] TICKET-006: Implement Global Service Layer
+**File:** `app/admin/services/page.tsx` (entire file)
+**Issue:** All `supabase.from()` calls live inside React component event handlers, coupling UI tightly to the DB client — untestable, and a single schema change breaks the whole page.
+**Fix:** Create `lib/services/` directory with typed async functions: `getServices()`, `upsertService()`, `deleteService()`, `swapFeaturedSlot()`. Components call these functions and handle the returned data only.
+
+### [BACKLOG] TICKET-007: Audit & Document Supabase RLS Policies
+**File:** Supabase Dashboard → Authentication → Policies
+**Issue:** No documented RLS boundaries exist. Anon reads on `services` and `site_config` may be unintentionally permissive — a direct API hit could expose or mutate data.
+**Fix:** Review every table's RLS policy. Write exact boundaries in a `docs/rls-audit.md` file (what anon can read, what authenticated can write, what is blocked entirely).
+
+### [BACKLOG] TICKET-008: Standardize Error Handling with Toast Variants
+**File:** `app/admin/services/page.tsx:79` (feedback state)
+**Issue:** `feedback` state clears after 4 seconds with no visual hierarchy — a catastrophic delete failure looks the same as a successful layout save.
+**Fix:** Add `warning` as a third feedback variant. Standardize error messages from all DB calls to include the operation context ("Failed to delete service [Name].").
+
+### [BACKLOG] TICKET-009: "Moody Luxury" Color Overhaul
+**File:** `app/globals.css:3` (@theme block) | `app/admin/services/page.tsx:842` (hardcoded `#0f1e2e`)
+**Issue:** Admin pages use hardcoded hex values (`#0f1e2e`, `#0b1624`) instead of @theme tokens, so a site-wide palette change requires manual find/replace across multiple files.
+**Fix:** Add `--color-admin-bg` and `--color-admin-surface` to the @theme block. Replace all hardcoded hex values in admin routes with Tailwind token-based classes.
+
+### [BACKLOG] TICKET-010: Change "Book Now" to Muted Olive/Slate
+**File:** `app/page.tsx` (or wherever the booking CTA lives)
+**Issue:** Current "Book Now" button color is unresolved — pending the full "Moody Luxury" pass.
+**Fix:** Apply after TICKET-009 establishes the new palette tokens.
+
+### [BACKLOG] TICKET-011: Google Maps Iframe Dark-Mode Filter
+**File:** Wherever the Maps embed lives (check `app/page.tsx`)
+**Issue:** Iframe uses a harsh blue dark-mode filter that clashes with the warm palette.
+**Fix:** Apply a CSS `filter` with reduced saturation and warmer hue-rotate. No backdrop-filter.
+</file>
+
 <file path="app/services/page.tsx">
 // ─────────────────────────────────────────
 // SECTION: Public Services Page
@@ -7465,9 +8047,11 @@ function mapFallback(s: (typeof allServices)[0]): DbService {
 export default async function ServicesPage() {
   let services: DbService[] = [];
   let layout: Layout = "cards";
+  let categoryOrder: string[] = [];
+  let featuredServiceIds: number[] = [];
 
   try {
-    const [servicesResult, configResult] = await Promise.all([
+    const [servicesResult, configResult, categoryOrderResult, featuredConfigResult] = await Promise.all([
       supabase
         .from("services")
         .select("*")
@@ -7478,11 +8062,29 @@ export default async function ServicesPage() {
         .select("value")
         .eq("key", "services_layout")
         .single(),
+      supabase
+        .from("site_config")
+        .select("value")
+        .eq("key", "category_order")
+        .single(),
+      supabase
+        .from("site_config")
+        .select("value")
+        .eq("key", "featured_services")
+        .single(),
     ]);
 
     if (!servicesResult.error) services = servicesResult.data ?? [];
     if (!configResult.error && configResult.data?.value) {
       layout = configResult.data.value as Layout;
+    }
+    if (!categoryOrderResult.error && categoryOrderResult.data?.value) {
+      const parsedOrder = JSON.parse(categoryOrderResult.data.value) as string[];
+      categoryOrder = [...new Set(parsedOrder)];
+    }
+    if (!featuredConfigResult.error && featuredConfigResult.data?.value) {
+      const parsedFeaturedIds = JSON.parse(featuredConfigResult.data.value) as number[];
+      featuredServiceIds = parsedFeaturedIds;
     }
   } catch (err) {
     console.error("[Services] Fetch failed:", err);
@@ -7492,7 +8094,19 @@ export default async function ServicesPage() {
     services = allServices.map(mapFallback);
   }
 
-  const categories = [...new Set(services.map((s) => s.category))];
+  // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+  const categoryNames = [...new Set(services.map((s) => s.category))];
+  const categories = [
+    ...categoryOrder.filter((name) => categoryNames.includes(name)),
+    ...categoryNames.filter((name) => !categoryOrder.includes(name)),
+  ];
+  const featuredServices =
+    featuredServiceIds.length > 0
+      ? featuredServiceIds
+          .map((id) => services.find((service) => service.id === id))
+          .filter((service): service is DbService => Boolean(service))
+          .slice(0, 3)
+      : services.filter((service) => Boolean(service.is_premium)).slice(0, 3);
 
   return (
     <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
@@ -7506,6 +8120,32 @@ export default async function ServicesPage() {
             Services
           </h1>
         </div>
+
+        {featuredServices.length > 0 && (
+          // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+          <section className="mb-12">
+            <p className="mb-3 text-xs tracking-[0.3em] uppercase text-brand-accent">Featured Hero</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {featuredServices.map((service) => (
+                <article key={`featured-hero-${service.id}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                  {service.image ? (
+                    <img
+                      src={service.image}
+                      alt={`${service.name} featured media`}
+                      className="h-56 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-56 w-full bg-white/5" />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-black/50 p-4">
+                    <p className="text-sm font-semibold text-white">{service.name}</p>
+                    <p className="text-xs text-brand-accent">{service.category}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Categories */}
         <div className="flex flex-col gap-12">
@@ -7525,6 +8165,13 @@ export default async function ServicesPage() {
                         key={s.id}
                         className="rounded-xl border border-white/10 bg-white/5 p-5"
                       >
+                        {s.image && (
+                          <img
+                            src={s.image}
+                            alt={`${s.name} service image`}
+                            className="mb-3 h-40 w-full rounded-lg object-cover border border-white/10"
+                          />
+                        )}
                         <h3 className="text-white font-semibold text-lg mb-1">
                           {s.name}
                         </h3>
@@ -7547,13 +8194,22 @@ export default async function ServicesPage() {
                         key={s.id}
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-5 py-4"
                       >
-                        <div>
-                          <p className="text-white font-medium">{s.name}</p>
-                          {s.description && (
-                            <p className="text-white/40 text-sm mt-0.5">
-                              {s.description}
-                            </p>
+                        <div className="flex items-center gap-3">
+                          {s.image && (
+                            <img
+                              src={s.image}
+                              alt={`${s.name} service image`}
+                              className="h-16 w-16 rounded-lg object-cover border border-white/10"
+                            />
                           )}
+                          <div>
+                            <p className="text-white font-medium">{s.name}</p>
+                            {s.description && (
+                              <p className="text-white/40 text-sm mt-0.5">
+                                {s.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <p className="text-brand-accent font-bold text-base ml-4 shrink-0">
                           {s.price}
@@ -8334,6 +8990,8 @@ export default function Navbar() {
 
 <file path="app/admin/services/page.tsx">
 "use client";
+// WHY: Force re-sync with DB and bypass Next.js caching to prevent ghost data.
+export const dynamic = "force-dynamic";
 
 // ─────────────────────────────────────────
 // SECTION: Admin Services Manager
@@ -8342,7 +9000,7 @@ export default function Navbar() {
 // PHASE 4: No changes needed — already wired to live Supabase services table.
 // ─────────────────────────────────────────
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   DndContext,
@@ -8381,9 +9039,46 @@ type DraftServiceData = {
   price: string;
   image: string | null;
 };
+type DbCategory = { id: number; name: string; sort_order?: number; created_at?: string };
 
 const MAX_MEDIA_BYTES = 1024 * 1024;
+const MAX_SERVICES_PER_CATEGORY = 5;
 const LELE_GIF_URL = "/lele.gif";
+const DEBUG_ENDPOINT = "http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413";
+const DEBUG_SESSION_ID = "d1134d";
+
+function sendDebugLog(payload: {
+  runId: string;
+  hypothesisId: string;
+  location: string;
+  message: string;
+  data: Record<string, unknown>;
+}) {
+  fetch(DEBUG_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": DEBUG_SESSION_ID },
+    body: JSON.stringify({
+      sessionId: DEBUG_SESSION_ID,
+      runId: payload.runId,
+      hypothesisId: payload.hypothesisId,
+      location: payload.location,
+      message: payload.message,
+      data: payload.data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+}
+
+// WHY: Normalize casing to Title Case before any DB insert to prevent data
+// fragmentation from case variants ("hot shave" vs "Hot Shave" would satisfy
+// a case-insensitive unique constraint and show as duplicates in the public UI).
+function toTitleCase(str: string): string {
+  return str
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 // ── Reusable sortable wrapper — applies dnd-kit positioning, passes listeners to children ──
 function SortableItem({
@@ -8406,16 +9101,215 @@ function SortableItem({
   );
 }
 
+// ─────────────────────────────────────────
+// SECTION: CategoryModal
+// WHAT: Centered modal for creating a new service category.
+// WHY: window.prompt cannot be styled and is blocked in some browser security
+//      policies. This modal matches the admin dark theme and keeps error state
+//      inline so the user can correct their input without losing focus.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+function CategoryModal({
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+  error,
+  isSaving,
+  title,
+  description,
+  submitLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  error: string | null;
+  isSaving: boolean;
+  title: string;
+  description: string;
+  submitLabel: string;
+}) {
+  return (
+    // WHY: bg-black/70 instead of backdrop-blur — backdrop-filter breaks iOS
+    // WebKit silently (CLAUDE.md Rule #1). A semi-opaque solid overlay achieves
+    // the same visual depth without triggering the Safari compositing bug.
+    // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
+    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+      <div className="mx-4 w-full max-w-md rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
+        <h2 className="mb-1 text-xl font-bold text-white">{title}</h2>
+        <p className="mb-6 text-sm text-white/40">{description}</p>
+
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !isSaving) onSubmit();
+            if (e.key === "Escape") onCancel();
+          }}
+          placeholder="e.g. Fades, Beard Trims, Facials"
+          className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 min-h-[44px] text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-accent"
+        />
+
+        {/* Inline error — stays visible inside the modal so the user never loses
+            their typed value. This is why we don't use the global feedback toast
+            for category creation errors. */}
+        {error && (
+          <p className="mt-4 text-center text-sm font-semibold text-red-400">{error}</p>
+        )}
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={onSubmit}
+            onTouchEnd={(e) => { e.preventDefault(); onSubmit(); }}
+            disabled={isSaving}
+            className="flex-1 rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : submitLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
+            disabled={isSaving}
+            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PurgeServicesModal({
+  categoryName,
+  onConfirm,
+  onCancel,
+  isPurging,
+}: {
+  categoryName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPurging: boolean;
+}) {
+  return (
+    // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
+    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
+        <h2 className="mb-2 text-xl font-bold text-white">Purge Services</h2>
+        <p className="mb-6 text-sm text-white/50">
+          Are you sure you want to delete ALL services in <span className="font-semibold text-white">{categoryName}</span>? This cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            onTouchEnd={(e) => { e.preventDefault(); onConfirm(); }}
+            disabled={isPurging}
+            className="flex-1 rounded-lg bg-red-500/80 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPurging ? "Purging..." : "Yes, Purge Services"}
+          </button>
+          <button
+            onClick={onCancel}
+            onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
+            disabled={isPurging}
+            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteServiceDangerModal({
+  serviceName,
+  onConfirm,
+  onCancel,
+  isDeleting,
+}: {
+  serviceName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isDeleting: boolean;
+}) {
+  return (
+    // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#0f1e2e] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-red-300">Danger Zone</p>
+        <h2 className="mb-2 text-xl font-bold text-white">Delete Service</h2>
+        <p className="mb-6 text-sm text-white/50">
+          Delete <span className="font-semibold text-white">{serviceName}</span>? This action will remove the service and its associated media permanently.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onConfirm}
+            onTouchEnd={(e) => { e.preventDefault(); onConfirm(); }}
+            disabled={isDeleting}
+            className="flex-1 rounded-lg bg-red-500/85 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? "Deleting..." : "Delete Service"}
+          </button>
+          <button
+            onClick={onCancel}
+            onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
+            disabled={isDeleting}
+            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionRequiredModal({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+    <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-amber-400/35 bg-[#0f1e2e] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-amber-300">Action Required</p>
+        <p className="mb-6 text-base font-semibold text-white">{message}</p>
+        <button
+          onClick={onClose}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
+          className="rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition hover:opacity-90"
+        >
+          Understood
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminServicesPage() {
+  const debugRunIdRef = useRef(`pre-fix-${Date.now()}`);
   const [services, setServices] = useState<DbService[]>([]);
+  const [categories, setCategories] = useState<DbCategory[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
   const [layout, setLayout] = useState<Layout>("cards");
   const [loading, setLoading] = useState(true);
+  // WHY: Separate from `loading` so subsequent fetchData() calls (post-mutation)
+  // don't trigger the full-page skeleton — only the empty-state guard checks this.
+  const [isFetching, setIsFetching] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [editing, setEditing] = useState<EditingField | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [confirmDeleteCat, setConfirmDeleteCat] = useState<string | null>(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [uploadingServiceId, setUploadingServiceId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -8431,6 +9325,27 @@ export default function AdminServicesPage() {
   const [activeSwapSlot, setActiveSwapSlot] = useState<number | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
   const [swappingSlot, setSwappingSlot] = useState<number | null>(null);
+  // Tracks which newly-promoted featured service still needs a GIF/Video upload.
+  // Cleared when that service successfully uploads media.
+  const [pendingGifUploadId, setPendingGifUploadId] = useState<number | null>(null);
+
+  // ── Category modal state ──
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState<"create" | "rename">("create");
+  const [renameSourceCategory, setRenameSourceCategory] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryModalError, setCategoryModalError] = useState<string | null>(null);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [purgeServicesTarget, setPurgeServicesTarget] = useState<string | null>(null);
+  const [isPurgingServices, setIsPurgingServices] = useState(false);
+  const [serviceDeleteTarget, setServiceDeleteTarget] = useState<DbService | null>(null);
+  const [isDeletingService, setIsDeletingService] = useState(false);
+  const [actionRequiredMessage, setActionRequiredMessage] = useState<string | null>(null);
+  // WHY: useRef closes the race window that isSavingCategory state cannot.
+  // State updates are async — a second tap fires before React re-renders the
+  // disabled button. The ref is synchronous: it reads and writes in the same
+  // call stack tick, so the second invocation sees the lock immediately.
+  const categorySubmitRef = useRef(false);
 
   // ── PointerSensor: 5px distance for mouse/stylus ──
   // ── TouchSensor: 250ms hold + 5px tolerance — iOS Safari needs the delay to ──
@@ -8448,30 +9363,43 @@ export default function AdminServicesPage() {
 
   useEffect(() => {
     async function init() {
-      await Promise.all([fetchServices(), fetchConfig()]);
+      await Promise.all([fetchData(), fetchConfig()]);
     }
     init();
   }, []);
 
-  async function fetchServices() {
+  // WHY: Two distinct queries keep each table's error surface isolated — a
+  // categories fetch failure does not silently wipe the services list, and vice versa.
+  async function fetchData() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .order("sort_order", { ascending: true });
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to load services." });
+    setIsFetching(true);
+    const [servicesRes, categoriesRes] = await Promise.all([
+      supabase.from("services").select("*").order("sort_order", { ascending: true }),
+      supabase.from("categories").select("*").order("sort_order", { ascending: true }),
+    ]);
+
+    if (servicesRes.error) {
+      setFeedback({ type: "error", msg: `Failed to load services: ${servicesRes.error.message}` });
     } else {
-      setServices(data ?? []);
-      const uploadedPhotos = (data ?? []).reduce<Record<number, string>>((acc, service) => {
-        if (service.image && service.image !== LELE_GIF_URL) {
-          acc[service.id] = service.image;
-        }
-        return acc;
-      }, {});
+      setServices(servicesRes.data ?? []);
+      const uploadedPhotos = (servicesRes.data ?? []).reduce<Record<number, string>>(
+        (acc, service) => {
+          if (service.image && service.image !== LELE_GIF_URL) acc[service.id] = service.image;
+          return acc;
+        },
+        {},
+      );
       setUploadedPhotoByService(uploadedPhotos);
     }
+
+    if (categoriesRes.error) {
+      setFeedback({ type: "error", msg: `Failed to load categories: ${categoriesRes.error.message}` });
+    } else {
+      setCategories(categoriesRes.data ?? []);
+    }
+
     setLoading(false);
+    setIsFetching(false);
   }
 
   async function fetchConfig() {
@@ -8482,17 +9410,60 @@ export default function AdminServicesPage() {
     if (layoutRes.data?.value) setLayout(layoutRes.data.value as Layout);
     if (orderRes.data?.value) {
       try {
-        setCategoryOrder(JSON.parse(orderRes.data.value));
+        const parsedOrder = JSON.parse(orderRes.data.value) as string[];
+        // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
+        const dedupedOrder = [...new Set(parsedOrder)];
+        // #region agent log
+        sendDebugLog({
+          runId: debugRunIdRef.current,
+          hypothesisId: "H1_site_config_contains_duplicates",
+          location: "app/admin/services/page.tsx:fetchConfig",
+          message: "Fetched category_order from site_config",
+          data: {
+            parsedOrder,
+            dedupedOrder,
+            uniqueCount: new Set(dedupedOrder).size,
+            totalCount: parsedOrder.length,
+          },
+        });
+        // #endregion
+        setCategoryOrder(dedupedOrder);
       } catch {}
     }
   }
 
-  // ── Derive ordered categories ──
-  const allCategories = [...new Set(services.map((s) => s.category))];
+  // ── Derive ordered category name list for dnd-kit and the service dropdown ──
+  // WHY: orderedCategories stays string[] because dnd-kit SortableContext uses
+  // it as UniqueIdentifier[], and the draft form <select> binds to string values.
+  // The canonical source of truth is the `categories` table — categoryOrder from
+  // site_config only controls display order, not existence.
+  const categoryNames = categories.map((c) => c.name);
   const orderedCategories = [
-    ...categoryOrder.filter((c) => allCategories.includes(c)),
-    ...allCategories.filter((c) => !categoryOrder.includes(c)),
+    ...categoryOrder.filter((c) => categoryNames.includes(c)),
+    ...categoryNames.filter((c) => !categoryOrder.includes(c)),
   ];
+  // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
+  const dedupedOrderedCategories = [...new Set(orderedCategories)];
+
+  useEffect(() => {
+    const duplicateOrderedCategories = dedupedOrderedCategories.filter(
+      (cat, index, arr) => arr.indexOf(cat) !== index,
+    );
+    // #region agent log
+    sendDebugLog({
+      runId: debugRunIdRef.current,
+      hypothesisId: "H4_render_uses_duplicate_keys",
+      location: "app/admin/services/page.tsx:orderedCategories-useEffect",
+      message: "Derived orderedCategories and duplicate-key risk",
+      data: {
+        categoryOrder,
+        categoryNames,
+          orderedCategories: dedupedOrderedCategories,
+        duplicateOrderedCategories,
+      },
+    });
+    // #endregion
+  }, [categoryOrder, categoryNames, dedupedOrderedCategories]);
   const featuredServices = services.filter((s) => Boolean(s.is_premium)).slice(0, 3);
   const featuredIds = new Set(featuredServices.map((s) => s.id));
   const featuredSlots: Array<DbService | null> = [0, 1, 2].map((index) => featuredServices[index] ?? null);
@@ -8578,18 +9549,23 @@ export default function AdminServicesPage() {
     setSwappingSlot(slotIndex);
     try {
       const outgoingStaticImage = outgoingService ? getDefaultStaticImage(outgoingService) : null;
+
+      // Promote the incoming service. Reset media_type to 'image' — the admin
+      // must explicitly upload a GIF/Video to activate Cinematic Mode.
       const updates = [
         supabase
           .from("services")
-          .update({ is_premium: true })
+          .update({ is_premium: true, media_type: "image" })
           .eq("id", incomingServiceId),
       ];
 
       if (outgoingService) {
+        // Demote the outgoing service: revert its image to the last static photo
+        // and reset media_type to 'image' — GIF/Video is only valid while featured.
         updates.push(
           supabase
             .from("services")
-            .update({ is_premium: false, image: outgoingStaticImage })
+            .update({ is_premium: false, image: outgoingStaticImage, media_type: "image" })
             .eq("id", outgoingService.id),
         );
       }
@@ -8603,22 +9579,31 @@ export default function AdminServicesPage() {
       setServices((prev) =>
         prev.map((service) => {
           if (service.id === incomingServiceId) {
-            return { ...service, is_premium: true };
+            return { ...service, is_premium: true, media_type: "image" as const };
           }
           if (outgoingService && service.id === outgoingService.id) {
             return {
               ...service,
               is_premium: false,
               image: outgoingStaticImage,
+              media_type: "image" as const,
             };
           }
           return service;
         }),
       );
-      setFeedback({ type: "success", msg: "Featured slot updated." });
+
+      // Signal that this newly-featured service needs a GIF or Video uploaded
+      // before Cinematic Mode can be activated.
+      setPendingGifUploadId(incomingServiceId);
+      setFeedback({
+        type: "success",
+        msg: "Featured slot updated. Upload a GIF or Video in the service card to activate Cinematic Mode.",
+      });
       setActiveSwapSlot(null);
       setSwapSearch("");
     } catch (err) {
+      console.error("[service-media:handleSwapFeaturedSlot]", err);
       const message = err instanceof Error ? err.message : "Failed to swap featured slot.";
       setFeedback({ type: "error", msg: message });
     } finally {
@@ -8627,21 +9612,6 @@ export default function AdminServicesPage() {
   }
 
   async function handleMediaUpload(service: DbService, file: File) {
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-      body: JSON.stringify({
-        sessionId: "e7a726",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "app/admin/services/page.tsx:handleMediaUpload:entry",
-        message: "Upload handler entered",
-        data: { serviceId: service.id, fileType: file.type, fileSize: file.size },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     if (!file.type.startsWith("image/")) {
       setFeedback({ type: "error", msg: "Please upload an image file." });
       return;
@@ -8662,25 +9632,11 @@ export default function AdminServicesPage() {
 
     setUploadingServiceId(service.id);
     try {
-      const publicUrl = await uploadServiceMedia(file);
-      // #region agent log
-      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-        body: JSON.stringify({
-          sessionId: "e7a726",
-          runId: "pre-fix",
-          hypothesisId: "H4",
-          location: "app/admin/services/page.tsx:handleMediaUpload:afterUploadServiceMedia",
-          message: "Storage helper returned URL",
-          data: { serviceId: service.id, hasPublicUrl: Boolean(publicUrl), publicUrl },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
+      // Pass the auth-aware browser client so bucket RLS sees auth.uid()
+      const publicUrl = await uploadServiceMedia(file, supabase);
       const { error } = await supabase
         .from("services")
-        .update({ image: publicUrl })
+        .update({ image: publicUrl, media_type: "image" })
         .eq("id", service.id);
 
       if (error) {
@@ -8696,39 +9652,69 @@ export default function AdminServicesPage() {
 
       setUploadedPhotoByService((prev) => ({ ...prev, [service.id]: publicUrl }));
       setServices((prev) =>
-        prev.map((s) => (s.id === service.id ? { ...s, image: publicUrl } : s)),
+        prev.map((s) =>
+          s.id === service.id ? { ...s, image: publicUrl, media_type: "image" as const } : s,
+        ),
       );
+      // Clear the "needs GIF/Video" prompt once the service uploads any media
+      if (pendingGifUploadId === service.id) setPendingGifUploadId(null);
       setFeedback({ type: "success", msg: "Service media uploaded." });
     } catch (err) {
-      // #region agent log
-      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-        body: JSON.stringify({
-          sessionId: "e7a726",
-          runId: "pre-fix",
-          hypothesisId: "H3",
-          location: "app/admin/services/page.tsx:handleMediaUpload:catch",
-          message: "Upload flow failed",
-          data: {
-            serviceId: service.id,
-            errorName: err instanceof Error ? err.name : "Unknown",
-            errorMessage: err instanceof Error ? err.message : String(err),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-      console.error("[service-media upload error]", err);
+      console.error("[service-media:handleMediaUpload]", {
+        serviceId: service.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
       const message = err instanceof Error ? err.message : "Failed to upload media.";
-      if (message.includes("404")) {
+      if (message.includes("404") || message.includes("Bucket not found")) {
         setFeedback({
           type: "error",
-          msg: "Upload failed: Please ensure the 'service-media' bucket exists in Supabase.",
+          msg: "Upload failed: 'service-media' bucket not found — check Supabase Storage.",
+        });
+      } else if (message.includes("403") || message.includes("policy")) {
+        setFeedback({
+          type: "error",
+          msg: "Upload failed: bucket policy denied the request — ensure you are logged in.",
         });
       } else {
-        setFeedback({ type: "error", msg: message });
+        setFeedback({ type: "error", msg: `Upload failed: ${message}` });
       }
+    } finally {
+      setUploadingServiceId(null);
+    }
+  }
+
+  async function handleFeaturedMediaUpload(service: DbService, file: File) {
+    if (!file.type.startsWith("image/")) {
+      setFeedback({ type: "error", msg: "Please upload an image file." });
+      return;
+    }
+    if (file.size > MAX_MEDIA_BYTES) {
+      setFeedback({ type: "error", msg: "Please use media under 1MB." });
+      return;
+    }
+
+    setUploadingServiceId(service.id);
+    try {
+      // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+      const publicUrl = await uploadServiceMedia(file, supabase);
+      const { error } = await supabase
+        .from("services")
+        .update({ image: publicUrl, media_type: "gif" })
+        .eq("id", service.id);
+
+      if (error) throw new Error(error.message);
+
+      setServices((prev) =>
+        prev.map((s) =>
+          s.id === service.id ? { ...s, image: publicUrl, media_type: "gif" as const } : s,
+        ),
+      );
+      setUploadedPhotoByService((prev) => ({ ...prev, [service.id]: publicUrl }));
+      setPendingGifUploadId(null);
+      setFeedback({ type: "success", msg: "High-Fidelity media uploaded." });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to upload high-fidelity media.";
+      setFeedback({ type: "error", msg: message });
     } finally {
       setUploadingServiceId(null);
     }
@@ -8762,33 +9748,68 @@ export default function AdminServicesPage() {
     });
   }
 
-  async function handleDelete(id: number) {
-    const { error } = await supabase.from("services").delete().eq("id", id);
+  function handleOpenDeleteServiceModal(service: DbService) {
+    setServiceDeleteTarget(service);
+  }
+
+  async function handleDeleteService() {
+    if (!serviceDeleteTarget) return;
+    setIsDeletingService(true);
+    const { error } = await supabase.from("services").delete().eq("id", serviceDeleteTarget.id);
     if (error) {
       setFeedback({ type: "error", msg: "Failed to delete service." });
     } else {
-      setServices((prev) => prev.filter((s) => s.id !== id));
+      setServices((prev) => prev.filter((s) => s.id !== serviceDeleteTarget.id));
       setFeedback({ type: "success", msg: "Service deleted." });
     }
-    setConfirmDelete(null);
+    setIsDeletingService(false);
+    setServiceDeleteTarget(null);
   }
 
   async function handleDeleteCategory(cat: string) {
-    const ids = servicesInCategory(cat).map((s) => s.id);
-    const { error } = await supabase.from("services").delete().in("id", ids);
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to delete category." });
-    } else {
+    const categoryRecord = categories.find((c) => c.name === cat);
+    if (!categoryRecord) {
+      setFeedback({ type: "error", msg: "Category not found in local state — refresh and try again." });
+      return;
+    }
+
+    try {
+      // Delete child services first — categories table has no FK cascade, so order matters.
+      const serviceIds = servicesInCategory(cat).map((s) => s.id);
+      if (serviceIds.length > 0) {
+        const { error: servicesError } = await supabase
+          .from("services")
+          .delete()
+          .in("id", serviceIds);
+        if (servicesError) throw new Error(`Failed to delete services: ${servicesError.message}`);
+      }
+
+      // Delete the category record by ID — safer than name if names were ever mutated.
+      const { error: catError } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", categoryRecord.id);
+      if (catError) throw new Error(`Failed to delete category: ${catError.message}`);
+
+      // WHY: Local state updated only after BOTH DB deletes confirm. Partial
+      // success (services gone, category row still present) would leave a ghost
+      // empty category in the panel until the next full fetch.
+      const updatedOrder = categoryOrder.filter((c) => c !== cat);
       setServices((prev) => prev.filter((s) => s.category !== cat));
-      setCategoryOrder((prev) => prev.filter((c) => c !== cat));
+      setCategories((prev) => prev.filter((c) => c.id !== categoryRecord.id));
+      setCategoryOrder(updatedOrder);
       await supabase.from("site_config").upsert({
         key: "category_order",
-        value: JSON.stringify(categoryOrder.filter((c) => c !== cat)),
+        value: JSON.stringify(updatedOrder),
         updated_at: new Date().toISOString(),
       });
       setFeedback({ type: "success", msg: `Category "${cat}" deleted.` });
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        msg: err instanceof Error ? err.message : "Failed to delete category.",
+      });
     }
-    setConfirmDeleteCat(null);
   }
 
   async function handleAddService(cat: string) {
@@ -8808,6 +9829,13 @@ export default function AdminServicesPage() {
     setDraftData({ name: "", category: "", price: "", image: null });
   }
 
+  function formatPriceDisplay(value: string | number | null | undefined): string {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "$0";
+    const sanitized = raw.startsWith("$") ? raw.slice(1) : raw;
+    return `$${sanitized}`;
+  }
+
   async function handleDraftMediaUpload(file: File) {
     if (!file.type.startsWith("image/")) {
       setFeedback({ type: "error", msg: "Please upload an image file." });
@@ -8820,22 +9848,32 @@ export default function AdminServicesPage() {
 
     setIsUploadingDraftMedia(true);
     try {
-      const publicUrl = await uploadServiceMedia(file);
+      // Pass the auth-aware browser client so bucket RLS sees auth.uid()
+      const publicUrl = await uploadServiceMedia(file, supabase);
       setDraftData((prev) => ({ ...prev, image: publicUrl }));
       setFeedback({ type: "success", msg: "Draft media uploaded." });
     } catch (err) {
-      console.error("[draft service-media upload error]", err);
+      console.error("[service-media:handleDraftMediaUpload]", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      const message = err instanceof Error ? err.message : "Failed to upload media.";
       setFeedback({
         type: "error",
-        msg: "Upload failed: Please ensure the 'service-media' bucket exists in Supabase.",
+        msg: `Upload failed: ${message}`,
       });
     } finally {
       setIsUploadingDraftMedia(false);
     }
   }
 
+  // WHY: Enforce strict limits (3 Categories, 10 Services) via pre-flight DB
+  // checks to prevent UI/DB state mismatch. Local services state is updated
+  // ONLY after the DB insert confirms success — no optimistic updates.
   async function handleCommitService() {
-    const trimmedName = draftData.name.trim();
+    // WHY: Normalize casing to Title Case and handle case-insensitive duplicates
+    // to prevent data fragmentation — "hot shave" and "Hot Shave" would collide
+    // on a case-insensitive unique index but appear as separate rows otherwise.
+    const trimmedName = toTitleCase(draftData.name.trim());
     const trimmedCategory = draftData.category.trim();
     const parsedPrice = Number(draftData.price);
     const isPriceValid = Number.isFinite(parsedPrice) && parsedPrice >= 0;
@@ -8848,70 +9886,336 @@ export default function AdminServicesPage() {
       return;
     }
 
+    if (!draftData.image) {
+      // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+      setActionRequiredMessage("An image is required to publish this service.");
+      return;
+    }
+
     setIsSavingDraft(true);
-    const maxOrder =
-      services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
-    const payload = {
-      name: trimmedName,
-      category: trimmedCategory,
-      price: parsedPrice,
-      description: "",
-      image: draftData.image,
-      is_premium: false,
-      is_active: true,
-      sort_order: maxOrder + 1,
-    };
 
     try {
+      // Pre-flight: enforce the hard limit of 5 services per category.
+      const { count, error: countError } = await supabase
+        .from("services")
+        .select("*", { count: "exact", head: true })
+        .eq("category", trimmedCategory);
+
+      if (countError) throw new Error(countError.message);
+
+      // WHY: Implemented strict SSOT pattern. UI state only updates via fetchData() post-mutation to prevent React duplicate key explosions.
+      if ((count ?? 0) >= MAX_SERVICES_PER_CATEGORY) {
+        setFeedback({ type: "error", msg: "Limit Reached" });
+        return;
+      }
+
+      const maxOrder =
+        services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
+
       const { data, error } = await supabase
         .from("services")
-        .insert(payload)
+        .insert({
+          name: trimmedName,
+          category: trimmedCategory,
+          price: parsedPrice,
+          description: "",
+          image: draftData.image,
+          media_type: "image",
+          is_premium: false,
+          is_active: true,
+          sort_order: maxOrder + 1,
+        })
         .select()
         .single();
+
       if (error) {
+        if (error.code === "23505") {
+          // WHY: Clear the name field so the admin can type a new one without
+          // manually selecting and deleting — then re-fetch so the existing
+          // service is visible on screen if it was somehow missing from local state.
+          setDraftData((prev) => ({ ...prev, name: "" }));
+          setFeedback({ type: "error", msg: "Service already exists." });
+          await fetchData();
+          return;
+        }
         throw new Error(error.message);
       }
 
-      setServices((prev) => [...prev, data]);
+      // WHY: handleCancelDraft resets form state before fetchData re-populates
+      // the services list. Calling fetchData() here (not setServices) ensures
+      // the new row's real DB id and timestamps are reflected in local state.
       handleCancelDraft();
       setFeedback({ type: "success", msg: "Service created." });
+      await fetchData();
     } catch (err) {
+      console.error("[services:handleCommitService]", err);
       const message = err instanceof Error ? err.message : "Failed to create service.";
       setFeedback({ type: "error", msg: message });
+    } finally {
       setIsSavingDraft(false);
     }
   }
 
-  async function handleAddCategory() {
-    const newCat = "New Category";
-    const maxOrder =
-      services.length > 0 ? Math.max(...services.map((s) => s.sort_order ?? 0)) : 0;
-    const { data, error } = await supabase
-      .from("services")
-      .insert({
-        name: "New Service",
-        category: newCat,
-          // Keep category bootstrap inserts schema-compatible with numeric price.
-          price: 0,
-        description: "",
-        image: null,
-        is_premium: false,
-        is_active: true,
-        sort_order: maxOrder + 1,
-      })
-      .select()
-      .single();
-    if (error) {
-      setFeedback({ type: "error", msg: "Failed to add category." });
-    } else {
-      setServices((prev) => [...prev, data]);
-      setCategoryOrder((prev) => [...prev, newCat]);
-      await supabase.from("site_config").upsert({
+  function handleAddCategory() {
+    // WHY: Opening the modal is a pure UI action — no async needed here.
+    // All DB work is deferred to handleSubmitCategory so the user can
+    // type their name before any network call is made.
+    setCategoryModalMode("create");
+    setRenameSourceCategory(null);
+    setIsAddingCategory(true);
+    setNewCategoryName("");
+    setCategoryModalError(null);
+  }
+
+  function handleOpenRenameCategory(cat: string) {
+    // WHY: Cascading Rename ensures referential integrity between categories and services. Purge Services resets category content without breaking the Rule of 3 layout.
+    setCategoryModalMode("rename");
+    setRenameSourceCategory(cat);
+    setIsAddingCategory(true);
+    setNewCategoryName(cat);
+    setCategoryModalError(null);
+  }
+
+  function handleOpenPurgeServices(cat: string) {
+    // WHY: Cascading Rename ensures referential integrity between categories and services. Purge Services resets category content without breaking the Rule of 3 layout.
+    setPurgeServicesTarget(cat);
+  }
+
+  function handleCancelCategoryModal() {
+    setIsAddingCategory(false);
+    setCategoryModalMode("create");
+    setRenameSourceCategory(null);
+    setNewCategoryName("");
+    setCategoryModalError(null);
+  }
+
+  async function handleRenameCategory(oldName: string, newName: string) {
+    if (categorySubmitRef.current) return;
+    categorySubmitRef.current = true;
+    setIsSavingCategory(true);
+
+    try {
+      // WHY: Cascading Rename ensures referential integrity between categories and services. Purge Services resets category content without breaking the Rule of 3 layout.
+      const normalizedNewName = toTitleCase(newName.trim());
+      if (!normalizedNewName) {
+        setCategoryModalError("Category name cannot be empty.");
+        return;
+      }
+
+      const isSameName = oldName.toLowerCase() === normalizedNewName.toLowerCase();
+      if (isSameName) {
+        handleCancelCategoryModal();
+        return;
+      }
+
+      const duplicateNameExists = categories.some(
+        (category) =>
+          category.name.toLowerCase() === normalizedNewName.toLowerCase() &&
+          category.name.toLowerCase() !== oldName.toLowerCase(),
+      );
+      if (duplicateNameExists) {
+        setFeedback({ type: "error", msg: "Name already exists" });
+        return;
+      }
+
+      const categoryRecord = categories.find((category) => category.name === oldName);
+      if (!categoryRecord) {
+        throw new Error("Original category not found.");
+      }
+
+      const { error: categoryError } = await supabase
+        .from("categories")
+        .update({ name: normalizedNewName })
+        .eq("id", categoryRecord.id);
+      if (categoryError) throw new Error(categoryError.message);
+
+      const { error: servicesError } = await supabase
+        .from("services")
+        .update({ category: normalizedNewName })
+        .eq("category", oldName);
+      if (servicesError) throw new Error(servicesError.message);
+
+      const updatedOrder = categoryOrder.map((name) =>
+        name.toLowerCase() === oldName.toLowerCase() ? normalizedNewName : name,
+      );
+      const { error: orderError } = await supabase.from("site_config").upsert({
         key: "category_order",
-        value: JSON.stringify([...categoryOrder, newCat]),
+        value: JSON.stringify([...new Set(updatedOrder)]),
         updated_at: new Date().toISOString(),
       });
-      setFeedback({ type: "success", msg: "New category added — tap the name to rename it." });
+      if (orderError) throw new Error(orderError.message);
+
+      handleCancelCategoryModal();
+      await fetchData();
+      await fetchConfig();
+      setFeedback({ type: "success", msg: `Category renamed to "${normalizedNewName}".` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to rename category.";
+      setCategoryModalError(message);
+    } finally {
+      setIsSavingCategory(false);
+      categorySubmitRef.current = false;
+    }
+  }
+
+  async function handlePurgeServices(categoryName: string) {
+    setIsPurgingServices(true);
+    try {
+      // WHY: Cascading Rename ensures referential integrity between categories and services. Purge Services resets category content without breaking the Rule of 3 layout.
+      const { error } = await supabase.from("services").delete().eq("category", categoryName);
+      if (error) throw new Error(error.message);
+      setPurgeServicesTarget(null);
+      await fetchData();
+      await fetchConfig();
+      setFeedback({ type: "success", msg: `All services in "${categoryName}" were purged.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to purge services.";
+      setFeedback({ type: "error", msg: message });
+    } finally {
+      setIsPurgingServices(false);
+    }
+  }
+
+  async function handleSubmitCategoryModal() {
+    if (categoryModalMode === "rename" && renameSourceCategory) {
+      await handleRenameCategory(renameSourceCategory, newCategoryName);
+      return;
+    }
+    await handleSubmitCategory();
+  }
+
+  // WHY: Enforce strict limits (3 Categories, 10 Services) via pre-flight DB
+  // checks to prevent UI/DB state mismatch. Sequential state update prevents
+  // frontend ghosting during DB latency — the ref lock fires synchronously so
+  // a second tap is rejected before any state or network call runs. Local state
+  // is updated ONLY after the DB confirms success.
+  async function handleSubmitCategory() {
+    if (categorySubmitRef.current) return;
+    categorySubmitRef.current = true;
+    setIsSavingCategory(true);
+
+    try {
+      // WHY: Normalize casing to Title Case and handle case-insensitive duplicates
+      // to prevent data fragmentation — "beard care" and "Beard Care" would be
+      // distinct rows under a binary collation but identical to the public UI.
+      const trimmedName = toTitleCase(newCategoryName.trim());
+
+      if (!trimmedName) {
+        setCategoryModalError("Category name cannot be empty.");
+        return;
+      }
+
+      // WHY: Local case-insensitive check runs before any DB round-trip to catch
+      // the most common duplicate (same session) without network cost.
+      if (dedupedOrderedCategories.some((c) => c.toLowerCase() === trimmedName.toLowerCase())) {
+        setCategoryModalError(`"${trimmedName}" already exists.`);
+        return;
+      }
+      // #region agent log
+      sendDebugLog({
+        runId: debugRunIdRef.current,
+        hypothesisId: "H2_local_append_reintroduces_duplicates",
+        location: "app/admin/services/page.tsx:handleSubmitCategory-before-insert",
+        message: "Category submit before insert",
+        data: {
+          trimmedName,
+          categoryOrder,
+          orderedCategories: dedupedOrderedCategories,
+          existingCaseInsensitiveMatch: dedupedOrderedCategories.some(
+            (c) => c.toLowerCase() === trimmedName.toLowerCase(),
+          ),
+        },
+      });
+      // #endregion
+
+      // Pre-flight: enforce the hard limit of 3 categories.
+      // count: 'exact' + head: true returns only the count, no row data.
+      const { count, error: countError } = await supabase
+        .from("categories")
+        .select("*", { count: "exact", head: true });
+
+      if (countError) throw new Error(countError.message);
+
+      // WHY: Implemented strict SSOT pattern. UI state only updates via fetchData() post-mutation to prevent React duplicate key explosions.
+      if ((count ?? 0) >= 3) {
+        setCategoryModalError("Limit Reached");
+        return;
+      }
+
+      const nextSortOrder = (count ?? 0) + 1;
+      const { data, error } = await supabase
+        .from("categories")
+        .insert({ name: trimmedName, sort_order: nextSortOrder })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          // WHY: A concurrent session beat us between the local check and the insert.
+          // Close the modal and re-fetch — if the category exists in DB but is invisible
+          // in local state, fetchData() will surface it so the admin sees it immediately.
+          setIsAddingCategory(false);
+          setNewCategoryName("");
+          setCategoryModalError(null);
+          setFeedback({ type: "error", msg: "Category already exists." });
+          await fetchData();
+          return;
+        }
+        throw new Error(error.message);
+      }
+
+      // WHY: Persist category_order to site_config before closing the modal so the
+      // new order is durable in DB before the UI re-renders. setCategoryOrder is
+      // intentionally deferred until after fetchData() — strict SSOT means no data
+      // state updates before the DB round-trip confirms the insert.
+      // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
+      const updatedOrder = [...new Set([...categoryOrder, trimmedName])];
+      // #region agent log
+      sendDebugLog({
+        runId: debugRunIdRef.current,
+        hypothesisId: "H2_local_append_reintroduces_duplicates",
+        location: "app/admin/services/page.tsx:handleSubmitCategory-updatedOrder",
+        message: "Computed updatedOrder before site_config upsert",
+        data: {
+          categoryOrder,
+          trimmedName,
+          updatedOrder,
+          uniqueCount: new Set(updatedOrder).size,
+          totalCount: updatedOrder.length,
+        },
+      });
+      // #endregion
+      await supabase.from("site_config").upsert({
+        key: "category_order",
+        value: JSON.stringify(updatedOrder),
+        updated_at: new Date().toISOString(),
+      });
+
+      setIsAddingCategory(false);
+      setNewCategoryName("");
+      setCategoryModalError(null);
+      await fetchData();
+      await fetchConfig();
+      // #region agent log
+      sendDebugLog({
+        runId: debugRunIdRef.current,
+        hypothesisId: "H3_fetch_then_local_set_conflict",
+        location: "app/admin/services/page.tsx:handleSubmitCategory-after-fetchData",
+        message: "Set categoryOrder after fetchData call",
+        data: {
+          updatedOrderAfterInsert: updatedOrder,
+          postFetchConfigCategoryOrderApplied: true,
+        },
+      });
+      // #endregion
+      setFeedback({ type: "success", msg: `Category "${trimmedName}" created.` });
+    } catch (err) {
+      console.error("[categories:handleSubmitCategory]", err);
+      const message = err instanceof Error ? err.message : "Failed to create category.";
+      setCategoryModalError(message);
+    } finally {
+      setIsSavingCategory(false);
+      categorySubmitRef.current = false;
     }
   }
 
@@ -8938,7 +10242,9 @@ export default function AdminServicesPage() {
     const results = await Promise.all(updates);
     if (results.some((r) => r.error)) {
       setFeedback({ type: "error", msg: "Failed to sync order to database." });
-      fetchServices();
+      // WHY: fetchData re-fetches both tables so the UI doesn't drift if the
+      // partial sort_order update left services and categories out of sync.
+      fetchData();
     }
   }
 
@@ -8947,9 +10253,9 @@ export default function AdminServicesPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = orderedCategories.indexOf(active.id as string);
-    const newIndex = orderedCategories.indexOf(over.id as string);
-    const reordered = arrayMove(orderedCategories, oldIndex, newIndex);
+    const oldIndex = dedupedOrderedCategories.indexOf(active.id as string);
+    const newIndex = dedupedOrderedCategories.indexOf(over.id as string);
+    const reordered = arrayMove(dedupedOrderedCategories, oldIndex, newIndex);
     setCategoryOrder(reordered);
 
     await supabase.from("site_config").upsert({
@@ -8973,19 +10279,43 @@ export default function AdminServicesPage() {
   }) {
     const isActive = editing?.id === serviceId && editing?.field === field;
     if (isActive) {
+      const isPriceField = field === "price";
       return (
-        <input
-          autoFocus
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitEdit();
-          }}
-          className={`bg-white/10 border border-brand-accent rounded px-2 py-1 text-white focus:outline-none w-full ${className}`}
-        />
+        // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+        <div className="flex w-full items-center gap-2">
+          <div className="relative w-full">
+            {isPriceField && (
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-brand-accent">
+                $
+              </span>
+            )}
+            <input
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+              }}
+              className={`bg-white/10 border border-brand-accent rounded px-2 py-1 text-white focus:outline-none w-full ${isPriceField ? "pl-6" : ""} ${className}`}
+            />
+          </div>
+          <button
+            onClick={commitEdit}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              commitEdit();
+            }}
+            className="rounded-md border border-green-400/40 bg-green-500/20 px-2 py-1 min-h-[44px] min-w-[44px] text-xs font-semibold text-green-200 touch-manipulation transition hover:bg-green-500/30"
+            aria-label="Save field"
+            title="Save"
+          >
+            ✓
+          </button>
+        </div>
       );
     }
+    const displayValue =
+      field === "price" ? formatPriceDisplay(value) : value || <span className="text-white/30 italic">tap to edit</span>;
     return (
       <span
         onClick={() => startEdit(serviceId, field, value)}
@@ -8996,7 +10326,7 @@ export default function AdminServicesPage() {
         className={`cursor-pointer hover:text-brand-accent transition touch-manipulation ${className}`}
         title="Tap to edit"
       >
-        {value || <span className="text-white/30 italic">tap to edit</span>}
+        {displayValue}
       </span>
     );
   }
@@ -9133,41 +10463,16 @@ export default function AdminServicesPage() {
             {service.is_active !== false ? "👁 Hide Service" : "✅ Show Service"}
           </button>
 
-          {confirmDelete === service.id ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleDelete(service.id)}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  handleDelete(service.id);
-                }}
-                className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
-              >
-                Yes, Delete
-              </button>
-              <button
-                onClick={() => setConfirmDelete(null)}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  setConfirmDelete(null);
-                }}
-                className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 text-white transition"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDelete(service.id)}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                setConfirmDelete(service.id);
-              }}
-              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white transition"
-            >
-              🗑 Delete
-            </button>
-          )}
+          <button
+            onClick={() => handleOpenDeleteServiceModal(service)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              handleOpenDeleteServiceModal(service);
+            }}
+            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white transition"
+          >
+            🗑 Delete
+          </button>
         </div>
       </div>
     );
@@ -9175,6 +10480,45 @@ export default function AdminServicesPage() {
 
   return (
     <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
+      {isAddingCategory && (
+        <CategoryModal
+          value={newCategoryName}
+          onChange={setNewCategoryName}
+          onSubmit={handleSubmitCategoryModal}
+          onCancel={handleCancelCategoryModal}
+          error={categoryModalError}
+          isSaving={isSavingCategory}
+          title={categoryModalMode === "rename" ? "Rename Category" : "New Category"}
+          description={
+            categoryModalMode === "rename"
+              ? "Update the category name. Services in this category will be renamed together."
+              : "Creates a new group in the Services Manager. You can rename it after."
+          }
+          submitLabel={categoryModalMode === "rename" ? "Save Rename" : "Create Category"}
+        />
+      )}
+      {purgeServicesTarget && (
+        <PurgeServicesModal
+          categoryName={purgeServicesTarget}
+          onConfirm={() => handlePurgeServices(purgeServicesTarget)}
+          onCancel={() => setPurgeServicesTarget(null)}
+          isPurging={isPurgingServices}
+        />
+      )}
+      {serviceDeleteTarget && (
+        <DeleteServiceDangerModal
+          serviceName={serviceDeleteTarget.name}
+          onConfirm={handleDeleteService}
+          onCancel={() => setServiceDeleteTarget(null)}
+          isDeleting={isDeletingService}
+        />
+      )}
+      {actionRequiredMessage && (
+        <ActionRequiredModal
+          message={actionRequiredMessage}
+          onClose={() => setActionRequiredMessage(null)}
+        />
+      )}
       <div className="max-w-5xl mx-auto">
         {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
@@ -9189,14 +10533,17 @@ export default function AdminServicesPage() {
 
         {/* ── Feedback ── */}
         {feedback && (
-          <div
-            className={`mb-6 rounded-lg px-4 py-3 text-sm font-medium ${
-              feedback.type === "success"
-                ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                : "bg-red-500/20 text-red-300 border border-red-500/30"
-            }`}
-          >
-            {feedback.msg}
+          // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
+          <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center pointer-events-none px-4">
+            <div
+              className={`rounded-lg px-4 py-3 text-sm font-medium shadow-xl pointer-events-auto ${
+                feedback.type === "success"
+                  ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                  : "bg-red-500/20 text-red-300 border border-red-500/30"
+              }`}
+            >
+              {feedback.msg}
+            </div>
           </div>
         )}
 
@@ -9211,6 +10558,11 @@ export default function AdminServicesPage() {
               const filteredOptions = services.filter((candidate) =>
                 candidate.name.toLowerCase().includes(swapSearch.toLowerCase()),
               );
+              const groupedOptions = filteredOptions.reduce<Record<string, DbService[]>>((acc, service) => {
+                if (!acc[service.category]) acc[service.category] = [];
+                acc[service.category].push(service);
+                return acc;
+              }, {});
               return (
                 <div
                   key={`featured-slot-${slotIndex}`}
@@ -9233,6 +10585,12 @@ export default function AdminServicesPage() {
                         </div>
                       )}
                       <p className="text-sm font-semibold text-white truncate">{slotService.name}</p>
+                      {/* Shown after a swap until the admin uploads a GIF/Video for this service */}
+                      {pendingGifUploadId === slotService.id && (
+                        <div className="mt-2 rounded-lg border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200">
+                          Action required: Upload a GIF or Video in this service&apos;s card below to unlock Cinematic Mode.
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="mb-2 h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/40 text-xs uppercase tracking-widest">
@@ -9254,6 +10612,37 @@ export default function AdminServicesPage() {
                   >
                     {swappingSlot === slotIndex ? "Swapping..." : "Swap Service"}
                   </button>
+                  {slotService && (
+                    <label
+                      className={`mt-2 block cursor-pointer ${
+                        uploadingServiceId === slotService.id ? "pointer-events-none" : ""
+                      }`}
+                    >
+                      <span
+                        className={`w-full inline-flex items-center justify-center rounded-lg border border-purple-400/40 px-3 py-2 min-h-[44px] text-xs font-semibold touch-manipulation transition ${
+                          uploadingServiceId === slotService.id
+                            ? "bg-purple-500/10 text-purple-200/60"
+                            : "bg-purple-500/20 text-purple-200 hover:bg-purple-500/30"
+                        }`}
+                      >
+                        {uploadingServiceId === slotService.id
+                          ? "Uploading..."
+                          : "High-Fidelity Media"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        disabled={uploadingServiceId === slotService.id}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          handleFeaturedMediaUpload(slotService, file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
 
                   {activeSwapSlot === slotIndex && (
                     <div className="mt-3 rounded-lg border border-white/15 bg-[#0b1624] p-3">
@@ -9265,25 +10654,33 @@ export default function AdminServicesPage() {
                       />
                       <div className="max-h-44 overflow-y-auto space-y-2">
                         {filteredOptions.length > 0 ? (
-                          filteredOptions.map((candidate) => {
-                            const isAlreadyInOtherSlot =
-                              featuredIds.has(candidate.id) && candidate.id !== slotService?.id;
-                            return (
-                              <button
-                                key={candidate.id}
-                                onClick={() => handleSwapFeaturedSlot(slotIndex, candidate.id)}
-                                onTouchEnd={(e) => {
-                                  e.preventDefault();
-                                  handleSwapFeaturedSlot(slotIndex, candidate.id);
-                                }}
-                                disabled={isAlreadyInOtherSlot}
-                                className="w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-left text-sm text-white bg-white/5 hover:bg-white/15 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                {candidate.name}
-                                {isAlreadyInOtherSlot ? " (Already Featured)" : ""}
-                              </button>
-                            );
-                          })
+                          Object.entries(groupedOptions).map(([categoryName, categoryServices]) => (
+                            <div key={`${slotIndex}-${categoryName}`} className="space-y-2">
+                              {/* WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation. */}
+                              <p className="px-1 pt-1 text-[11px] font-bold uppercase tracking-widest text-brand-accent/90">
+                                {categoryName}
+                              </p>
+                              {categoryServices.map((candidate) => {
+                                const isAlreadyInOtherSlot =
+                                  featuredIds.has(candidate.id) && candidate.id !== slotService?.id;
+                                return (
+                                  <button
+                                    key={candidate.id}
+                                    onClick={() => handleSwapFeaturedSlot(slotIndex, candidate.id)}
+                                    onTouchEnd={(e) => {
+                                      e.preventDefault();
+                                      handleSwapFeaturedSlot(slotIndex, candidate.id);
+                                    }}
+                                    disabled={isAlreadyInOtherSlot}
+                                    className="w-full rounded-lg border border-white/15 px-3 py-2 min-h-[44px] text-left text-sm text-white bg-white/5 hover:bg-white/15 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    {candidate.name}
+                                    {isAlreadyInOtherSlot ? " (Already Featured)" : ""}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))
                         ) : (
                           <p className="text-xs text-white/40 px-1 py-2">No matching services.</p>
                         )}
@@ -9366,9 +10763,15 @@ export default function AdminServicesPage() {
           <p className="text-white/40 text-center py-20">Loading services...</p>
         ) : (
           <>
+            {dedupedOrderedCategories.length === 0 && !isFetching && (
+              <p className="mb-8 rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-white/70">
+                No categories found. Add your first one above.
+              </p>
+            )}
             {isCreating && (
-              <div className="mb-8 rounded-2xl border border-brand-accent/40 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-widest text-brand-accent mb-2">New Service</p>
+              // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+              <div className="fixed inset-0 z-[9999] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
+                <div className="w-full max-w-4xl rounded-2xl border border-brand-accent/40 bg-[#0f1e2e] p-4 shadow-2xl">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <input
                     value={draftData.name}
@@ -9376,14 +10779,21 @@ export default function AdminServicesPage() {
                     placeholder="Service Name"
                     className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
                   />
-                  <input
+                  {/*
+                   * <select> requires an opaque bg — bg-white/10 lets the OS
+                   * option list bleed through on Safari/Chrome. #0f1e2e matches
+                   * the page background so the dropdown looks native and dark.
+                   */}
+                  <select
                     value={draftData.category}
-                    onChange={(e) =>
-                      setDraftData((prev) => ({ ...prev, category: e.target.value }))
-                    }
-                    placeholder="Category"
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
-                  />
+                    onChange={(e) => setDraftData((prev) => ({ ...prev, category: e.target.value }))}
+                    className="w-full rounded-lg border border-white/15 bg-[#0f1e2e] px-3 py-2 min-h-[44px] text-white focus:outline-none focus:border-brand-accent"
+                  >
+                    <option value="" disabled>Select a category</option>
+                    {dedupedOrderedCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -9446,7 +10856,10 @@ export default function AdminServicesPage() {
                       e.preventDefault();
                       handleCommitService();
                     }}
-                    disabled={isSavingDraft}
+                    // WHY: !draftData.category keeps the button disabled while the
+                    // placeholder "Select a category" option is still showing —
+                    // the DB insert requires a non-empty category string.
+                    disabled={isSavingDraft || !draftData.category}
                     className="rounded-lg bg-brand-accent px-4 py-2 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSavingDraft ? "Saving..." : "Save Service"}
@@ -9464,6 +10877,7 @@ export default function AdminServicesPage() {
                   </button>
                 </div>
               </div>
+              </div>
             )}
 
             {/* ── Outer context: category ordering (vertical list, closestCenter) ── */}
@@ -9472,9 +10886,9 @@ export default function AdminServicesPage() {
               collisionDetection={closestCenter}
               onDragEnd={handleCategoryDragEnd}
             >
-              <SortableContext items={orderedCategories} strategy={verticalListSortingStrategy}>
+              <SortableContext items={dedupedOrderedCategories} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-10">
-                  {orderedCategories.map((cat) => (
+                  {dedupedOrderedCategories.map((cat) => (
                     <SortableItem key={cat} id={cat}>
                       {(catListeners, isCatDragging) => (
                         // ── Category container — relative so the grip badge can be pinned ──
@@ -9506,7 +10920,8 @@ export default function AdminServicesPage() {
                               className="text-xl font-bold"
                             />
                           </h2>
-                          <div className="flex gap-2 items-center">
+                          {/* WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions). */}
+                          <div className="ml-auto flex items-center gap-2">
                             <button
                               onClick={() => handleAddService(cat)}
                               onTouchEnd={(e) => {
@@ -9518,37 +10933,26 @@ export default function AdminServicesPage() {
                             >
                               {isCreating ? "Draft Open" : "+ Add Service"}
                             </button>
-                            {confirmDeleteCat === cat ? (
-                              <>
-                                <button
-                                  onClick={() => handleDeleteCategory(cat)}
-                                  onTouchEnd={(e) => {
-                                    e.preventDefault();
-                                    handleDeleteCategory(cat);
-                                  }}
-                                  className="rounded-lg bg-red-500/80 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
-                                >
-                                  Delete All
-                                </button>
-                                <button
-                                  onClick={() => setConfirmDeleteCat(null)}
-                                  className="rounded-lg bg-white/10 px-4 py-2 text-xs text-white touch-manipulation min-h-[44px]"
-                                >
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmDeleteCat(cat)}
-                                onTouchEnd={(e) => {
-                                  e.preventDefault();
-                                  setConfirmDeleteCat(cat);
-                                }}
-                                className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs text-white/40 hover:text-white touch-manipulation min-h-[44px] transition"
-                              >
-                                🗑 Category
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleOpenRenameCategory(cat)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleOpenRenameCategory(cat);
+                              }}
+                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                            >
+                              ✏️ Rename
+                            </button>
+                            <button
+                              onClick={() => handleOpenPurgeServices(cat)}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                handleOpenPurgeServices(cat);
+                              }}
+                              className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs font-semibold text-white/70 hover:text-white touch-manipulation min-h-[44px] transition"
+                            >
+                              🗑️ Purge Services
+                            </button>
                           </div>
                         </div>
 
@@ -10866,7 +12270,7 @@ export default function RootLayout({
  */
 
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
 
 // ─────────────────────────────────────────
@@ -10903,30 +12307,22 @@ export const supabase = createClient(supabaseUrl, envKey);
 /**
  * Uploads a service image/video asset to Supabase Storage and returns a public URL.
  *
- * @param file - Raw browser File from an <input type="file"> control.
+ * @param file   - Raw browser File from an <input type="file"> control.
+ * @param client - An authenticated Supabase client. MUST be the browser client from
+ *                 `createBrowserClient` so the RLS policy sees `auth.uid()`. Passing
+ *                 the module-level anon singleton will fail with a 403 if the bucket
+ *                 requires an authenticated session.
  * @returns Public URL for the uploaded object in the `service-media` bucket.
  */
-export async function uploadServiceMedia(file: File): Promise<string> {
+export async function uploadServiceMedia(
+  file: File,
+  client: SupabaseClient = supabase,
+): Promise<string> {
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
   const safeName = sanitizedName.length > 0 ? sanitizedName : "service-media-upload";
   const filePath = `services/${Date.now()}-${safeName}`;
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-    body: JSON.stringify({
-      sessionId: "e7a726",
-      runId: "pre-fix",
-      hypothesisId: "H4",
-      location: "lib/supabase.ts:uploadServiceMedia:beforeUpload",
-      message: "Preparing storage upload",
-      data: { bucket: "service-media", filePath, fileType: file.type, fileSize: file.size },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await client.storage
     .from("service-media")
     .upload(filePath, file, {
       cacheControl: "3600",
@@ -10934,46 +12330,18 @@ export async function uploadServiceMedia(file: File): Promise<string> {
     });
 
   if (uploadError) {
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-      body: JSON.stringify({
-        sessionId: "e7a726",
-        runId: "pre-fix",
-        hypothesisId: "H4",
-        location: "lib/supabase.ts:uploadServiceMedia:uploadError",
-        message: "Storage upload failed",
-        data: {
-          filePath,
-          errorMessage: uploadError.message,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    console.error("[service-media:upload]", {
+      filePath,
+      message: uploadError.message,
+      statusCode: (uploadError as { statusCode?: string }).statusCode,
+    });
     throw new Error(uploadError.message);
   }
 
-  const { data } = supabase.storage.from("service-media").getPublicUrl(filePath);
+  const { data } = client.storage.from("service-media").getPublicUrl(filePath);
   if (!data.publicUrl) {
     throw new Error("Failed to resolve uploaded media URL.");
   }
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "e7a726" },
-    body: JSON.stringify({
-      sessionId: "e7a726",
-      runId: "pre-fix",
-      hypothesisId: "H4",
-      location: "lib/supabase.ts:uploadServiceMedia:success",
-      message: "Storage upload succeeded",
-      data: { filePath, publicUrl: data.publicUrl },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   return data.publicUrl;
 }
@@ -11008,6 +12376,13 @@ export type DbService = {
   is_active?: boolean;
   /** Legacy/admin ordering field still used by drag-reorder flows. */
   sort_order?: number;
+  /**
+   * Drives the featured-service media state machine.
+   * 'gif'/'video' are only valid when is_premium = true.
+   * On demotion (is_premium → false), this must be reset to 'image'.
+   * Requires DB migration: ALTER TABLE services ADD COLUMN media_type text NOT NULL DEFAULT 'image';
+   */
+  media_type?: "image" | "gif" | "video";
   created_at: string;
 };
 

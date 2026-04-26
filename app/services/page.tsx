@@ -28,9 +28,11 @@ function mapFallback(s: (typeof allServices)[0]): DbService {
 export default async function ServicesPage() {
   let services: DbService[] = [];
   let layout: Layout = "cards";
+  let categoryOrder: string[] = [];
+  let featuredServiceIds: number[] = [];
 
   try {
-    const [servicesResult, configResult] = await Promise.all([
+    const [servicesResult, configResult, categoryOrderResult, featuredConfigResult] = await Promise.all([
       supabase
         .from("services")
         .select("*")
@@ -41,11 +43,29 @@ export default async function ServicesPage() {
         .select("value")
         .eq("key", "services_layout")
         .single(),
+      supabase
+        .from("site_config")
+        .select("value")
+        .eq("key", "category_order")
+        .single(),
+      supabase
+        .from("site_config")
+        .select("value")
+        .eq("key", "featured_services")
+        .single(),
     ]);
 
     if (!servicesResult.error) services = servicesResult.data ?? [];
     if (!configResult.error && configResult.data?.value) {
       layout = configResult.data.value as Layout;
+    }
+    if (!categoryOrderResult.error && categoryOrderResult.data?.value) {
+      const parsedOrder = JSON.parse(categoryOrderResult.data.value) as string[];
+      categoryOrder = [...new Set(parsedOrder)];
+    }
+    if (!featuredConfigResult.error && featuredConfigResult.data?.value) {
+      const parsedFeaturedIds = JSON.parse(featuredConfigResult.data.value) as number[];
+      featuredServiceIds = parsedFeaturedIds;
     }
   } catch (err) {
     console.error("[Services] Fetch failed:", err);
@@ -55,7 +75,19 @@ export default async function ServicesPage() {
     services = allServices.map(mapFallback);
   }
 
-  const categories = [...new Set(services.map((s) => s.category))];
+  // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
+  const categoryNames = [...new Set(services.map((s) => s.category))];
+  const categories = [
+    ...categoryOrder.filter((name) => categoryNames.includes(name)),
+    ...categoryNames.filter((name) => !categoryOrder.includes(name)),
+  ];
+  const featuredServices =
+    featuredServiceIds.length > 0
+      ? featuredServiceIds
+          .map((id) => services.find((service) => service.id === id))
+          .filter((service): service is DbService => Boolean(service))
+          .slice(0, 3)
+      : services.filter((service) => Boolean(service.is_premium)).slice(0, 3);
 
   return (
     <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8 lg:px-12">
@@ -69,6 +101,32 @@ export default async function ServicesPage() {
             Services
           </h1>
         </div>
+
+        {featuredServices.length > 0 && (
+          // WHY: Rule of 5 and Image Guards preserve luxury layout rhythm. Grouped selection and GIF support enable high-fidelity curation.
+          <section className="mb-12">
+            <p className="mb-3 text-xs tracking-[0.3em] uppercase text-brand-accent">Featured Hero</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {featuredServices.map((service) => (
+                <article key={`featured-hero-${service.id}`} className="relative overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                  {service.image ? (
+                    <img
+                      src={service.image}
+                      alt={`${service.name} featured media`}
+                      className="h-56 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-56 w-full bg-white/5" />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-black/50 p-4">
+                    <p className="text-sm font-semibold text-white">{service.name}</p>
+                    <p className="text-xs text-brand-accent">{service.category}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Categories */}
         <div className="flex flex-col gap-12">
@@ -88,6 +146,13 @@ export default async function ServicesPage() {
                         key={s.id}
                         className="rounded-xl border border-white/10 bg-white/5 p-5"
                       >
+                        {s.image && (
+                          <img
+                            src={s.image}
+                            alt={`${s.name} service image`}
+                            className="mb-3 h-40 w-full rounded-lg object-cover border border-white/10"
+                          />
+                        )}
                         <h3 className="text-white font-semibold text-lg mb-1">
                           {s.name}
                         </h3>
@@ -110,13 +175,22 @@ export default async function ServicesPage() {
                         key={s.id}
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-5 py-4"
                       >
-                        <div>
-                          <p className="text-white font-medium">{s.name}</p>
-                          {s.description && (
-                            <p className="text-white/40 text-sm mt-0.5">
-                              {s.description}
-                            </p>
+                        <div className="flex items-center gap-3">
+                          {s.image && (
+                            <img
+                              src={s.image}
+                              alt={`${s.name} service image`}
+                              className="h-16 w-16 rounded-lg object-cover border border-white/10"
+                            />
                           )}
+                          <div>
+                            <p className="text-white font-medium">{s.name}</p>
+                            {s.description && (
+                              <p className="text-white/40 text-sm mt-0.5">
+                                {s.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <p className="text-brand-accent font-bold text-base ml-4 shrink-0">
                           {s.price}

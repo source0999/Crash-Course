@@ -1,23 +1,63 @@
-# Project Architecture & Workflow Rules
+# Fades & Facials — AI Agent Rules
+# Stack: Next.js 16.2.4 App Router, TypeScript strict, Tailwind CSS v4, Supabase
 
 ## Coding Standards
 - Break features into the smallest possible modular components. Never write monolithic files.
-- File structure must be highly readable. Separate UI components into `/components`, pages into `/app`, and utilities into `/lib`.
-- Leave heavy inline comments explaining the *why* behind complex logic, state management, and error handling. I use this codebase to learn.
-- Build robust error handling on every feature. Fail gracefully.
+- File structure: UI components in `/components`, pages in `/app`, utilities in `/lib`.
+- Build robust error handling on every feature. Use `try/catch` with exact terminal logging:
+  `console.error('[context:functionName]', { error, relevantData })` — never swallow errors silently.
+- No new packages without explicit instruction.
+- Server Components by default — `"use client"` only when state or interactivity is required.
+- No `tailwind.config.ts` — all design tokens in `globals.css` `@theme` block only.
+- No `src/` directory — files live at the root of their respective directories.
 
-## Workflow Automation (CRITICAL)
-- **Git Commits:** After successfully implementing and testing a new feature or fixing a bug, explicitly remind me to run a git commit and suggest a standard `git commit -m "..."` message.
-- **Branching:** When I ask to build a completely new page or major feature, remind me to start a new branch before writing any code.
-- **Documentation:** After a feature is approved, remind me to update the `README.md` with the new feature details or where I left off for the day.
+## Context-Driven Commenting (STRICT — No Exceptions)
+Comments explain WHY, never WHAT. Well-named code explains itself.
 
-## Tech Stack Constraints
-- Next.js 15 App Router, TypeScript, Tailwind CSS v4.
-- Mobile-first approach.
-- No external CSS files. All styling via Tailwind classes.
-- Do not invent dependencies. Ask before running npm install.
+  CORRECT: `// iOS Safari intercepts touchstart as scroll — 250ms delay lets it resolve drag intent first`
+  WRONG:   `// Add TouchSensor with delay`
 
-### Documentation & Commenting Mandate
-- EVERY functional component, hook, and utility must have a JSDoc block detailing its purpose, parameters, and execution context.
-- Leave explicit inline comments explaining complex state management, database interactions, and UI flows.
-- ALL `/admin` routes must be heavily commented to explain data-fetching, RLS assumptions, and error handling.
+  CORRECT: `// Anon client has no session cookie — pass the browser client so the bucket RLS sees auth.uid()`
+  WRONG:   `// Pass supabase client to function`
+
+Every major section MUST use this exact block format:
+```
+// ─────────────────────────────────────────
+// SECTION: [name]
+// WHAT: [one sentence]
+// WHY: [one sentence]
+// PHASE 4: [what changes when database is connected, or "No changes needed"]
+// ─────────────────────────────────────────
+```
+
+## TODO.md Format (STRICT — Ticket Style)
+All `TODO.md` entries must follow this exact structure. Never add a task without an exact file path.
+
+```
+### [STATUS] TICKET-XXX: Short descriptive title
+**File:** `path/to/file.tsx:lineNumber`
+**Issue:** One sentence describing the bug or gap.
+**Fix:** One sentence describing the exact solution.
+**Blocked-by:** TICKET-XXX  ← only if applicable
+```
+
+Valid statuses: `[BLOCKER]`, `[IN PROGRESS]`, `[BACKLOG]`
+
+## Workflow Automation
+- **Git Commits:** After a successful feature or fix, suggest a commit message following Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`).
+- **Branching:** When building a new page or major feature, remind the user to branch first.
+
+## Mobile-First Rules (Never Violate)
+- Minimum 44×44px touch targets on all clickable elements.
+- `touch-manipulation` class on all buttons and links.
+- Every interactive element needs `onTouchEnd` with `e.preventDefault()`.
+- All animations use `translate3d`/`scale3d` — never `translateX`/`scaleX`.
+- No `backdrop-filter` or `backdrop-blur` — breaks iOS WebKit silently.
+- No `opacity-0` for hidden state — use conditional DOM mounting.
+
+## Database & Auth Rules
+- Browser client: `createBrowserClient` from `@supabase/ssr` (in `"use client"` components).
+- Server client: `createServerSupabaseClient()` from `@/lib/supabase` (in Server Components/Route Handlers).
+- Middleware client: `createMiddlewareSupabaseClient()` from `@/lib/supabase` (in `middleware.ts` only).
+- The module-level `supabase` singleton in `lib/supabase.ts` is anon-only — never use it for authenticated storage writes.
+- Magic link only — no passwords.
