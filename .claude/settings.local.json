@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm run *)",
       "Bash(awk '{print $NF}')",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }

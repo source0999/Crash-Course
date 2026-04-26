@@ -105,7 +105,7 @@ export default function Navbar() {
           <Link href="/" className="text-white">Home</Link>
           <Link href="/services" className="text-white">Services</Link>
           <Link href="/gallery" className="text-white">Gallery</Link>
-          <Link href="/booking" className="text-white">Book Now</Link>
+          <Link href="/book" className="text-white">Book Now</Link>
         </div>
 
         {/* Hamburger — visible on mobile only */}
@@ -118,7 +118,7 @@ export default function Navbar() {
           <Link href="/" className="text-white" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link href="/services" className="text-white" onClick={() => setMenuOpen(false)}>Services</Link>
           <Link href="/gallery" className="text-white" onClick={() => setMenuOpen(false)}>Gallery</Link>
-          <Link href="/booking" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
+          <Link href="/book" className="text-white" onClick={() => setMenuOpen(false)}>Book Now</Link>
         </div>
       )}
     </nav>

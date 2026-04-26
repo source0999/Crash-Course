@@ -1,15 +1,14 @@
 /**
  * @file app/page.tsx
  *
- * Public homepage. A Global Identity Layer (static GIF hero) sits above all
- * three layout variants. The FeaturedServicesSection flickers its design to
- * match the active layout. Each layout component is a pure "menu list" that
- * receives only allServices and renders the appropriate service catalogue view.
+ * Public homepage. A Global Identity Layer (database-driven hero media) sits
+ * above all three layout variants. The FeaturedServicesSection adapts its
+ * design using active_layout from site_config. Each layout component is a pure
+ * "menu list" that receives only allServices and renders the service catalogue.
  *
  * Render order (always):
- *   1. Floating pill nav (fixed, z-40)
- *   2. GlobalHero — static, always GIF_URL, never changes on flicker
- *   3. FeaturedServicesSection — 3 distinct designs keyed on activeLayout
+ *   1. GlobalHero — sourced from site_config.global_hero_url
+ *   2. FeaturedServicesSection — 3 distinct designs keyed on active_layout
  *   4. Active layout component — menu list only (Cinematic | Grid | Editorial)
  *   5. BookNowPill (fixed, z-50)
  *   6. VisitUsSection + footer
@@ -31,9 +30,8 @@ import type { DbService } from "@/lib/supabase";
 // PHASE 4: No changes needed.
 // ─────────────────────────────────────────
 
-// WHY: GIF_URL is the single source for the global hero background. If the asset
-// path ever changes, updating here propagates to every component automatically.
-const GIF_URL =
+// WHY: Database-first architecture. Decouples UI state from public view to allow remote admin control. Unified media library prevents duplicate storage usage.
+const DEFAULT_GLOBAL_HERO_URL =
   "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
 
 /** Union of all valid layout identifiers. TypeScript catches typos at build time. */
@@ -67,10 +65,9 @@ function isVideoMedia(url: string | null, mediaType?: string | null): boolean {
 // ─────────────────────────────────────────
 function BookNowPill() {
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-auto">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-auto pb-[max(2rem,env(safe-area-inset-bottom))]">
       <Link
-        href="https://www.vagaro.com/fadesandfacials"
-        target="_blank"
+        href="/book"
         className="group relative inline-flex items-center justify-center rounded-full px-3.5 py-1.5 text-[11px] tracking-[0.24em] uppercase font-sans font-medium shadow-[0_4px_20px_rgba(11,19,43,0.15)] transition-all duration-300 hover:scale-[1.02] active:scale-95 min-h-[40px]"
         style={{
           background: "#7E9A7E",
@@ -821,19 +818,6 @@ function EditorialLayout({ allServices }: LayoutProps) {
 }
 
 // ─────────────────────────────────────────
-// SECTION: Layout Registry
-// WHAT: Data registry that drives the floating pill nav.
-// WHY: Adding a new layout requires only one entry here — the nav renders itself
-//   by mapping over this array. Never hardcode individual buttons.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-const LAYOUTS: { id: Layout; label: string; icon: string }[] = [
-  { id: "cinematic", label: "Cinematic", icon: "◈" },
-  { id: "grid",      label: "Grid",      icon: "⊞" },
-  { id: "editorial", label: "Editorial", icon: "≡" },
-];
-
-// ─────────────────────────────────────────
 // SECTION: HomePage (Page Entry Point)
 // WHAT: Root component — owns all data fetching and the Global Identity Layer.
 // WHY: Single fetch point (services + featured_services config) resolves both
@@ -842,7 +826,13 @@ const LAYOUTS: { id: Layout; label: string; icon: string }[] = [
 // PHASE 4: No changes needed — already wired to live Supabase tables.
 // ─────────────────────────────────────────
 export default function HomePage() {
-  const [activeLayout, setActiveLayout] = useState<Layout>("cinematic");
+  const [siteAppearance, setSiteAppearance] = useState<{
+    activeLayout: Layout;
+    globalHeroUrl: string;
+  }>({
+    activeLayout: "cinematic",
+    globalHeroUrl: DEFAULT_GLOBAL_HERO_URL,
+  });
   const [featuredPairs, setFeaturedPairs] = useState<FeaturedPair[]>([]);
   const [allServices, setAllServices] = useState<DbService[]>([]);
 
@@ -856,7 +846,7 @@ export default function HomePage() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       );
       try {
-        const [servicesRes, configRes] = await Promise.all([
+        const [servicesRes, configRes, appearanceRes] = await Promise.all([
           supabase
             .from("services")
             .select("*")
@@ -867,12 +857,28 @@ export default function HomePage() {
             .select("value")
             .eq("key", "featured_services")
             .single(),
+          supabase
+            .from("site_config")
+            .select("key, value")
+            .in("key", ["active_layout", "global_hero_url"]),
         ]);
 
         if (!isMounted) return;
 
         const services = servicesRes.data ?? [];
         setAllServices(services);
+
+        const activeLayoutFromDb = appearanceRes.data?.find((row) => row.key === "active_layout")?.value;
+        const globalHeroFromDb = appearanceRes.data?.find((row) => row.key === "global_hero_url")?.value;
+        setSiteAppearance({
+          activeLayout:
+            activeLayoutFromDb === "cinematic" ||
+            activeLayoutFromDb === "grid" ||
+            activeLayoutFromDb === "editorial"
+              ? activeLayoutFromDb
+              : "cinematic",
+          globalHeroUrl: globalHeroFromDb || DEFAULT_GLOBAL_HERO_URL,
+        });
 
         if (configRes.error || !configRes.data?.value) return;
 
@@ -896,7 +902,7 @@ export default function HomePage() {
 
         if (isMounted) setFeaturedPairs(resolved);
       } catch {
-        // Fail silently — page degrades gracefully to GIF_URL fallback with
+        // Fail silently — page degrades gracefully to default hero fallback with
         // empty featured section and empty service lists.
       }
     }
@@ -909,52 +915,26 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ── Floating pill nav — fixed, z-40, centered horizontally ──
-          backdropFilter is the intentional exception to CLAUDE.md rule #1:
-          this element is dev/admin-facing and the tradeoff is acceptable here. */}
-      <div
-        className="fixed z-40 flex items-center gap-1 p-1 rounded-full shadow-lg"
-        style={{
-          top: "76px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(249,247,242,0.92)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          border: "1px solid rgba(11,19,43,0.1)",
-        }}
-      >
-        {LAYOUTS.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => setActiveLayout(l.id)}
-            className="flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-widest transition-all duration-250"
-            style={{
-              fontFamily: "'Manrope', sans-serif",
-              background: activeLayout === l.id ? "#0B132B" : "transparent",
-              color: activeLayout === l.id ? "#F9F7F2" : "rgba(11,19,43,0.45)",
-              fontWeight: activeLayout === l.id ? 500 : 400,
-              cursor: "pointer",
-              minHeight: "44px",
-            }}
-          >
-            <span style={{ fontSize: "14px" }}>{l.icon}</span>
-            <span className="hidden sm:inline">{l.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── Global Identity Hero — always GIF_URL, never re-mounts on layout switch ──
-          WHY: Static hero gives the page a consistent brand anchor above the flicker zone.
-          Rendering it here (not inside a layout component) means it stays mounted and
-          does not flash/reload when the user switches between Cinematic, Grid, Editorial. */}
+      {/* ── Global Identity Hero — database-driven via global_hero_url ── */}
       <section className="relative w-full h-[100svh] overflow-hidden">
-        <img
-          src={GIF_URL}
-          alt="Fades and Facials atmosphere"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: "center 15%" }}
-        />
+        {isVideoMedia(siteAppearance.globalHeroUrl) ? (
+          <video
+            src={siteAppearance.globalHeroUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 15%" }}
+          />
+        ) : (
+          <img
+            src={siteAppearance.globalHeroUrl}
+            alt="Fades and Facials atmosphere"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 15%" }}
+          />
+        )}
         {/* Cinematic vignette: dark at top → transparent → dark at bottom */}
         <div
           className="absolute inset-0 z-10"
@@ -987,15 +967,15 @@ export default function HomePage() {
 
       {/* ── FeaturedServicesSection — flickers design with activeLayout ── */}
       <FeaturedServicesSection
-        activeLayout={activeLayout}
+        activeLayout={siteAppearance.activeLayout}
         featuredPairs={featuredPairs}
       />
 
       {/* ── Active layout — pure menu list, receives only allServices ──
           Inactive layouts are fully unmounted (no hidden DOM, no opacity tricks). */}
-      {activeLayout === "cinematic" && <CinematicLayout allServices={allServices} />}
-      {activeLayout === "grid"      && <GridLayout      allServices={allServices} />}
-      {activeLayout === "editorial" && <EditorialLayout allServices={allServices} />}
+      {siteAppearance.activeLayout === "cinematic" && <CinematicLayout allServices={allServices} />}
+      {siteAppearance.activeLayout === "grid"      && <GridLayout      allServices={allServices} />}
+      {siteAppearance.activeLayout === "editorial" && <EditorialLayout allServices={allServices} />}
 
       <BookNowPill />
 

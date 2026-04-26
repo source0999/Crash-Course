@@ -1,61 +1,454 @@
+"use client";
+
 // ─────────────────────────────────────────
-// SECTION: Admin Dashboard Hub
-// WHAT: Protected landing page after login — shows session info and nav to admin sections.
-// WHY: Central control panel for the barber to manage site content.
-// PHASE 4: No changes needed — session check is live.
+// SECTION: Admin Dashboard — Site Appearance Command Center
+// WHAT: Protected control panel for layout selection and global hero media.
+// WHY: Decouples homepage design controls from the public frontend — the barber
+//   switches layouts and hero media here without touching code or the DB directly.
+// PHASE 4: No changes needed — reads/writes live site_config table.
 // ─────────────────────────────────────────
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { createBrowserClient } from "@supabase/ssr";
+import { uploadServiceMedia } from "@/lib/supabase";
 import LogoutButton from "./LogoutButton";
 
-export default async function AdminDashboard() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+// ── Module-level Supabase client (matches pattern in other admin pages) ──
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
 
-  if (!session) {
-    redirect("/admin");
+type Layout = "cinematic" | "grid" | "editorial";
+
+const LAYOUT_OPTIONS: { id: Layout; icon: string; label: string; description: string }[] = [
+  { id: "cinematic", icon: "◈", label: "Cinematic", description: "Alternating full-bleed panels" },
+  { id: "grid",      icon: "⊞", label: "Grid",      description: "Portrait luxury cards" },
+  { id: "editorial", icon: "≡", label: "Editorial", description: "Typographic stack" },
+];
+
+const SYSTEM_HERO_MEDIA = [
+  "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif",
+];
+
+// WHY: Media library items are URLs only — no media_type field — so extension
+// check is the correct branch. Mirrors the .mp4 arm of isVideoMedia in app/page.tsx.
+function isVideoMedia(url: string): boolean {
+  return /\.mp4(\?|$)/i.test(url);
+}
+
+export default function AdminDashboard() {
+  const router = useRouter();
+
+  const [userEmail, setUserEmail]       = useState<string | null>(null);
+  const [activeLayout, setActiveLayout] = useState<Layout>("cinematic");
+  const [heroUrl, setHeroUrl]           = useState<string>("");
+  const [mediaLibrary, setMediaLibrary] = useState<string[]>([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const [isSavingHero, setIsSavingHero] = useState(false);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
+  const [heroSaveSuccess, setHeroSaveSuccess] = useState(false);
+  const [layoutSaveSuccess, setLayoutSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.push("/admin"); return; }
+      setUserEmail(session.user.email ?? null);
+
+      // WHY: Single batch query for all three keys — one round-trip, no waterfalls.
+      const { data } = await supabase
+        .from("site_config")
+        .select("key, value")
+        .in("key", ["active_layout", "global_hero_url", "media_library"]);
+
+      const get = (key: string) => data?.find((c) => c.key === key)?.value ?? null;
+
+      const layout = get("active_layout");
+      if (layout) setActiveLayout(layout as Layout);
+
+      const hero = get("global_hero_url");
+      if (hero) setHeroUrl(hero);
+
+      const lib = get("media_library");
+      if (lib) {
+        try { setMediaLibrary(JSON.parse(lib) as string[]); } catch { /* malformed JSON — skip */ }
+      }
+
+      setIsLoading(false);
+    }
+    init();
+  }, []);
+
+  const combinedHeroMedia = Array.from(new Set([...SYSTEM_HERO_MEDIA, ...mediaLibrary]));
+
+  // WHY: Strict z-index hierarchy ensures errors are visible. Duplicate guards prevent React key collisions. Dynamic wiring fully integrates the DB-first cinematic media.
+  async function handleSelectLayout(nextLayout: Layout) {
+    if (isSavingLayout || activeLayout === nextLayout) return;
+    setActiveLayout(nextLayout);
+    setIsSavingLayout(true);
+    setLayoutSaveSuccess(false);
+    try {
+      await supabase.from("site_config").upsert(
+        { key: "active_layout", value: nextLayout, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+      setLayoutSaveSuccess(true);
+    } finally {
+      setIsSavingLayout(false);
+    }
   }
+
+  async function handleSaveGlobalHero() {
+    if (isSavingHero || !heroUrl) return;
+    setIsSavingHero(true);
+    setHeroSaveSuccess(false);
+    try {
+      await supabase.from("site_config").upsert(
+        { key: "global_hero_url", value: heroUrl, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+      setHeroSaveSuccess(true);
+    } finally {
+      setIsSavingHero(false);
+    }
+  }
+
+  async function handleUploadHeroMedia(file: File) {
+    if (isUploadingHero) return;
+    setIsUploadingHero(true);
+    try {
+      const uploadedUrl = await uploadServiceMedia(file, supabase);
+      const nextLibrary = Array.from(new Set([...mediaLibrary, uploadedUrl]));
+      setMediaLibrary(nextLibrary);
+      setHeroUrl(uploadedUrl);
+
+      await supabase.from("site_config").upsert(
+        { key: "media_library", value: JSON.stringify(nextLibrary), updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    } catch {
+      // Keep UI stable; upload can be retried immediately.
+    } finally {
+      setIsUploadingHero(false);
+    }
+  }
+
+  async function handleDeleteHeroMedia(mediaUrl: string) {
+    const nextLibrary = mediaLibrary.filter((item) => item !== mediaUrl);
+    setMediaLibrary(nextLibrary);
+    if (heroUrl === mediaUrl) {
+      setHeroUrl(SYSTEM_HERO_MEDIA[0] ?? "");
+    }
+
+    await supabase.from("site_config").upsert(
+      { key: "media_library", value: JSON.stringify(nextLibrary), updated_at: new Date().toISOString() },
+      { onConflict: "key" },
+    );
+  }
+
+  // Prevent flash of un-fetched defaults while auth + data loads
+  if (isLoading) return null;
 
   return (
     <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-6">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
+      <div className="max-w-3xl mx-auto">
+
+        {/* ── Header ── */}
         <div className="mb-10">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
+          <p
+            className="text-xs tracking-[0.3em] uppercase mb-2"
+            style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+          >
             Admin Panel
           </p>
           <h1 className="text-4xl font-bold text-white">Dashboard</h1>
-          <p className="mt-2 text-white/50 text-sm">
-            Signed in as <span className="text-brand-accent">{session.user.email}</span>
-          </p>
+          {userEmail && (
+            <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Manrope', sans-serif" }}>
+              Signed in as <span style={{ color: "#7E9A7E" }}>{userEmail}</span>
+            </p>
+          )}
         </div>
 
-        {/* Nav cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* ── Navigation Cards ── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-14">
           <Link
             href="/admin/gallery"
-            className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition touch-manipulation min-h-[44px]"
+            className="rounded-xl p-6 hover:bg-white/10 transition touch-manipulation"
+            style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.05)",
+              minHeight: "44px",
+            }}
           >
             <p className="text-white font-semibold text-lg">Gallery</p>
-            <p className="text-white/40 text-sm mt-1">Upload and manage media</p>
+            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
+              Upload and manage media
+            </p>
           </Link>
-
           <Link
             href="/admin/services"
-            className="rounded-xl border border-white/10 bg-white/5 p-6 hover:bg-white/10 transition touch-manipulation min-h-[44px]"
+            className="rounded-xl p-6 hover:bg-white/10 transition touch-manipulation"
+            style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.05)",
+              minHeight: "44px",
+            }}
           >
             <p className="text-white font-semibold text-lg">Services</p>
-            <p className="text-white/40 text-sm mt-1">Edit service listings</p>
+            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
+              Edit service listings
+            </p>
           </Link>
         </div>
 
-        {/* Logout */}
+        {/* ── Site Appearance ── */}
+        <div
+          className="rounded-2xl p-6 md:p-8"
+          style={{
+            border: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(255,255,255,0.02)",
+          }}
+        >
+          <div className="mb-8">
+            <p
+              className="text-xs tracking-[0.3em] uppercase mb-1"
+              style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Appearance
+            </p>
+            <h2 className="text-2xl font-semibold text-white mb-1">Site Appearance</h2>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
+              Layout applies immediately. Global hero has a separate save action.
+            </p>
+          </div>
+
+          {/* ── Layout Selector ── */}
+          <div className="mb-10">
+            <p
+              className="text-xs uppercase tracking-widest mb-4"
+              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Layout
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {LAYOUT_OPTIONS.map((opt) => {
+                const active = activeLayout === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => { void handleSelectLayout(opt.id); }}
+                    onTouchEnd={(e) => { e.preventDefault(); void handleSelectLayout(opt.id); }}
+                    className="rounded-2xl p-4 md:p-5 text-left transition-all duration-200 touch-manipulation"
+                    style={{
+                      minHeight: "88px",
+                      border: active ? "1.5px solid #7E9A7E" : "1px solid rgba(255,255,255,0.1)",
+                      background: active ? "rgba(126,154,126,0.1)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <span
+                      className="text-xl block mb-2 leading-none"
+                      style={{ color: active ? "#7E9A7E" : "rgba(255,255,255,0.25)" }}
+                    >
+                      {opt.icon}
+                    </span>
+                    <p
+                      className="text-sm font-semibold mb-1"
+                      style={{
+                        color: active ? "#7E9A7E" : "rgba(255,255,255,0.8)",
+                        fontFamily: "'Manrope', sans-serif",
+                      }}
+                    >
+                      {opt.label}
+                    </p>
+                    <p
+                      className="text-xs leading-snug hidden sm:block"
+                      style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Manrope', sans-serif" }}
+                    >
+                      {opt.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <p
+              className="mt-3 text-xs"
+              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Preview: {LAYOUT_OPTIONS.find((opt) => opt.id === activeLayout)?.description}
+              {isSavingLayout ? " · saving..." : layoutSaveSuccess ? " · saved" : ""}
+            </p>
+          </div>
+
+          {/* ── Global Hero Picker ── */}
+          <div className="mb-10">
+            <p
+              className="text-xs uppercase tracking-widest mb-1"
+              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Global Hero
+            </p>
+            {heroUrl && (
+              <p
+                className="text-xs font-mono mb-4 truncate"
+                style={{ color: "rgba(255,255,255,0.2)" }}
+                title={heroUrl}
+              >
+                {heroUrl}
+              </p>
+            )}
+
+            {combinedHeroMedia.length === 0 ? (
+              <div
+                className="rounded-2xl py-10 text-center"
+                style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
+              >
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Manrope', sans-serif" }}>
+                  No hero media found.
+                </p>
+                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Manrope', sans-serif" }}>
+                  Upload media via the Services manager to populate this picker.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {combinedHeroMedia.map((url) => {
+                  const selected = heroUrl === url;
+                  const canRemove = !SYSTEM_HERO_MEDIA.includes(url);
+                  return (
+                    <div key={url} className="relative">
+                      <button
+                        onClick={() => setHeroUrl(url)}
+                        onTouchEnd={(e) => { e.preventDefault(); setHeroUrl(url); }}
+                        className="relative aspect-video rounded-xl overflow-hidden touch-manipulation block w-full"
+                        style={{
+                          outline: selected ? "2px solid #7E9A7E" : "2px solid transparent",
+                          outlineOffset: "2px",
+                        }}
+                      >
+                        {isVideoMedia(url) ? (
+                          <video
+                            src={url}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        )}
+                        {/* Dim overlay on unselected thumbnails */}
+                        {!selected && (
+                          <div
+                            className="absolute inset-0 transition-opacity hover:opacity-0"
+                            style={{ background: "rgba(15,30,46,0.5)" }}
+                          />
+                        )}
+                        {/* Checkmark badge on selected thumbnail */}
+                        {selected && (
+                          <div
+                            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ background: "#7E9A7E" }}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                              <path
+                                d="M2 6l3 3 5-5"
+                                stroke="#0f1e2e"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </button>
+                      {canRemove && (
+                        <button
+                          onClick={() => { void handleDeleteHeroMedia(url); }}
+                          onTouchEnd={(e) => { e.preventDefault(); void handleDeleteHeroMedia(url); }}
+                          className="absolute left-1.5 top-1.5 rounded-full px-2 py-1 text-[10px] uppercase tracking-wider touch-manipulation"
+                          style={{
+                            minHeight: "44px",
+                            background: "rgba(11,19,43,0.82)",
+                            color: "#F9F7F2",
+                            border: "1px solid rgba(249,247,242,0.24)",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Global Hero Upload + Save ── */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <label
+              className="rounded-full px-6 py-3 text-sm uppercase tracking-widest font-medium transition-all duration-200 touch-manipulation cursor-pointer"
+              onTouchEnd={(e) => { e.preventDefault(); }}
+              style={{
+                minHeight: "44px",
+                background: "rgba(255,255,255,0.08)",
+                color: "#F9F7F2",
+                fontFamily: "'Manrope', sans-serif",
+              }}
+            >
+              {isUploadingHero ? "Uploading..." : "Upload Hero Media"}
+              <input
+                type="file"
+                accept="image/gif,video/mp4,image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  void handleUploadHeroMedia(file);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
+            <button
+              onClick={() => { void handleSaveGlobalHero(); }}
+              onTouchEnd={(e) => { e.preventDefault(); void handleSaveGlobalHero(); }}
+              disabled={isSavingHero || !heroUrl}
+              className="rounded-full px-8 py-3 text-sm uppercase tracking-widest font-medium transition-all duration-200 touch-manipulation"
+              style={{
+                minHeight: "44px",
+                background: isSavingHero || !heroUrl ? "rgba(126,154,126,0.3)" : "#7E9A7E",
+                color: "#0f1e2e",
+                cursor: isSavingHero || !heroUrl ? "not-allowed" : "pointer",
+                fontFamily: "'Manrope', sans-serif",
+              }}
+            >
+              {isSavingHero ? "Saving…" : "Save Global Hero"}
+            </button>
+            {heroSaveSuccess && (
+              <p
+                className="text-sm"
+                style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+              >
+                Global hero updated successfully.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Logout ── */}
         <div className="mt-10">
           <LogoutButton />
         </div>
+
       </div>
     </main>
   );

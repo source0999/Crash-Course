@@ -26,6 +26,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* WHY: Removes the grey/blue tap flash that Android and iOS apply to interactive
+   elements on touch — prevents the flicker on every pill, button, and card tap. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ─── Gallery entrance animation ─── */
 @keyframes gallery-enter {
   from {
