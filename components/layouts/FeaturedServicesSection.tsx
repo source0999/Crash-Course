@@ -73,7 +73,7 @@ export default function FeaturedServicesSection({
           data-home-band="featured"
           style={{
             background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, var(--theme-text))",
+            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
           }}
         >
           <div className="max-w-6xl mx-auto px-4 md:px-8 pt-16 pb-6">
@@ -120,7 +120,7 @@ export default function FeaturedServicesSection({
                   background: i % 2 === 0
                     ? "var(--home-band-b, var(--theme-surface))"
                     : "var(--home-band-a, var(--theme-bg))",
-                  ["--theme-text" as string]: "var(--home-band-text, var(--theme-text))",
+                  ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
                 }}
               >
                 <p
@@ -168,7 +168,7 @@ export default function FeaturedServicesSection({
           data-home-band="featured"
           style={{
             background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, var(--theme-text))",
+            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
           }}
           className="px-4 md:px-6 py-16"
         >
@@ -251,7 +251,7 @@ export default function FeaturedServicesSection({
           data-home-band="featured"
           style={{
             background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, var(--theme-text))",
+            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
           }}
           className="px-4 md:px-16 py-16"
         >

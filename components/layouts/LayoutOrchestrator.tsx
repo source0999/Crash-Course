@@ -103,6 +103,35 @@ export default function LayoutOrchestrator({ allServices, featuredPairs, activeL
     // #endregion
   }, [activeLayout, featuredPairs.length]);
 
+  useEffect(() => {
+    const sectionHeading = document.querySelector<HTMLElement>('[data-home-band="featured"] h2');
+    const serviceHeadings = Array.from(document.querySelectorAll<HTMLElement>('[data-home-band="featured"] h3')).slice(0, 2);
+    const visitHeading = document.querySelector<HTMLElement>('[data-home-band="visit"] h2');
+    const visitMeta = document.querySelector<HTMLElement>('[data-home-band="visit"] p');
+    const pick = (el: HTMLElement | null) => (el ? getComputedStyle(el).color : "missing");
+
+    // #region agent log
+    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
+      body: JSON.stringify({
+        sessionId: "82ce2f",
+        runId: "post-contrast-fix",
+        hypothesisId: "H15",
+        location: "components/layouts/LayoutOrchestrator.tsx:106",
+        message: "Featured and Visit heading contrast verification",
+        data: {
+          sectionHeadingColor: pick(sectionHeading),
+          serviceHeadingColors: serviceHeadings.map((el) => getComputedStyle(el).color),
+          visitHeadingColor: pick(visitHeading),
+          visitMetaColor: pick(visitMeta),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [activeLayout, featuredPairs.length, allServices.length]);
+
   return (
     <>
       <FeaturedServicesSection activeLayout={activeLayout} featuredPairs={featuredPairs} />
