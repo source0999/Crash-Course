@@ -136,7 +136,7 @@ export default async function HomePage() {
               backgroundImage:
                 "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 5px, color-mix(in srgb, #F9F7F2 18%, transparent) 5px, color-mix(in srgb, #F9F7F2 18%, transparent) 10px)",
               backgroundSize: "100% 40px",
-              animation: "barber-pole 2.2s linear infinite",
+              animation: "barber-pole 3.4s linear infinite",
             }}
           />
           <h1

@@ -19,11 +19,11 @@ const NAV_LINKS = [
 
 export default function Footer() {
   const topBarHeight = "5px";
-  const topBarBackgroundSize = "40px 100%";
-  const topBarAnimation = "barber-pole-h 3.1s linear infinite";
+  const topBarBackgroundSize = "72px 100%";
+  const topBarAnimation = "barber-pole-h 5.2s linear infinite";
   const topBarPatternType = "repeating-linear-gradient";
-  const brandPoleAnimation = "barber-pole 2.2s linear infinite";
-  const brandPoleBackgroundSize = "100% 40px";
+  const brandPoleAnimation = "barber-pole 3.8s linear infinite";
+  const brandPoleBackgroundSize = "100% 36px";
 
   // #region agent log
   fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
@@ -150,7 +150,7 @@ export default function Footer() {
         style={{
           height: topBarHeight,
           backgroundImage:
-            "repeating-linear-gradient(135deg, var(--theme-accent) 0px, var(--theme-accent) 5px, color-mix(in srgb, var(--theme-text) 6%, transparent) 5px, color-mix(in srgb, var(--theme-text) 6%, transparent) 10px)",
+            "repeating-linear-gradient(135deg, var(--theme-accent) 0px, var(--theme-accent) 18px, color-mix(in srgb, var(--theme-accent) 18%, transparent) 18px, color-mix(in srgb, var(--theme-accent) 18%, transparent) 36px)",
           backgroundSize: topBarBackgroundSize,
           animation: topBarAnimation,
         }}
@@ -184,7 +184,7 @@ export default function Footer() {
                   overflow: "hidden",
                   flexShrink: 0,
                   backgroundImage:
-                    "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 8px, color-mix(in srgb, var(--theme-text) 4%, transparent) 8px, color-mix(in srgb, var(--theme-text) 4%, transparent) 16px)",
+                    "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--theme-accent) 92%, white) 0px, color-mix(in srgb, var(--theme-accent) 92%, white) 8px, color-mix(in srgb, var(--theme-accent) 40%, black) 8px, color-mix(in srgb, var(--theme-accent) 40%, black) 16px)",
                   backgroundSize: brandPoleBackgroundSize,
                   animation: brandPoleAnimation,
                 }}
