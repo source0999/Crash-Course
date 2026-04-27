@@ -55,19 +55,10 @@ export default async function RootLayout({
     // Falls back to luxury-dark — site remains styled.
   }
 
-  const htmlThemeOverrides =
-    theme === "luxury-dark"
-      ? ({
-          "--theme-bg": "#1f3d63",
-          "--theme-surface": "#2b4f7a",
-        } as React.CSSProperties)
-      : undefined;
-
   return (
     <html
       lang="en"
       data-theme={theme}
-      style={htmlThemeOverrides}
       className={`${syne.variable} ${inter.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">

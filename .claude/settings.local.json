@@ -4,7 +4,8 @@
       "Bash(npm run *)",
       "Bash(awk '{print $NF}')",
       "Bash(npx tsc *)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "Bash(npm install *)"
     ]
   }
 }

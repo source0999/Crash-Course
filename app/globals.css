@@ -1,55 +1,60 @@
 /** @file app/globals.css */
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────
+   SECTION: Design Tokens
+   WHAT: Palette primitives and Dual Flicker semantic theme engine.
+   WHY: Components consume only --theme-* vars — palette changes propagate site-wide with zero component edits.
+   PHASE 4: No changes needed.
+   ───────────────────────────────────────── */
+
 @theme {
   /* ── Dual Flicker Premium Palette ── */
-  --color-alabaster: #f3ede3;     /* Warm eggshell — inviting, not blinding */
-  --color-ink: #0e1f38;           /* Rich royal navy */
-  --color-accent: #00f5ff;        /* Sleek futuristic cyan */
-  --color-surface: #162d50;       /* Elevated navy card surface */
+  --color-alabaster: #f8f5f0;   /* Warm off-white — inviting, never blinding */
+  --color-ink:       #0f172a;   /* Deep slate — rich, near-black backdrop     */
+  --color-accent:    #00f5ff;   /* Cyan — signature Dual Flicker pop           */
+  --color-surface:   #1e2937;   /* Elevated dark card surface                  */
 
-  /* Typography — Syne for striking display, Inter for clean body */
+  /* ── Typography — Syne for display, Inter for body ── */
   --font-display: "Syne", sans-serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans:    "Inter", system-ui, sans-serif;
 }
 
 /* ── Dual Flicker Theme Engine ─────────────────────────────────────────────────
    [data-theme] is stamped on <html> by RootLayout at request time.
-   Semantic tokens (--theme-*) are what every component must use.
+   Semantic tokens (--theme-*) are what every component must use — never raw values.
    ─────────────────────────────────────────────────────────────────────────── */
 
 [data-theme="luxury-dark"] {
-  /* Lifted navy to reduce heaviness across large full-bleed sections */
-  --theme-bg: #1f3d63;
-  --theme-text: #f4f0eb;
-  --theme-accent: #00f5ff;
-  --theme-surface: #2b4f7a;
-  --home-band-a: #dbeafe;
-  --home-band-b: #ffffff;
-  --home-band-text: #1f3d63;
+  --theme-bg:       var(--color-ink);
+  --theme-text:     var(--color-alabaster);
+  --theme-accent:   var(--color-accent);
+  --theme-surface:  var(--color-surface);
+  --home-band-a:    color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+  --home-band-b:    var(--color-surface);
+  --home-band-text: var(--color-alabaster);
 }
 
 [data-theme="monochrome"] {
-  /* Warm eggshell — soft on the eyes, still luxurious */
-  --theme-bg: #f3ede3;
-  --theme-text: #1a1a2e;
-  --theme-accent: #00c8d7;
-  --theme-surface: #faf7f2;
+  --theme-bg:      var(--color-alabaster);
+  --theme-text:    var(--color-ink);
+  --theme-accent:  var(--color-accent);
+  --theme-surface: color-mix(in srgb, var(--color-ink) 3%, white);
 }
 
 [data-theme="earth"] {
-  /* Dark warm earth — rich leather and tobacco */
-  --theme-bg: #1c160f;
-  --theme-text: #f5f0e8;
-  --theme-accent: #00f5ff;
+  /* Warm dark leather — distinct from the primary palette */
+  --theme-bg:      #1c160f;
+  --theme-text:    #f5f0e8;
+  --theme-accent:  var(--color-accent);
   --theme-surface: #2c241c;
 }
 
 [data-theme="neon"] {
-  /* True black with neon pop */
-  --theme-bg: #080808;
-  --theme-text: #e8e8e8;
-  --theme-accent: #00f5ff;
+  /* True black with neon pop — distinct from the primary palette */
+  --theme-bg:      #080808;
+  --theme-text:    #e8e8e8;
+  --theme-accent:  var(--color-accent);
   --theme-surface: #141414;
 }
 
@@ -62,8 +67,8 @@ body {
 }
 
 body {
-  background-color: var(--theme-bg, var(--color-alabaster));
-  color: var(--theme-text, var(--color-ink));
+  background-color: var(--theme-bg, var(--color-ink));
+  color: var(--theme-text, var(--color-alabaster));
   -webkit-font-smoothing: antialiased;
 }
 
