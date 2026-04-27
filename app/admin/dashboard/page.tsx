@@ -2,9 +2,9 @@
 
 // ─────────────────────────────────────────
 // SECTION: Admin Dashboard — Site Appearance Command Center
-// WHAT: Protected control panel for layout selection and global hero media.
+// WHAT: Protected control panel for layout, theme, and global hero media.
 // WHY: Decouples homepage design controls from the public frontend — the barber
-//   switches layouts and hero media here without touching code or the DB directly.
+//   switches layouts, themes, and hero media here without touching code or DB directly.
 // PHASE 4: No changes needed — reads/writes live site_config table.
 // ─────────────────────────────────────────
 
@@ -23,10 +23,20 @@ const supabase = createBrowserClient(
 
 type Layout = "cinematic" | "grid" | "editorial";
 
+// ── Theme IDs must match the [data-theme] blocks in app/globals.css ──
+const THEMES = [
+  { id: "luxury-dark", label: "Luxury Dark" },
+  { id: "monochrome",  label: "Monochrome"  },
+  { id: "earth",       label: "Earth"       },
+  { id: "neon",        label: "Neon"        },
+] as const;
+
+type ThemeId = (typeof THEMES)[number]["id"];
+
 const LAYOUT_OPTIONS: { id: Layout; icon: string; label: string; description: string }[] = [
   { id: "cinematic", icon: "◈", label: "Cinematic", description: "Alternating full-bleed panels" },
-  { id: "grid",      icon: "⊞", label: "Grid",      description: "Portrait luxury cards" },
-  { id: "editorial", icon: "≡", label: "Editorial", description: "Typographic stack" },
+  { id: "grid",      icon: "⊞", label: "Grid",      description: "Portrait luxury cards"         },
+  { id: "editorial", icon: "≡", label: "Editorial", description: "Typographic stack"             },
 ];
 
 const SYSTEM_HERO_MEDIA = [
@@ -42,16 +52,19 @@ function isVideoMedia(url: string): boolean {
 export default function AdminDashboard() {
   const router = useRouter();
 
-  const [userEmail, setUserEmail]       = useState<string | null>(null);
-  const [activeLayout, setActiveLayout] = useState<Layout>("cinematic");
-  const [heroUrl, setHeroUrl]           = useState<string>("");
-  const [mediaLibrary, setMediaLibrary] = useState<string[]>([]);
-  const [isLoading, setIsLoading]       = useState(true);
-  const [isSavingHero, setIsSavingHero] = useState(false);
+  const [userEmail, setUserEmail]           = useState<string | null>(null);
+  const [activeLayout, setActiveLayout]     = useState<Layout>("cinematic");
+  const [activeTheme, setActiveTheme]       = useState<ThemeId>("luxury-dark");
+  const [heroUrl, setHeroUrl]               = useState<string>("");
+  const [mediaLibrary, setMediaLibrary]     = useState<string[]>([]);
+  const [isLoading, setIsLoading]           = useState(true);
+  const [isSavingHero, setIsSavingHero]     = useState(false);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
-  const [isUploadingHero, setIsUploadingHero] = useState(false);
-  const [heroSaveSuccess, setHeroSaveSuccess] = useState(false);
+  const [isSavingTheme, setIsSavingTheme]   = useState(false);
+  const [isUploadingHero, setIsUploadingHero]   = useState(false);
+  const [heroSaveSuccess, setHeroSaveSuccess]   = useState(false);
   const [layoutSaveSuccess, setLayoutSaveSuccess] = useState(false);
+  const [themeSaveSuccess, setThemeSaveSuccess]   = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -59,16 +72,19 @@ export default function AdminDashboard() {
       if (!session) { router.push("/admin"); return; }
       setUserEmail(session.user.email ?? null);
 
-      // WHY: Single batch query for all three keys — one round-trip, no waterfalls.
+      // WHY: Single batch query for all keys — one round-trip, no waterfalls.
       const { data } = await supabase
         .from("site_config")
         .select("key, value")
-        .in("key", ["active_layout", "global_hero_url", "media_library"]);
+        .in("key", ["active_layout", "active_theme", "global_hero_url", "media_library"]);
 
       const get = (key: string) => data?.find((c) => c.key === key)?.value ?? null;
 
       const layout = get("active_layout");
       if (layout) setActiveLayout(layout as Layout);
+
+      const theme = get("active_theme");
+      if (theme) setActiveTheme(theme as ThemeId);
 
       const hero = get("global_hero_url");
       if (hero) setHeroUrl(hero);
@@ -83,9 +99,14 @@ export default function AdminDashboard() {
     init();
   }, []);
 
+  // WHY: Keeps the admin's own visual preview in sync as themes are switched —
+  // the server-rendered data-theme updates on next navigation; this bridges the gap.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", activeTheme);
+  }, [activeTheme]);
+
   const combinedHeroMedia = Array.from(new Set([...SYSTEM_HERO_MEDIA, ...mediaLibrary]));
 
-  // WHY: Strict z-index hierarchy ensures errors are visible. Duplicate guards prevent React key collisions. Dynamic wiring fully integrates the DB-first cinematic media.
   async function handleSelectLayout(nextLayout: Layout) {
     if (isSavingLayout || activeLayout === nextLayout) return;
     setActiveLayout(nextLayout);
@@ -99,6 +120,22 @@ export default function AdminDashboard() {
       setLayoutSaveSuccess(true);
     } finally {
       setIsSavingLayout(false);
+    }
+  }
+
+  async function handleSelectTheme(nextTheme: ThemeId) {
+    if (isSavingTheme || activeTheme === nextTheme) return;
+    setActiveTheme(nextTheme);
+    setIsSavingTheme(true);
+    setThemeSaveSuccess(false);
+    try {
+      await supabase.from("site_config").upsert(
+        { key: "active_theme", value: nextTheme, updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+      setThemeSaveSuccess(true);
+    } finally {
+      setIsSavingTheme(false);
     }
   }
 
@@ -154,21 +191,32 @@ export default function AdminDashboard() {
   if (isLoading) return null;
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-6">
+    <main
+      className="min-h-screen pt-28 pb-20 px-6"
+      style={{ background: "var(--theme-bg)", color: "var(--theme-text)" }}
+    >
       <div className="max-w-3xl mx-auto">
 
         {/* ── Header ── */}
         <div className="mb-10">
           <p
             className="text-xs tracking-[0.3em] uppercase mb-2"
-            style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+            style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
           >
             Admin Panel
           </p>
-          <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+          <h1
+            className="text-4xl font-bold"
+            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+          >
+            Dashboard
+          </h1>
           {userEmail && (
-            <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Manrope', sans-serif" }}>
-              Signed in as <span style={{ color: "#7E9A7E" }}>{userEmail}</span>
+            <p
+              className="mt-2 text-sm"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 50%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
+              Signed in as <span style={{ color: "var(--theme-accent)" }}>{userEmail}</span>
             </p>
           )}
         </div>
@@ -177,29 +225,35 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-14">
           <Link
             href="/admin/gallery"
-            className="rounded-xl p-6 hover:bg-white/10 transition touch-manipulation"
+            className="rounded-xl p-6 transition touch-manipulation"
             style={{
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.05)",
+              border: "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
+              background: "color-mix(in srgb, var(--theme-text) 5%, transparent)",
               minHeight: "44px",
             }}
           >
-            <p className="text-white font-semibold text-lg">Gallery</p>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
+            <p className="font-semibold text-lg" style={{ color: "var(--theme-text)" }}>Gallery</p>
+            <p
+              className="text-sm mt-1"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
               Upload and manage media
             </p>
           </Link>
           <Link
             href="/admin/services"
-            className="rounded-xl p-6 hover:bg-white/10 transition touch-manipulation"
+            className="rounded-xl p-6 transition touch-manipulation"
             style={{
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.05)",
+              border: "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
+              background: "color-mix(in srgb, var(--theme-text) 5%, transparent)",
               minHeight: "44px",
             }}
           >
-            <p className="text-white font-semibold text-lg">Services</p>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
+            <p className="font-semibold text-lg" style={{ color: "var(--theme-text)" }}>Services</p>
+            <p
+              className="text-sm mt-1"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
               Edit service listings
             </p>
           </Link>
@@ -209,20 +263,28 @@ export default function AdminDashboard() {
         <div
           className="rounded-2xl p-6 md:p-8"
           style={{
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.02)",
+            border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
+            background: "color-mix(in srgb, var(--theme-text) 2%, transparent)",
           }}
         >
           <div className="mb-8">
             <p
               className="text-xs tracking-[0.3em] uppercase mb-1"
-              style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+              style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
             >
               Appearance
             </p>
-            <h2 className="text-2xl font-semibold text-white mb-1">Site Appearance</h2>
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}>
-              Layout applies immediately. Global hero has a separate save action.
+            <h2
+              className="text-2xl font-semibold mb-1"
+              style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+            >
+              Site Appearance
+            </h2>
+            <p
+              className="text-sm"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
+              Layout and theme apply immediately. Global hero has a separate save action.
             </p>
           </div>
 
@@ -230,7 +292,7 @@ export default function AdminDashboard() {
           <div className="mb-10">
             <p
               className="text-xs uppercase tracking-widest mb-4"
-              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
               Layout
             </p>
@@ -245,28 +307,32 @@ export default function AdminDashboard() {
                     className="rounded-2xl p-4 md:p-5 text-left transition-all duration-200 touch-manipulation"
                     style={{
                       minHeight: "88px",
-                      border: active ? "1.5px solid #7E9A7E" : "1px solid rgba(255,255,255,0.1)",
-                      background: active ? "rgba(126,154,126,0.1)" : "rgba(255,255,255,0.04)",
+                      border: active
+                        ? "1.5px solid var(--theme-accent)"
+                        : "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
+                      background: active
+                        ? "color-mix(in srgb, var(--theme-accent) 10%, transparent)"
+                        : "color-mix(in srgb, var(--theme-text) 4%, transparent)",
                     }}
                   >
                     <span
                       className="text-xl block mb-2 leading-none"
-                      style={{ color: active ? "#7E9A7E" : "rgba(255,255,255,0.25)" }}
+                      style={{ color: active ? "var(--theme-accent)" : "color-mix(in srgb, var(--theme-text) 25%, transparent)" }}
                     >
                       {opt.icon}
                     </span>
                     <p
                       className="text-sm font-semibold mb-1"
                       style={{
-                        color: active ? "#7E9A7E" : "rgba(255,255,255,0.8)",
-                        fontFamily: "'Manrope', sans-serif",
+                        color: active ? "var(--theme-accent)" : "color-mix(in srgb, var(--theme-text) 80%, transparent)",
+                        fontFamily: "var(--font-sans)",
                       }}
                     >
                       {opt.label}
                     </p>
                     <p
                       className="text-xs leading-snug hidden sm:block"
-                      style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Manrope', sans-serif" }}
+                      style={{ color: "color-mix(in srgb, var(--theme-text) 30%, transparent)", fontFamily: "var(--font-sans)" }}
                     >
                       {opt.description}
                     </p>
@@ -276,10 +342,59 @@ export default function AdminDashboard() {
             </div>
             <p
               className="mt-3 text-xs"
-              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
               Preview: {LAYOUT_OPTIONS.find((opt) => opt.id === activeLayout)?.description}
               {isSavingLayout ? " · saving..." : layoutSaveSuccess ? " · saved" : ""}
+            </p>
+          </div>
+
+          {/* ── Theme Selector ── */}
+          <div className="mb-10">
+            <p
+              className="text-xs uppercase tracking-widest mb-4"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
+              Theme
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {THEMES.map((t) => {
+                const active = activeTheme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => { void handleSelectTheme(t.id); }}
+                    onTouchEnd={(e) => { e.preventDefault(); void handleSelectTheme(t.id); }}
+                    className="rounded-2xl p-4 text-left transition-all duration-200 touch-manipulation"
+                    style={{
+                      minHeight: "56px",
+                      border: active
+                        ? "1.5px solid var(--theme-accent)"
+                        : "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
+                      background: active
+                        ? "color-mix(in srgb, var(--theme-accent) 10%, transparent)"
+                        : "color-mix(in srgb, var(--theme-text) 4%, transparent)",
+                    }}
+                  >
+                    <p
+                      className="text-sm font-medium"
+                      style={{
+                        color: active ? "var(--theme-accent)" : "color-mix(in srgb, var(--theme-text) 80%, transparent)",
+                        fontFamily: "var(--font-sans)",
+                      }}
+                    >
+                      {t.label}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <p
+              className="mt-3 text-xs"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
+              Active: {THEMES.find((t) => t.id === activeTheme)?.label}
+              {isSavingTheme ? " · saving..." : themeSaveSuccess ? " · saved" : ""}
             </p>
           </div>
 
@@ -287,14 +402,14 @@ export default function AdminDashboard() {
           <div className="mb-10">
             <p
               className="text-xs uppercase tracking-widest mb-1"
-              style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Manrope', sans-serif" }}
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
               Global Hero
             </p>
             {heroUrl && (
               <p
                 className="text-xs font-mono mb-4 truncate"
-                style={{ color: "rgba(255,255,255,0.2)" }}
+                style={{ color: "color-mix(in srgb, var(--theme-text) 20%, transparent)" }}
                 title={heroUrl}
               >
                 {heroUrl}
@@ -304,12 +419,18 @@ export default function AdminDashboard() {
             {combinedHeroMedia.length === 0 ? (
               <div
                 className="rounded-2xl py-10 text-center"
-                style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
+                style={{ border: "1px dashed color-mix(in srgb, var(--theme-text) 10%, transparent)" }}
               >
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "'Manrope', sans-serif" }}>
+                <p
+                  className="text-sm"
+                  style={{ color: "color-mix(in srgb, var(--theme-text) 30%, transparent)", fontFamily: "var(--font-sans)" }}
+                >
                   No hero media found.
                 </p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Manrope', sans-serif" }}>
+                <p
+                  className="text-xs mt-1"
+                  style={{ color: "color-mix(in srgb, var(--theme-text) 20%, transparent)", fontFamily: "var(--font-sans)" }}
+                >
                   Upload media via the Services manager to populate this picker.
                 </p>
               </div>
@@ -325,7 +446,7 @@ export default function AdminDashboard() {
                         onTouchEnd={(e) => { e.preventDefault(); setHeroUrl(url); }}
                         className="relative aspect-video rounded-xl overflow-hidden touch-manipulation block w-full"
                         style={{
-                          outline: selected ? "2px solid #7E9A7E" : "2px solid transparent",
+                          outline: selected ? "2px solid var(--theme-accent)" : "2px solid transparent",
                           outlineOffset: "2px",
                         }}
                       >
@@ -350,19 +471,19 @@ export default function AdminDashboard() {
                         {!selected && (
                           <div
                             className="absolute inset-0 transition-opacity hover:opacity-0"
-                            style={{ background: "rgba(15,30,46,0.5)" }}
+                            style={{ background: "color-mix(in srgb, var(--theme-bg) 50%, transparent)" }}
                           />
                         )}
                         {/* Checkmark badge on selected thumbnail */}
                         {selected && (
                           <div
                             className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-                            style={{ background: "#7E9A7E" }}
+                            style={{ background: "var(--theme-accent)" }}
                           >
                             <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                               <path
                                 d="M2 6l3 3 5-5"
-                                stroke="#0f1e2e"
+                                stroke="var(--theme-bg)"
                                 strokeWidth="1.8"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -378,9 +499,9 @@ export default function AdminDashboard() {
                           className="absolute left-1.5 top-1.5 rounded-full px-2 py-1 text-[10px] uppercase tracking-wider touch-manipulation"
                           style={{
                             minHeight: "44px",
-                            background: "rgba(11,19,43,0.82)",
-                            color: "#F9F7F2",
-                            border: "1px solid rgba(249,247,242,0.24)",
+                            background: "color-mix(in srgb, var(--theme-bg) 82%, transparent)",
+                            color: "var(--theme-text)",
+                            border: "1px solid color-mix(in srgb, var(--theme-text) 24%, transparent)",
                           }}
                         >
                           Remove
@@ -400,9 +521,9 @@ export default function AdminDashboard() {
               onTouchEnd={(e) => { e.preventDefault(); }}
               style={{
                 minHeight: "44px",
-                background: "rgba(255,255,255,0.08)",
-                color: "#F9F7F2",
-                fontFamily: "'Manrope', sans-serif",
+                background: "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                color: "var(--theme-text)",
+                fontFamily: "var(--font-sans)",
               }}
             >
               {isUploadingHero ? "Uploading..." : "Upload Hero Media"}
@@ -425,10 +546,12 @@ export default function AdminDashboard() {
               className="rounded-full px-8 py-3 text-sm uppercase tracking-widest font-medium transition-all duration-200 touch-manipulation"
               style={{
                 minHeight: "44px",
-                background: isSavingHero || !heroUrl ? "rgba(126,154,126,0.3)" : "#7E9A7E",
-                color: "#0f1e2e",
+                background: isSavingHero || !heroUrl
+                  ? "color-mix(in srgb, var(--theme-accent) 30%, transparent)"
+                  : "var(--theme-accent)",
+                color: "var(--theme-bg)",
                 cursor: isSavingHero || !heroUrl ? "not-allowed" : "pointer",
-                fontFamily: "'Manrope', sans-serif",
+                fontFamily: "var(--font-sans)",
               }}
             >
               {isSavingHero ? "Saving…" : "Save Global Hero"}
@@ -436,7 +559,7 @@ export default function AdminDashboard() {
             {heroSaveSuccess && (
               <p
                 className="text-sm"
-                style={{ color: "#7E9A7E", fontFamily: "'Manrope', sans-serif" }}
+                style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
               >
                 Global hero updated successfully.
               </p>

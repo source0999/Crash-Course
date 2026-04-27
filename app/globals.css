@@ -1,14 +1,56 @@
+/** @file app/globals.css */
 @import "tailwindcss";
 
 @theme {
-  /* The Homey Luxury Palette */
-  --color-alabaster: #f9f7f2; /* Warm, inviting background */
-  --color-ink: #0b132b; /* Midnight Blue (softer than pure black) */
-  --color-sage: #7e9a7e; /* Calming accent green */
+  /* ── Dual Flicker Premium Palette ── */
+  --color-alabaster: #f3ede3;     /* Warm eggshell — inviting, not blinding */
+  --color-ink: #0e1f38;           /* Rich royal navy */
+  --color-accent: #00f5ff;        /* Sleek futuristic cyan */
+  --color-surface: #162d50;       /* Elevated navy card surface */
 
-  /* Typography */
-  --font-serif: "Cormorant Garamond", serif;
-  --font-sans: "Montserrat", sans-serif;
+  /* Typography — Syne for striking display, Inter for clean body */
+  --font-display: "Syne", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+/* ── Dual Flicker Theme Engine ─────────────────────────────────────────────────
+   [data-theme] is stamped on <html> by RootLayout at request time.
+   Semantic tokens (--theme-*) are what every component must use.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="luxury-dark"] {
+  /* Lifted navy to reduce heaviness across large full-bleed sections */
+  --theme-bg: #1f3d63;
+  --theme-text: #f4f0eb;
+  --theme-accent: #00f5ff;
+  --theme-surface: #2b4f7a;
+  --home-band-a: #dbeafe;
+  --home-band-b: #ffffff;
+  --home-band-text: #1f3d63;
+}
+
+[data-theme="monochrome"] {
+  /* Warm eggshell — soft on the eyes, still luxurious */
+  --theme-bg: #f3ede3;
+  --theme-text: #1a1a2e;
+  --theme-accent: #00c8d7;
+  --theme-surface: #faf7f2;
+}
+
+[data-theme="earth"] {
+  /* Dark warm earth — rich leather and tobacco */
+  --theme-bg: #1c160f;
+  --theme-text: #f5f0e8;
+  --theme-accent: #00f5ff;
+  --theme-surface: #2c241c;
+}
+
+[data-theme="neon"] {
+  /* True black with neon pop */
+  --theme-bg: #080808;
+  --theme-text: #e8e8e8;
+  --theme-accent: #00f5ff;
+  --theme-surface: #141414;
 }
 
 html,
@@ -20,9 +62,8 @@ body {
 }
 
 body {
-  overflow-y: auto;
-  background-color: var(--color-alabaster);
-  color: var(--color-ink);
+  background-color: var(--theme-bg, var(--color-alabaster));
+  color: var(--theme-text, var(--color-ink));
   -webkit-font-smoothing: antialiased;
 }
 
@@ -36,10 +77,27 @@ body {
 @keyframes gallery-enter {
   from {
     opacity: 0;
-    transform: translate3d(0, 0, 0) scale3d(1.18, 1.18, 1);
+    transform: translate3d(0, 0, 0) scale3d(1.08, 1.08, 1);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
   }
+}
+
+/* ─── Barber pole — vertical (Navbar accent) ─────────────────────────────────
+   Moves background-position downward, creating the classic upward-scrolling
+   stripe illusion. No transforms — pure background animation, 60fps on GPU.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes barber-pole {
+  from { background-position: 0 0; }
+  to   { background-position: 0 40px; }
+}
+
+/* ─── Barber pole — horizontal (Footer top strip) ───────────────────────────
+   Same illusion oriented horizontally across the footer cap.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes barber-pole-h {
+  from { background-position: 0 0; }
+  to   { background-position: 40px 0; }
 }

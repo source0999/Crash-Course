@@ -1,37 +1,30 @@
-/**
- * @file app/layout.tsx
- *
- * Root layout — the single HTML shell that wraps every page in the application.
- * Next.js renders this once and keeps it mounted across client-side navigations,
- * so changes here affect every route without a full page reload.
- *
- * Font loading strategy: `next/font/google` downloads the font files at build
- * time and self-hosts them on the same domain. This eliminates the Google Fonts
- * network request at runtime, improving both performance and privacy (no third-
- * party cookie/tracking exposure to Google's CDN on page load).
- *
- * console.log audit: No console.log statements present in this file.
- */
+/** @file app/layout.tsx */
+
+// ─────────────────────────────────────────
+// SECTION: RootLayout
+// WHAT: HTML shell that wraps every page — mounts fonts, active theme, Navbar, and Footer.
+// WHY: active_theme is fetched server-side so [data-theme] is correct on the very
+//   first byte of HTML — zero flash of unstyled theme, no client-side hydration gap.
+// PHASE 4: No changes needed — site_config.active_theme row is already live.
+// ─────────────────────────────────────────
 
 import type { Metadata } from "next";
-import { Bodoni_Moda, Manrope } from "next/font/google";
+import { Syne, Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { createServerSupabaseClient } from "@/lib/supabase";
 
-// ── Bodoni Moda — the editorial serif ──────────────────────────────────────────
-// Display: "swap" means the browser renders fallback text immediately and
-// swaps once loaded — prevents invisible text during slow loads.
-const bodoni = Bodoni_Moda({
-  variable: "--font-serif",
+// ── Syne — bold geometric display face for headlines ─────────────────────────
+const syne = Syne({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
-// ── Manrope — the clean sans-serif ────────────────────────────────────────────
-// Used for body copy, labels, navigation, and utility UI text.
-const manrope = Manrope({
+// ── Inter — clean neutral sans-serif for body text ───────────────────────────
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
@@ -43,42 +36,44 @@ export const metadata: Metadata = {
   description: "It's an experience",
 };
 
-/**
- * RootLayout
- *
- * The application shell. Renders the persistent Navbar and wraps all page
- * content. Injected automatically by Next.js App Router — never imported
- * manually.
- *
- * Font CSS variables (`--font-serif`, `--font-sans`) are applied to
- * the `<html>` element via className so every component in the tree can
- * reference them without prop-drilling or a context provider.
- *
- * `h-auto` on `<html>` is intentional — `h-full` would constrain the
- * document height to the viewport, breaking sticky/fixed positioning and
- * causing scroll issues on iOS Safari where the viewport height shifts as
- * the browser chrome shows and hides.
- *
- * `antialiased` enables `-webkit-font-smoothing: antialiased` and
- * `-moz-osx-font-smoothing: grayscale`, which renders Bodoni Moda and
- * Manrope typefaces at the intended weight on high-DPI screens.
- *
- * @param children - The active page component rendered by Next.js routing.
- * @returns The full HTML document shell with fonts, navbar, and page content.
- */
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  const supabase = await createServerSupabaseClient();
+  let theme = "luxury-dark";
+
+  try {
+    const { data } = await supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "active_theme")
+      .single();
+    if (data?.value) theme = data.value;
+  } catch {
+    // Falls back to luxury-dark — site remains styled.
+  }
+
+  const htmlThemeOverrides =
+    theme === "luxury-dark"
+      ? ({
+          "--theme-bg": "#1f3d63",
+          "--theme-surface": "#2b4f7a",
+        } as React.CSSProperties)
+      : undefined;
+
   return (
     <html
       lang="en"
-      className={`${bodoni.variable} ${manrope.variable} h-auto antialiased`}
+      data-theme={theme}
+      style={htmlThemeOverrides}
+      className={`${syne.variable} ${inter.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">
         <Navbar />
-        {children}
+        <div className="flex-1">{children}</div>
+        <Footer />
       </body>
     </html>
   );

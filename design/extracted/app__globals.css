@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  /* The Homey Luxury Palette */
+  --color-alabaster: #f9f7f2; /* Warm, inviting background */
+  --color-ink: #0b132b; /* Midnight Blue (softer than pure black) */
+  --color-sage: #7e9a7e; /* Calming accent green */
+
+  /* Typography */
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Montserrat", sans-serif;
+}
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-y: auto;
+  background-color: var(--color-alabaster);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* WHY: Removes the grey/blue tap flash that Android and iOS apply to interactive
+   elements on touch — prevents the flicker on every pill, button, and card tap. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Gallery entrance animation ─── */
+@keyframes gallery-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale3d(1.18, 1.18, 1);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}

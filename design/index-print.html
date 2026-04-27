@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Fades &amp; Facials — Print Bundle</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* ── Print-specific ── */
+    html, body { background: var(--theme-bg); }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    /* Each section becomes a printed page sheet */
+    .sheet {
+      position: relative;
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto 40px;
+      background: var(--theme-bg);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .sheet--ink { background: var(--theme-text); color: var(--theme-bg); }
+    .sheet-label {
+      position: absolute; top: 18px; left: 22px; z-index: 10;
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--paper-55);
+      background: rgba(10,20,33,0.55); border: 1px solid var(--paper-25);
+      padding: 6px 12px; border-radius: 999px;
+    }
+    .sheet--light .sheet-label {
+      color: var(--ink-55);
+      background: rgba(248,245,240,0.65);
+      border-color: var(--ink-10);
+    }
+
+    /* Cover */
+    .cover {
+      width: 100%; max-width: 1280px; margin: 0 auto 40px;
+      background: var(--theme-text); color: var(--theme-bg);
+      border-radius: 18px; overflow: hidden;
+      padding: 96px 72px;
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: end;
+      min-height: 720px;
+      position: relative;
+    }
+    .cover::before {
+      content: ""; position: absolute; inset: 0;
+      background:
+        repeating-linear-gradient(135deg, rgba(248,245,240,0.04) 0 18px, transparent 18px 36px);
+      pointer-events: none;
+    }
+    .cover h1 {
+      font-family: var(--font-serif); font-weight: 400; font-size: clamp(4rem, 8vw, 7rem);
+      line-height: 0.95; letter-spacing: -0.03em; margin: 0; color: var(--theme-bg);
+    }
+    .cover h1 em { font-style: italic; color: var(--theme-accent); }
+    .cover .meta {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--paper-55); line-height: 2;
+    }
+    .cover .meta strong { color: var(--theme-accent); font-weight: 500; }
+
+    /* Section divider page */
+    .divider-page {
+      width: 100%; max-width: 1280px; margin: 0 auto 40px;
+      padding: 80px 72px;
+      background: var(--theme-text); color: var(--theme-bg);
+      border-radius: 18px;
+      display: flex; align-items: center; gap: 32px;
+    }
+    .divider-page .num {
+      font-family: var(--font-serif); font-weight: 400; font-style: italic;
+      font-size: clamp(5rem, 12vw, 9rem); line-height: 1;
+      color: var(--theme-accent);
+    }
+    .divider-page .label {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--paper-55);
+    }
+    .divider-page h2 {
+      font-family: var(--font-serif); font-weight: 400; font-size: clamp(2.5rem, 5vw, 4rem);
+      margin: 8px 0 0; letter-spacing: -0.02em; color: var(--theme-bg);
+    }
+
+    /* Disable animations / kill in-app chrome for print */
+    .reveal, .page-enter, [class*="anim"] { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .barber-pole { animation: none !important; }
+    .proto-bar, .tweaks-panel, .tweaks-toggle, .nav-burger { display: none !important; }
+
+    /* Force layout so iframe placeholder + scaled grids render */
+    .print-frame {
+      width: 100%;
+      transform-origin: top left;
+    }
+
+    /* Page rules */
+    @page {
+      size: 1280px 1810px;
+      margin: 0;
+    }
+    @media print {
+      body { background: #ffffff !important; margin: 0; padding: 0; }
+      .toolbar { display: none !important; }
+      .cover, .sheet, .divider-page {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        page-break-after: always;
+        break-after: page;
+      }
+      .cover { padding: 80px 72px; min-height: 1810px; }
+      .sheet { min-height: 1810px; }
+      .divider-page { min-height: 1810px; }
+      .page-bundle:last-child > *:last-child { page-break-after: auto; break-after: auto; }
+    }
+
+    /* On-screen toolbar */
+    .toolbar {
+      position: fixed; top: 16px; right: 16px; z-index: 100;
+      display: flex; gap: 8px;
+      background: var(--theme-text); color: var(--theme-bg);
+      padding: 8px; border-radius: 999px;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.4);
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.22em;
+    }
+    .toolbar button {
+      appearance: none; border: 0; background: var(--theme-accent); color: var(--theme-text);
+      padding: 10px 18px; border-radius: 999px; cursor: pointer;
+      font-family: inherit; font-size: inherit; letter-spacing: inherit; text-transform: uppercase;
+      font-weight: 600;
+    }
+    .toolbar span { padding: 10px 14px; opacity: 0.7; }
+
+    body { padding: 28px 0; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>Fades &amp; Facials · Print Bundle</span>
+    <button onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <!-- ─────────── COVER ─────────── -->
+  <div class="cover">
+    <div style="position: relative; z-index: 2;">
+      <p class="meta" style="margin-bottom: 32px;">
+        Site Prototype · <strong>Apr 2026</strong>
+      </p>
+      <h1>
+        <em>Fades</em><br/>
+        <span style="font-family: var(--font-mono); font-size: 0.22em; letter-spacing: 0.5em; color: var(--paper-55); display: block; margin: 14px 0;">——— &amp; ———</span>
+        <em>Facials</em>
+      </h1>
+      <p style="font-family: var(--font-serif); font-style: italic; font-size: 22px; color: var(--paper-75); margin: 36px 0 0; max-width: 540px; line-height: 1.4;">
+        Dull is a choice. We don't carry it.
+      </p>
+    </div>
+    <div style="position: relative; z-index: 2; padding-bottom: 12px;">
+      <p class="meta" style="margin-bottom: 24px;"><strong>Contents</strong></p>
+      <ol style="list-style: none; padding: 0; margin: 0; font-family: var(--font-serif); font-size: 28px; font-weight: 400; line-height: 1.7; color: var(--theme-bg);">
+        <li><span style="color: var(--theme-accent); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.3em; margin-right: 16px;">01</span> Home</li>
+        <li><span style="color: var(--theme-accent); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.3em; margin-right: 16px;">02</span> Services</li>
+        <li><span style="color: var(--theme-accent); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.3em; margin-right: 16px;">03</span> Gallery</li>
+        <li><span style="color: var(--theme-accent); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.3em; margin-right: 16px;">04</span> Book</li>
+        <li><span style="color: var(--theme-accent); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.3em; margin-right: 16px;">05</span> Admin Studio</li>
+      </ol>
+      <p class="meta" style="margin-top: 48px; color: var(--paper-35);">
+        © sourc3code 2026 · @fadesandfacials 2026
+      </p>
+    </div>
+  </div>
+
+  <!-- React-mounted pages — each rendered headless into a sheet -->
+  <div id="print-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="shared.jsx"></script>
+  <script type="text/babel" src="home.jsx"></script>
+  <script type="text/babel" src="pages.jsx"></script>
+  <script type="text/babel" src="admin.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Force dark theme + cyan accent + editorial layout (user's saved tweaks)
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.style.setProperty("--theme-accent", "#00F5FF");
+    document.documentElement.style.setProperty("--motion-scale", "0");
+
+    function noop() {}
+
+    function Sheet({ id, label, light, children }) {
+      return (
+        <section className={`sheet ${light ? "sheet--light" : "sheet--ink"}`}>
+          <span className="sheet-label">{id} · {label}</span>
+          {children}
+        </section>
+      );
+    }
+
+    function DividerPage({ num, label, title, blurb }) {
+      return (
+        <div className="divider-page">
+          <div className="num">{num}</div>
+          <div>
+            <p className="label">{label}</p>
+            <h2>{title}</h2>
+            {blurb && <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--paper-55)", fontSize: 22, marginTop: 14, maxWidth: 620, lineHeight: 1.4 }}>{blurb}</p>}
+          </div>
+        </div>
+      );
+    }
+
+    function PrintApp() {
+      const featuredIds = DEFAULT_FEATURED;
+      const heroUrl = HERO_MEDIA[0].url;
+      const manifesto = "Dull is a choice. We don't carry it.";
+
+      return (
+        <>
+          {/* ─── 01 Home — Editorial (user's saved layout) ─── */}
+          <DividerPage num="01" label="Home · Active layout" title="Editorial." blurb="Magazine stack — typographic, restrained. Dual-flicker active layout." />
+          <Sheet id="01.A" label="Home — Hero">
+            <Hero heroUrl={heroUrl} manifesto={manifesto} />
+          </Sheet>
+          <Sheet id="01.B" label="Home — Featured Services (Editorial)" light>
+            <FeaturedServicesSection
+              activeLayout="editorial"
+              featuredPairs={featuredIds.map((id, i) => ({
+                serviceId: id,
+                service: ALL_SERVICES.find(s => s.id === id),
+                mediaUrl: HERO_MEDIA[(i+1) % HERO_MEDIA.length].url,
+              }))}
+            />
+          </Sheet>
+          <Sheet id="01.C" label="Home — Full Menu (Editorial)" light>
+            <EditorialLayout allServices={ALL_SERVICES} />
+          </Sheet>
+          <Sheet id="01.D" label="Home — Visit Us">
+            <VisitUsSection />
+          </Sheet>
+
+          {/* ─── 01 alt layouts (Cinematic + Grid for reference) ─── */}
+          <DividerPage num="01·alt" label="Dual Flicker · alternate layouts" title="Cinematic & Grid." blurb="Same content, swappable from the admin Layout picker." />
+          <Sheet id="01.E" label="Home — Featured Services (Cinematic)">
+            <FeaturedServicesSection
+              activeLayout="cinematic"
+              featuredPairs={featuredIds.map((id, i) => ({
+                serviceId: id,
+                service: ALL_SERVICES.find(s => s.id === id),
+                mediaUrl: HERO_MEDIA[(i+1) % HERO_MEDIA.length].url,
+              }))}
+            />
+          </Sheet>
+          <Sheet id="01.F" label="Home — Full Menu (Cinematic)">
+            <CinematicLayout allServices={ALL_SERVICES} />
+          </Sheet>
+          <Sheet id="01.G" label="Home — Featured Services (Grid)" light>
+            <FeaturedServicesSection
+              activeLayout="grid"
+              featuredPairs={featuredIds.map((id, i) => ({
+                serviceId: id,
+                service: ALL_SERVICES.find(s => s.id === id),
+                mediaUrl: HERO_MEDIA[(i+1) % HERO_MEDIA.length].url,
+              }))}
+            />
+          </Sheet>
+          <Sheet id="01.H" label="Home — Full Menu (Grid)" light>
+            <GridLayout allServices={ALL_SERVICES} />
+          </Sheet>
+
+          {/* ─── 02 Services ─── */}
+          <DividerPage num="02" label="Page · /services" title="Services." blurb="The full catalog with admin-controlled display modes." />
+          <Sheet id="02" label="Services Page" light>
+            <ServicesPage activeLayout="editorial" featuredIds={featuredIds} onNav={noop} />
+          </Sheet>
+
+          {/* ─── 03 Gallery ─── */}
+          <DividerPage num="03" label="Page · /gallery" title="Gallery." blurb="Receipts. Not promises." />
+          <Sheet id="03" label="Gallery Page">
+            <GalleryPage />
+          </Sheet>
+
+          {/* ─── 04 Book ─── */}
+          <DividerPage num="04" label="Page · /book" title="Book." blurb="Luxury frame around the Vagaro embed." />
+          <Sheet id="04" label="Book Page" light>
+            <BookPage onNav={noop} />
+          </Sheet>
+
+          {/* ─── 05 Admin Creative Studio ─── */}
+          <DividerPage num="05" label="Admin · Creative Studio" title="Studio." blurb="Layout picker + Hero picker + 3 featured slots." />
+          <Sheet id="05" label="Admin Dashboard">
+            <AdminPage
+              activeLayout="editorial" setActiveLayout={noop}
+              heroUrl={heroUrl} setHeroUrl={noop}
+              featuredIds={featuredIds} setFeaturedIds={noop}
+              manifesto={manifesto} setManifesto={noop}
+            />
+          </Sheet>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("print-root")).render(<PrintApp />);
+
+    // Auto-print after fonts + Babel + paint
+    if (window.location.hash === "#auto") {
+      Promise.all([
+        document.fonts ? document.fonts.ready : Promise.resolve(),
+        new Promise(r => setTimeout(r, 1200)),
+      ]).then(() => window.print());
+    }
+  </script>
+</body>
+</html>
