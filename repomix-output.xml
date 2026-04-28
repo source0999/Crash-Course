@@ -70898,52 +70898,6 @@ export default function AdminServicesPage() {
 }
 </file>
 
-<file path="lib/utils.ts">
-// ─────────────────────────────────────────
-// SECTION: Shared Utilities
-// WHAT: Types and functions shared across layout components and the RSC pipeline.
-// WHY: Single definition prevents drift — isVideoMedia logic is identical everywhere.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-
-import type { DbService } from "@/lib/supabase";
-
-/** Union of all valid layout identifiers. TypeScript catches typos at build time. */
-export type Layout = "cinematic" | "grid" | "editorial";
-
-/** A resolved featured slot: config mediaUrl paired with its live DbService row. */
-export type FeaturedPair = {
-  serviceId: number;
-  mediaUrl: string | null;
-  service: DbService;
-};
-
-/** Props contract for the three pure menu-list layout components. */
-export type LayoutProps = { allServices: DbService[] };
-
-// WHY: Centralises the video-vs-image branch — .mp4 extension OR media_type='video'
-// both qualify. Called across FeaturedServicesSection and layout components so
-// the logic is never duplicated.
-export function isVideoMedia(url: string | null, mediaType?: string | null): boolean {
-  if (mediaType === "video") return true;
-  return /\.mp4(\?|$)/i.test(url ?? "");
-}
-
-// ─────────────────────────────────────────
-// SECTION: formatServicePrice
-// WHAT: Normalizes DB price strings/numbers for display with a leading $.
-// WHY: Supabase may store "45" or "$45" or 45 — one helper keeps menus and cards consistent.
-// PHASE 4: No schema change; display-only.
-// ─────────────────────────────────────────
-export function formatServicePrice(price: string | number): string {
-  if (typeof price === "number" && Number.isFinite(price)) return `$${price}`;
-  const t = String(price).trim();
-  if (!t) return "$0";
-  if (t.startsWith("$")) return t;
-  return `$${t}`;
-}
-</file>
-
 <file path="middleware.ts">
 // ─────────────────────────────────────────
 // SECTION: Admin Route Protection Middleware
@@ -71750,6 +71704,52 @@ export default function LayoutOrchestrator({ allServices, featuredPairs, activeL
       </RevealOnScroll>
     </>
   );
+}
+</file>
+
+<file path="lib/utils.ts">
+// ─────────────────────────────────────────
+// SECTION: Shared Utilities
+// WHAT: Types and functions shared across layout components and the RSC pipeline.
+// WHY: Single definition prevents drift — isVideoMedia logic is identical everywhere.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+
+import type { DbService } from "@/lib/supabase";
+
+/** Union of all valid layout identifiers. TypeScript catches typos at build time. */
+export type Layout = "cinematic" | "grid" | "editorial";
+
+/** A resolved featured slot: config mediaUrl paired with its live DbService row. */
+export type FeaturedPair = {
+  serviceId: number;
+  mediaUrl: string | null;
+  service: DbService;
+};
+
+/** Props contract for the three pure menu-list layout components. */
+export type LayoutProps = { allServices: DbService[] };
+
+// WHY: Centralises the video-vs-image branch — .mp4 extension OR media_type='video'
+// both qualify. Called across FeaturedServicesSection and layout components so
+// the logic is never duplicated.
+export function isVideoMedia(url: string | null, mediaType?: string | null): boolean {
+  if (mediaType === "video") return true;
+  return /\.(mp4|webm)(\?|$)/i.test(url ?? "");
+}
+
+// ─────────────────────────────────────────
+// SECTION: formatServicePrice
+// WHAT: Normalizes DB price strings/numbers for display with a leading $.
+// WHY: Supabase may store "45" or "$45" or 45 — one helper keeps menus and cards consistent.
+// PHASE 4: No schema change; display-only.
+// ─────────────────────────────────────────
+export function formatServicePrice(price: string | number): string {
+  if (typeof price === "number" && Number.isFinite(price)) return `$${price}`;
+  const t = String(price).trim();
+  if (!t) return "$0";
+  if (t.startsWith("$")) return t;
+  return `$${t}`;
 }
 </file>
 
@@ -73277,21 +73277,6 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 </file>
 
-<file path=".claude/settings.local.json">
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm run *)",
-      "Bash(awk '{print $NF}')",
-      "Bash(npx tsc *)",
-      "PowerShell(Remove-Item *)",
-      "Bash(npm install *)",
-      "Bash(python3 *)"
-    ]
-  }
-}
-</file>
-
 <file path="app/admin/gallery/page.tsx">
 "use client";
 
@@ -73934,6 +73919,23 @@ export default function AdminGalleryPage() {
       </div>
     </main>
   );
+}
+</file>
+
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(awk '{print $NF}')",
+      "Bash(npx tsc *)",
+      "PowerShell(Remove-Item *)",
+      "Bash(npm install *)",
+      "Bash(python3 *)",
+      "Bash(ffmpeg -version)",
+      "PowerShell(Get-Command *)"
+    ]
+  }
 }
 </file>
 
@@ -77521,14 +77523,22 @@ body {
  *   4. VisitUsSection — RevealOnScroll wrap in this file; footer from root layout
  */
 
+import dynamic from "next/dynamic";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import type { DbService } from "@/lib/supabase";
 import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
-import LayoutOrchestrator from "@/components/layouts/LayoutOrchestrator";
-import BookNowPill from "@/components/BookNowPill";
 import VisitUsSection from "@/components/VisitUsSection";
 import HeroTextReveal from "@/components/HeroTextReveal";
 import RevealOnScroll from "@/components/RevealOnScroll";
+
+// LayoutOrchestrator is below the fold — defer its JS chunk so it doesn't block initial hydration.
+const LayoutOrchestrator = dynamic(
+  () => import("@/components/layouts/LayoutOrchestrator"),
+  { loading: () => <div className="bg-theme-2 min-h-[600px]" /> }
+);
+
+// BookNowPill's Framer Motion float is non-critical — split into its own chunk.
+const BookNowPill = dynamic(() => import("@/components/BookNowPill"));
 
 const DEFAULT_GLOBAL_HERO_URL =
   "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
@@ -77601,7 +77611,7 @@ export default async function HomePage() {
             muted
             loop
             playsInline
-            preload="none"
+            preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: "center 15%" }}
           />

@@ -188,10 +188,15 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+html {
+  scroll-behavior: auto !important;
+}
+
 body {
   background-color: var(--theme-bg);
   color: var(--theme-text);
   -webkit-font-smoothing: antialiased;
+  position: relative;
 }
 
 * {

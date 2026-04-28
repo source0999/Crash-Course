@@ -16,6 +16,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ThemePreferenceSync from "@/components/ThemePreferenceSync";
 import SmoothScrolling from "@/components/SmoothScrolling";
+import ScrollToTopOnMount from "@/components/ScrollToTopOnMount";
+import RouteChangeScrollToTop from "@/components/RouteChangeScrollToTop";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import { normalizeThemeFromDb } from "@/lib/theme";
 
@@ -85,6 +87,7 @@ export default async function RootLayout({
       className={`${syne.variable} ${inter.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">
+        <ScrollToTopOnMount />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -103,7 +106,10 @@ export default async function RootLayout({
         <ThemePreferenceSync />
         <Navbar />
         <div className="flex min-h-0 flex-1 flex-col">
-          <SmoothScrolling>{children}</SmoothScrolling>
+          <SmoothScrolling>
+            <RouteChangeScrollToTop />
+            {children}
+          </SmoothScrolling>
         </div>
         <Footer />
       </body>
