@@ -9,10 +9,10 @@
  * server-side re-render for every visitor on next request. No client state.
  *
  * Render order (always):
- *   1. GlobalHero — server-rendered from site_config.global_hero_url, zero flash
- *   2. LayoutOrchestrator — client boundary → FeaturedServicesSection + active layout
- *   3. BookNowPill — fixed floating CTA
- *   4. VisitUsSection + footer
+ *   1. GlobalHero + HeroTextReveal — media RSC; copy motion client
+ *   2. LayoutOrchestrator — RevealOnScroll wraps featured + menu layout bands
+ *   3. BookNowPill — fixed floating CTA (accent theme-5)
+ *   4. VisitUsSection — RevealOnScroll wrap in this file; footer from root layout
  */
 
 import { createServerSupabaseClient } from "@/lib/supabase";
@@ -21,7 +21,8 @@ import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
 import LayoutOrchestrator from "@/components/layouts/LayoutOrchestrator";
 import BookNowPill from "@/components/BookNowPill";
 import VisitUsSection from "@/components/VisitUsSection";
-import HeroDebugProbe from "@/components/HeroDebugProbe";
+import HeroTextReveal from "@/components/HeroTextReveal";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 const DEFAULT_GLOBAL_HERO_URL =
   "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
@@ -86,7 +87,7 @@ export default async function HomePage() {
       {/* ── Global Identity Hero — server-rendered, zero flash ──
           WHY: Rendered in the RSC so the hero image/video is in the initial HTML
           payload — no layout shift, no GIF restart on hydration. */}
-      <section className="relative w-full h-[100svh] overflow-hidden">
+      <section className="relative w-full h-[100svh] overflow-hidden bg-theme-4 text-theme-1">
         {isVideoMedia(globalHeroUrl) ? (
           <video
             src={globalHeroUrl}
@@ -105,55 +106,17 @@ export default async function HomePage() {
             style={{ objectPosition: "center 15%" }}
           />
         )}
-        {/* Cinematic vignette: dark at top → transparent → dark at bottom */}
+        {/* Cinematic vignette — theme-4 mixes only (no hex); keeps copy legible over media. */}
         <div
           className="absolute inset-0 z-10"
           style={{
             background:
-              "linear-gradient(to bottom, rgba(11,19,43,0.55) 0%, rgba(11,19,43,0.1) 40%, rgba(11,19,43,0.75) 85%, rgba(11,19,43,0.95) 100%)",
+              "linear-gradient(to bottom, color-mix(in srgb, var(--theme-4) 55%, transparent) 0%, color-mix(in srgb, var(--theme-4) 10%, transparent) 40%, color-mix(in srgb, var(--theme-4) 75%, transparent) 85%, color-mix(in srgb, var(--theme-4) 92%, transparent) 100%)",
           }}
         />
-        <div
-          data-hero-copy-container
-          className="relative z-20 flex flex-col items-center justify-center h-full text-center px-6 pt-20"
-        >
-          <p
-            data-hero-subheading
-            className="uppercase tracking-[0.35em] text-xs mb-5"
-            style={{ color: "rgba(249,247,242,0.6)", fontFamily: "'Manrope', sans-serif" }}
-          >
-            Luxury Grooming & Spa · Cumming, Georgia
-          </p>
-          <div
-            aria-hidden="true"
-            className="mb-6"
-            style={{
-              width: "7px",
-              height: "38px",
-              borderRadius: "99px",
-              overflow: "hidden",
-              flexShrink: 0,
-              backgroundImage:
-                "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 5px, color-mix(in srgb, #F9F7F2 18%, transparent) 5px, color-mix(in srgb, #F9F7F2 18%, transparent) 10px)",
-              backgroundSize: "100% 40px",
-              animation: "barber-pole 3.4s linear infinite",
-            }}
-          />
-          <h1
-            data-hero-main-heading
-            className="font-serif font-light tracking-[0.03em] mb-6 leading-[0.92] max-w-4xl mx-auto"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(2rem, 6.5vw, 4.75rem)",
-              color: "#F9F7F2",
-            }}
-          >
-            It&apos;s more than a haircut.
-            <br />
-            <em>It&apos;s an experience.</em>
-          </h1>
-          <HeroDebugProbe runId="initial" />
-        </div>
+        {/* WHY: HeroTextReveal is the client boundary — it adds staggered Framer Motion
+            entrance while the media + vignette stay server-rendered for zero CLS. */}
+        <HeroTextReveal />
       </section>
 
       {/* ── LayoutOrchestrator — explicit client boundary ──
@@ -167,8 +130,10 @@ export default async function HomePage() {
 
       <BookNowPill />
 
-      <div className="w-full" style={{ background: "var(--theme-surface)" }}>
-        <VisitUsSection />
+      <div className="w-full bg-theme-1 text-theme-4">
+        <RevealOnScroll as="section" data-home-band="visit-wrap">
+          <VisitUsSection />
+        </RevealOnScroll>
       </div>
     </>
   );

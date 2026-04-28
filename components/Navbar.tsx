@@ -6,14 +6,23 @@
 // WHY: Pill shape is centered via a flex wrapper (not CSS transform) so Framer Motion's
 //   height spring composes cleanly. Mobile overlay is a Fragment sibling so it isn't
 //   clipped by the pill's overflow:hidden or trapped in its transform stacking context.
+//   MagneticBookNow adds spring-physics cursor tracking to the desktop CTA only.
 // PHASE 4: No changes needed.
 // ─────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useMotionValueEvent,
+  useMotionValue,
+  useSpring,
+  AnimatePresence,
+  useReducedMotion,
+} from "framer-motion";
 import { Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
@@ -30,11 +39,70 @@ const MOBILE_LINKS = [
   { href: "/admin",    label: "Studio Dashboard" },
 ] as const;
 
+// ─────────────────────────────────────────
+// SECTION: MagneticBookNow
+// WHAT: Book Now CTA with spring-physics cursor attraction (magnetic button pattern).
+// WHY: Gives the primary desktop CTA a satisfying tactile feel that draws the eye.
+//   Uses useMotionValue + useSpring so movement stays on the compositor layer
+//   (transform only — no layout/paint). Resets smoothly on mouse leave.
+// ─────────────────────────────────────────
+const MotionBookLink = motion(Link);
+
+function MagneticBookNow({ isActive, reduced }: { isActive: boolean; reduced: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const x = useSpring(rawX, { stiffness: 380, damping: 28, mass: 0.6 });
+  const y = useSpring(rawY, { stiffness: 380, damping: 28, mass: 0.6 });
+
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    rawX.set(dx * 0.28);
+    rawY.set(dy * 0.28);
+  }
+
+  function handleMouseLeave() {
+    rawX.set(0);
+    rawY.set(0);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      style={{ x, y, display: "inline-flex" }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* WHY: Toned-down size — pill is a hint, not a shout. Accent border only,
+          no fill unless active, so it sits lightly alongside the other nav links. */}
+      <MotionBookLink
+        href="/book"
+        className={`relative inline-flex items-center justify-center rounded-lg px-4 py-2 text-[10px] uppercase tracking-[0.22em] font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] border border-theme-3 ${
+          isActive ? "bg-theme-5 text-black" : "bg-theme-4 text-theme-1 hover:bg-theme-5 hover:text-black"
+        }`}
+        style={{ fontFamily: "var(--font-sans)" }}
+        whileHover={reduced ? undefined : { scale: 1.05 }}
+        whileTap={reduced ? undefined : { scale: 0.95 }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+        }}
+      >
+        Book Now
+      </MotionBookLink>
+    </motion.div>
+  );
+}
+
 export default function Navbar() {
   const pathname    = usePathname();
   const isHomePage  = pathname === "/";
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const reduced = useReducedMotion();
 
   const { scrollY } = useScroll();
 
@@ -49,99 +117,6 @@ export default function Navbar() {
 
   const showSolid = isScrolled || !isHomePage;
 
-  useEffect(() => {
-    const navs = Array.from(document.querySelectorAll<HTMLElement>('nav[aria-label="Main navigation"]'));
-    const shells = Array.from(document.querySelectorAll<HTMLElement>('[data-navbar-shell="true"]'));
-    const bgLayers = Array.from(document.querySelectorAll<HTMLElement>('[data-navbar-bg-layer="true"]'));
-    const firstNav = navs[0] ?? null;
-    const firstBg = bgLayers[0] ?? null;
-    const navStyle = firstNav ? getComputedStyle(firstNav) : null;
-    const bgStyle = firstBg ? getComputedStyle(firstBg) : null;
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "pre-refactor",
-        hypothesisId: "H16",
-        location: "components/Navbar.tsx:56",
-        message: "Navbar instance count and shell count",
-        data: { navCount: navs.length, shellCount: shells.length, bgLayerCount: bgLayers.length },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "pre-refactor",
-        hypothesisId: "H17",
-        location: "components/Navbar.tsx:57",
-        message: "Computed nav chrome during morph",
-        data: {
-          isScrolled,
-          isHomePage,
-          showSolid,
-          navTop: navStyle?.top ?? "missing",
-          navWidth: navStyle?.width ?? "missing",
-          navHeight: navStyle?.height ?? "missing",
-          navBorderRadius: navStyle?.borderRadius ?? "missing",
-          navBackground: navStyle?.backgroundColor ?? "missing",
-          navBorderColor: navStyle?.borderColor ?? "missing",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "pre-refactor",
-        hypothesisId: "H18",
-        location: "components/Navbar.tsx:58",
-        message: "Background layer opacity and color",
-        data: {
-          bgOpacity: bgStyle?.opacity ?? "missing",
-          bgColor: bgStyle?.backgroundColor ?? "missing",
-          bgPosition: bgStyle?.position ?? "missing",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "pre-refactor",
-        hypothesisId: "H19",
-        location: "components/Navbar.tsx:59",
-        message: "Navbar text color state",
-        data: {
-          showSolid,
-          resolvedTextColor: navStyle?.color ?? "missing",
-          pathname,
-          menuOpen,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [isScrolled, isHomePage, menuOpen, pathname, showSolid]);
-
   return (
     <>
       {/* ── Morphing luxury pill nav ────────────────────────────────────────────
@@ -152,61 +127,76 @@ export default function Navbar() {
       <motion.nav
         role="navigation"
         aria-label="Main navigation"
-        data-navbar-shell="true"
         className="fixed z-[9999] border overflow-hidden pointer-events-auto"
         animate={{
           width: isScrolled ? "92%" : "100%",
           top: isScrolled ? "16px" : "0px",
           borderRadius: isScrolled ? "9999px" : "0px",
-          backgroundColor: isScrolled ? "rgba(30, 41, 59, 0.85)" : "rgba(15, 23, 42, 0)",
-          boxShadow: isScrolled ? "0 18px 38px -12px rgba(2, 8, 20, 0.55)" : "0 0 0 rgba(0,0,0,0)",
-          borderColor: isScrolled ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0)",
-          height: isScrolled ? "72px" : "88px",
+          /* WHY: Scrolled pill tints from --theme-1 so it tracks the active palette. */
+          backgroundColor: isScrolled
+            ? "color-mix(in srgb, var(--theme-1) 94%, transparent)"
+            : "color-mix(in srgb, var(--theme-1) 0%, transparent)",
+          boxShadow: isScrolled
+            ? "0 8px 28px -8px color-mix(in srgb, var(--theme-4) 18%, transparent)"
+            : "0 0 0 rgba(0,0,0,0)",
+          borderColor: isScrolled
+            ? "color-mix(in srgb, var(--theme-4) 12%, transparent)"
+            : "color-mix(in srgb, var(--theme-4) 0%, transparent)",
+          height: isScrolled ? "56px" : "66px",
         }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        transition={{ type: "spring", stiffness: 95, damping: 24, mass: 0.85 }}
         style={{
           left: "50%",
           x: "-50%",
-          color: showSolid ? "var(--theme-text)" : "var(--color-alabaster)",
-          transition: "color 0.3s ease-in-out",
+          /* WHY: Lavender pill is light, so scrolled/solid states use jet-black theme-text.
+             Over the dark hero media only (not scrolled, on homepage) use near-white. */
+          color: showSolid || isScrolled ? "var(--theme-text)" : "color-mix(in srgb, var(--theme-1) 92%, white)",
+          transition: "color 0.38s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         {/* Content row */}
-        <div className="relative z-10 h-full px-8 flex items-center justify-between">
+        <div className="relative z-10 h-full px-4 md:px-5 flex items-center justify-between">
 
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-3 group touch-manipulation min-h-[48px]"
+            className="flex items-center gap-2 group touch-manipulation min-h-[44px]"
           >
             <Image
               src="/images/logo.png"
               alt="Fades & Facials"
-              width={44}
-              height={44}
-              className="transition-transform duration-300 group-hover:scale-110"
+              width={32}
+              height={32}
+              className="w-8 h-8 transition-transform duration-300 group-hover:scale-110"
               priority
             />
             <span
-              className="hidden sm:block text-xl font-light tracking-[0.04em]"
+              className="hidden sm:block text-base font-light tracking-[0.03em]"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Fades &amp; Facials
             </span>
           </Link>
 
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-8 text-sm uppercase tracking-widest font-medium">
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="hover:text-[var(--theme-accent)] transition-colors duration-200 touch-manipulation min-h-[48px] flex items-center"
-                style={{ color: pathname === href ? "var(--theme-accent)" : "inherit" }}
-              >
-                {label}
-              </Link>
-            ))}
+          {/* Desktop Links — Book Now gets magnetic treatment; others stay standard */}
+          <div className="hidden md:flex items-center gap-5 text-[12px] uppercase tracking-[0.22em] font-medium">
+            {NAV_LINKS.map(({ href, label }) => {
+              if (href === "/book") {
+                return (
+                  <MagneticBookNow key={href} isActive={pathname === href} reduced={reduced ?? false} />
+                );
+              }
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="hover:text-[var(--theme-accent)] transition-colors duration-200 touch-manipulation min-h-[44px] flex items-center"
+                  style={{ color: pathname === href ? "var(--theme-accent)" : "inherit" }}
+                >
+                  {label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Mobile Hamburger */}
@@ -214,7 +204,7 @@ export default function Navbar() {
             type="button"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
-            className="md:hidden flex items-center justify-center w-12 h-12 touch-manipulation rounded-full hover:bg-white/10 transition-colors"
+            className="md:hidden flex items-center justify-center w-11 h-11 touch-manipulation rounded-full hover:bg-white/10 transition-colors"
             onClick={() => setMenuOpen((prev) => !prev)}
             onTouchEnd={(e) => { e.preventDefault(); setMenuOpen((prev) => !prev); }}
             whileTap={{ scale: 0.95 }}
@@ -269,7 +259,7 @@ export default function Navbar() {
               className="pt-12 pb-8 text-xs uppercase tracking-widest text-center opacity-50"
               style={{ color: "var(--theme-text)" }}
             >
-              © sourc3code @2026 • @fadesandfacials
+              © sourc3code @2026 • @fadesandfacials 2026
             </div>
           </motion.div>
         )}

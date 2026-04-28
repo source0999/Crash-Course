@@ -27,9 +27,16 @@
 
 "use client";
 
-import { useEffect } from "react";
+// ─────────────────────────────────────────
+// SECTION: LayoutOrchestrator
+// WHAT: Homepage featured + active menu layout with per-band RevealOnScroll.
+// WHY: page.tsx stays RSC; one client tree owns layout switch + scroll entrances.
+// PHASE 4: Same — data still from app/page.tsx props.
+// ─────────────────────────────────────────
+
 import type { DbService } from "@/lib/supabase";
 import type { Layout, FeaturedPair } from "@/lib/utils";
+import RevealOnScroll from "@/components/RevealOnScroll";
 import CinematicLayout from "./CinematicLayout";
 import GridLayout from "./GridLayout";
 import EditorialLayout from "./EditorialLayout";
@@ -50,92 +57,20 @@ const LayoutRegistry: Record<Layout, React.ComponentType<{ allServices: DbServic
 
 export default function LayoutOrchestrator({ allServices, featuredPairs, activeLayout }: Props) {
   const LayoutComponent = LayoutRegistry[activeLayout] ?? CinematicLayout;
-
-  useEffect(() => {
-    const featured = document.querySelector<HTMLElement>('[data-home-band="featured"]');
-    const menu = document.querySelector<HTMLElement>('[data-home-band="menu"]');
-    const visit = document.querySelector<HTMLElement>('[data-home-band="visit"]');
-    const readBackground = (el: HTMLElement | null) => (el ? getComputedStyle(el).backgroundColor : "missing");
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "post-pattern-fix",
-        hypothesisId: "H13",
-        location: "components/layouts/LayoutOrchestrator.tsx:58",
-        message: "Home section band backgrounds after pattern update",
-        data: {
-          featuredBg: readBackground(featured),
-          menuBg: readBackground(menu),
-          visitBg: readBackground(visit),
-          activeLayout,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [activeLayout, featuredPairs.length, allServices.length]);
-
-  useEffect(() => {
-    const featuredPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-featured-panel="true"]')).slice(0, 3);
-    const panelBackgrounds = featuredPanels.map((panel) => ({
-      index: panel.dataset.featuredPanelIndex ?? "unknown",
-      background: getComputedStyle(panel).backgroundColor,
-    }));
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "post-panel-pattern-fix",
-        hypothesisId: "H14",
-        location: "components/layouts/LayoutOrchestrator.tsx:82",
-        message: "Featured panel background pattern verification",
-        data: { panelBackgrounds, activeLayout },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [activeLayout, featuredPairs.length]);
-
-  useEffect(() => {
-    const sectionHeading = document.querySelector<HTMLElement>('[data-home-band="featured"] h2');
-    const serviceHeadings = Array.from(document.querySelectorAll<HTMLElement>('[data-home-band="featured"] h3')).slice(0, 2);
-    const visitHeading = document.querySelector<HTMLElement>('[data-home-band="visit"] h2');
-    const visitMeta = document.querySelector<HTMLElement>('[data-home-band="visit"] p');
-    const pick = (el: HTMLElement | null) => (el ? getComputedStyle(el).color : "missing");
-
-    // #region agent log
-    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-      body: JSON.stringify({
-        sessionId: "82ce2f",
-        runId: "post-contrast-fix",
-        hypothesisId: "H15",
-        location: "components/layouts/LayoutOrchestrator.tsx:106",
-        message: "Featured and Visit heading contrast verification",
-        data: {
-          sectionHeadingColor: pick(sectionHeading),
-          serviceHeadingColors: serviceHeadings.map((el) => getComputedStyle(el).color),
-          visitHeadingColor: pick(visitHeading),
-          visitMetaColor: pick(visitMeta),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [activeLayout, featuredPairs.length, allServices.length]);
+  /* WHY: Homepage "Our Services" catalogue is a teaser — six slots keeps the band
+     scannable; full catalog remains on /services. */
+  const menuServices = allServices.slice(0, 6);
 
   return (
     <>
-      <FeaturedServicesSection activeLayout={activeLayout} featuredPairs={featuredPairs} />
-      <LayoutComponent allServices={allServices} />
+      {featuredPairs.length > 0 ? (
+        <RevealOnScroll as="section" data-home-band="featured-wrap">
+          <FeaturedServicesSection activeLayout={activeLayout} featuredPairs={featuredPairs} />
+        </RevealOnScroll>
+      ) : null}
+      <RevealOnScroll as="section" data-home-band="menu-wrap">
+        <LayoutComponent allServices={menuServices} />
+      </RevealOnScroll>
     </>
   );
 }

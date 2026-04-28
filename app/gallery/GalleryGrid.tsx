@@ -1,26 +1,20 @@
-/** @file app/gallery/GalleryGrid.tsx */
+"use client";
 
 // ─────────────────────────────────────────
 // SECTION: GalleryGrid
 // WHAT: Client-side gallery renderer — masonry, uniform grid, or fullwidth layouts.
 // WHY: Layout is chosen by the barber in admin and passed from the server page.
-//   No category fields — clean, distraction-free visual portfolio.
+//   Framer Motion whileInView handles staggered entrance — items animate in as
+//   they scroll into the viewport, not all at once on load (better for long galleries).
 // PHASE 4: No changes needed.
 // ─────────────────────────────────────────
 
-"use client";
-
+import { motion, useReducedMotion } from "framer-motion";
 import { DbGalleryItem } from "@/lib/supabase";
 
 type Props = {
   items: DbGalleryItem[];
   layout?: "masonry" | "grid" | "fullwidth";
-};
-
-const ANIMATION_BASE: React.CSSProperties = {
-  animation: "gallery-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
-  transform: "translateZ(0)",
-  WebkitTransform: "translateZ(0)",
 };
 
 function GalleryMedia({ item, className }: { item: DbGalleryItem; className?: string }) {
@@ -46,7 +40,26 @@ function GalleryMedia({ item, className }: { item: DbGalleryItem; className?: st
   );
 }
 
+// WHY: Shared Framer Motion variants — consistent entrance easing across all layouts.
+function useCardVariants(reduced: boolean) {
+  return {
+    hidden: { opacity: 0, scale: reduced ? 1 : 0.94 },
+    show: (i: number) => ({
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.55,
+        delay: reduced ? 0 : Math.min(i * 0.045, 0.4),
+        ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      },
+    }),
+  };
+}
+
 export default function GalleryGrid({ items, layout = "masonry" }: Props) {
+  const reduced = useReducedMotion();
+  const variants = useCardVariants(!!reduced);
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-40 text-center">
@@ -77,17 +90,18 @@ export default function GalleryGrid({ items, layout = "masonry" }: Props) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
         {items.map((item, index) => (
-          <div
+          <motion.div
             key={item.id}
+            custom={index}
+            variants={variants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-40px" }}
             className="aspect-square overflow-hidden rounded-xl"
-            style={{
-              ...ANIMATION_BASE,
-              animationDelay: `${index * 60}ms`,
-              background: "var(--theme-surface)",
-            }}
+            style={{ background: "var(--theme-surface)" }}
           >
             <GalleryMedia item={item} className="w-full h-full object-cover" />
-          </div>
+          </motion.div>
         ))}
       </div>
     );
@@ -98,20 +112,21 @@ export default function GalleryGrid({ items, layout = "masonry" }: Props) {
     return (
       <div className="flex flex-col gap-5 max-w-4xl mx-auto">
         {items.map((item, index) => (
-          <div
+          <motion.div
             key={item.id}
+            custom={index}
+            variants={variants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-40px" }}
             className="w-full overflow-hidden rounded-2xl"
-            style={{
-              ...ANIMATION_BASE,
-              animationDelay: `${index * 60}ms`,
-              background: "var(--theme-surface)",
-            }}
+            style={{ background: "var(--theme-surface)" }}
           >
             <GalleryMedia
               item={item}
               className="w-full h-auto block"
             />
-          </div>
+          </motion.div>
         ))}
       </div>
     );
@@ -124,17 +139,18 @@ export default function GalleryGrid({ items, layout = "masonry" }: Props) {
       className="[--gallery-cols:2] md:[--gallery-cols:3] lg:[--gallery-cols:4]"
     >
       {items.map((item, index) => (
-        <div
+        <motion.div
           key={item.id}
+          custom={index}
+          variants={variants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-40px" }}
           className="mb-2 md:mb-3 break-inside-avoid overflow-hidden rounded-xl"
-          style={{
-            ...ANIMATION_BASE,
-            animationDelay: `${index * 60}ms`,
-            background: "var(--theme-surface)",
-          }}
+          style={{ background: "var(--theme-surface)" }}
         >
           <GalleryMedia item={item} className="w-full h-auto block" />
-        </div>
+        </motion.div>
       ))}
     </div>
   );

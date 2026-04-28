@@ -54,30 +54,6 @@ type DbCategory = { id: number; name: string; sort_order?: number; created_at?: 
 const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
 const MAX_SERVICES_PER_CATEGORY = 5;
 const LELE_GIF_URL = "/lele.gif";
-const DEBUG_ENDPOINT = "http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413";
-const DEBUG_SESSION_ID = "d1134d";
-
-function sendDebugLog(payload: {
-  runId: string;
-  hypothesisId: string;
-  location: string;
-  message: string;
-  data: Record<string, unknown>;
-}) {
-  fetch(DEBUG_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": DEBUG_SESSION_ID },
-    body: JSON.stringify({
-      sessionId: DEBUG_SESSION_ID,
-      runId: payload.runId,
-      hypothesisId: payload.hypothesisId,
-      location: payload.location,
-      message: payload.message,
-      data: payload.data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-}
 
 // WHY: Normalize casing to Title Case before any DB insert to prevent data
 // fragmentation from case variants ("hot shave" vs "Hot Shave" would satisfy
@@ -454,7 +430,6 @@ function FeaturedSlotModal({
 }
 
 export default function AdminServicesPage() {
-  const debugRunIdRef = useRef(`pre-fix-${Date.now()}`);
   const [services, setServices] = useState<DbService[]>([]);
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
@@ -580,20 +555,6 @@ export default function AdminServicesPage() {
         const parsedOrder = JSON.parse(orderRes.data.value) as string[];
         // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
         const dedupedOrder = [...new Set(parsedOrder)];
-        // #region agent log
-        sendDebugLog({
-          runId: debugRunIdRef.current,
-          hypothesisId: "H1_site_config_contains_duplicates",
-          location: "app/admin/services/page.tsx:fetchConfig",
-          message: "Fetched category_order from site_config",
-          data: {
-            parsedOrder,
-            dedupedOrder,
-            uniqueCount: new Set(dedupedOrder).size,
-            totalCount: parsedOrder.length,
-          },
-        });
-        // #endregion
         setCategoryOrder(dedupedOrder);
       } catch {}
     }
@@ -653,25 +614,6 @@ export default function AdminServicesPage() {
   // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
   const dedupedOrderedCategories = [...new Set(orderedCategories)];
 
-  useEffect(() => {
-    const duplicateOrderedCategories = dedupedOrderedCategories.filter(
-      (cat, index, arr) => arr.indexOf(cat) !== index,
-    );
-    // #region agent log
-    sendDebugLog({
-      runId: debugRunIdRef.current,
-      hypothesisId: "H4_render_uses_duplicate_keys",
-      location: "app/admin/services/page.tsx:orderedCategories-useEffect",
-      message: "Derived orderedCategories and duplicate-key risk",
-      data: {
-        categoryOrder,
-        categoryNames,
-          orderedCategories: dedupedOrderedCategories,
-        duplicateOrderedCategories,
-      },
-    });
-    // #endregion
-  }, [categoryOrder, categoryNames, dedupedOrderedCategories]);
   const featuredIds = new Set(
     featuredPairings
       .map((pairing) => pairing.serviceId)
@@ -1369,22 +1311,6 @@ export default function AdminServicesPage() {
         setCategoryModalError(`"${trimmedName}" already exists.`);
         return;
       }
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H2_local_append_reintroduces_duplicates",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-before-insert",
-        message: "Category submit before insert",
-        data: {
-          trimmedName,
-          categoryOrder,
-          orderedCategories: dedupedOrderedCategories,
-          existingCaseInsensitiveMatch: dedupedOrderedCategories.some(
-            (c) => c.toLowerCase() === trimmedName.toLowerCase(),
-          ),
-        },
-      });
-      // #endregion
 
       // Pre-flight: enforce the hard limit of 3 categories.
       // count: 'exact' + head: true returns only the count, no row data.
@@ -1428,21 +1354,6 @@ export default function AdminServicesPage() {
       // state updates before the DB round-trip confirms the insert.
       // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
       const updatedOrder = [...new Set([...categoryOrder, trimmedName])];
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H2_local_append_reintroduces_duplicates",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-updatedOrder",
-        message: "Computed updatedOrder before site_config upsert",
-        data: {
-          categoryOrder,
-          trimmedName,
-          updatedOrder,
-          uniqueCount: new Set(updatedOrder).size,
-          totalCount: updatedOrder.length,
-        },
-      });
-      // #endregion
       await supabase.from("site_config").upsert({
         key: "category_order",
         value: JSON.stringify(updatedOrder),
@@ -1454,18 +1365,6 @@ export default function AdminServicesPage() {
       setCategoryModalError(null);
       await fetchData();
       await fetchConfig();
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H3_fetch_then_local_set_conflict",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-after-fetchData",
-        message: "Set categoryOrder after fetchData call",
-        data: {
-          updatedOrderAfterInsert: updatedOrder,
-          postFetchConfigCategoryOrderApplied: true,
-        },
-      });
-      // #endregion
       setFeedback({ type: "success", msg: `Category "${trimmedName}" created.` });
     } catch (err) {
       console.error("[categories:handleSubmitCategory]", err);

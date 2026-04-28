@@ -1,37 +1,48 @@
-/** @file components/BookNowPill.tsx */
+"use client";
 
 // ─────────────────────────────────────────
 // SECTION: BookNowPill
-// WHAT: Persistent floating CTA anchored to viewport bottom-center.
-// WHY: Keeps the booking action reachable at all scroll positions across all
-//   layouts. Uses var(--theme-accent) so it automatically matches whichever
-//   Dual Flicker theme is active without any component-level changes.
+// WHAT: Persistent floating CTA anchored to viewport bottom-center with spring float.
+// WHY: Keeps booking reachable at all scroll positions. Float animation uses translate3d
+//   only — compositor layer, zero repaints. Framer Motion respects prefers-reduced-motion.
 // PHASE 4: No changes needed — links to /book internal route.
 // ─────────────────────────────────────────
 
-"use client";
-
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
+
+const MotionLink = motion(Link);
 
 export default function BookNowPill() {
+  const reduced = useReducedMotion();
+
   return (
     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-auto pb-[max(2rem,env(safe-area-inset-bottom))]">
-      <Link
-        href="/book"
-        className="group relative inline-flex items-center justify-center rounded-full px-6 py-3 text-sm tracking-[0.04em] uppercase font-medium shadow-xl transition-all duration-300 hover:scale-[1.03] active:scale-95 touch-manipulation min-h-[44px]"
-        style={{
-          background: "var(--theme-accent)",
-          color: "var(--theme-text)",
-          fontFamily: "var(--font-sans)",
+      {/* WHY: Outer motion.div owns the float so the Link's transform stack stays clean. */}
+      <motion.div
+        animate={reduced ? {} : {
+          y: [0, -10, 0],
+        }}
+        transition={{
+          duration: 3.4,
+          repeat: Infinity,
+          ease: "easeInOut",
+          repeatType: "loop",
         }}
       >
-        <span className="relative z-10">Book Now</span>
-        {/* animate-ping = scale + opacity keyframe — compositor-only, no repaints */}
-        <span
-          className="absolute inset-0 rounded-full border animate-ping opacity-20"
-          style={{ borderColor: "var(--theme-accent)" }}
-        />
-      </Link>
+        <MotionLink
+          href="/book"
+          className="group relative inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm tracking-[0.04em] uppercase font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-5 text-theme-4 hover:bg-theme-4 hover:text-theme-1"
+          style={{ fontFamily: "var(--font-sans)" }}
+          whileHover={reduced ? undefined : { scale: 1.05 }}
+          whileTap={reduced ? undefined : { scale: 0.95 }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <span className="relative z-10">Book Now</span>
+        </MotionLink>
+      </motion.div>
     </div>
   );
 }

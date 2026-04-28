@@ -2,9 +2,9 @@
 
 // ─────────────────────────────────────────
 // SECTION: Book Page
-// WHAT: Luxury wrapper around the Vagaro booking iframe.
+// WHAT: Luxurious glass-style wrapper around the Vagaro booking iframe.
 // WHY: Single canonical /book route for all site CTAs. The iframe is the actual
-//   booking engine — no fake forms, no custom logic, just the premium wrapper.
+//   booking engine — premium wrapper elevates it to feel native to the brand.
 // PHASE 4: No changes needed — VAGARO_SRC is stable unless the barber regenerates
 //   the widget in Vagaro dashboard → Promote → Booking Widget.
 // ─────────────────────────────────────────
@@ -68,26 +68,38 @@ export default function BookPage() {
         {/* ── Vagaro widget or dev placeholder ── */}
         {isProduction ? (
           // WHY: Vagaro requires HTTPS — silently fails on http://localhost.
-          // overflow wrapper with -webkit-overflow-scrolling enables native
-          // momentum scrolling inside the iframe on iOS Safari.
-          <div
-            className="w-full rounded-3xl overflow-hidden"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
-              boxShadow: "0 16px 64px color-mix(in srgb, var(--theme-bg) 40%, transparent)",
-              overflowY: "auto",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
-            <iframe
-              src={VAGARO_SRC}
-              width="100%"
-              height="900"
-              frameBorder="0"
-              scrolling="yes"
-              title="Book an appointment at Fades and Facials Barbershop"
-              style={{ display: "block" }}
+          // The outer ring adds a premium accent glow. The inner container handles
+          // iOS momentum scrolling via -webkit-overflow-scrolling:touch.
+          <div className="relative">
+            {/* WHY: Accent ring gives the iframe a native, brand-integrated feel. */}
+            <div
+              className="absolute -inset-px rounded-3xl pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--theme-accent) 30%, transparent) 0%, transparent 50%, color-mix(in srgb, var(--theme-accent) 15%, transparent) 100%)",
+              }}
             />
+            <div
+              className="relative w-full rounded-3xl overflow-hidden"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--theme-accent) 22%, transparent)",
+                boxShadow:
+                  "0 24px 80px color-mix(in srgb, var(--theme-accent) 12%, transparent), 0 4px 24px color-mix(in srgb, var(--theme-bg) 40%, transparent)",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                background: "var(--theme-surface)",
+              }}
+            >
+              <iframe
+                src={VAGARO_SRC}
+                width="100%"
+                height="900"
+                frameBorder="0"
+                scrolling="yes"
+                title="Book an appointment at Fades and Facials Barbershop"
+                style={{ display: "block" }}
+              />
+            </div>
           </div>
         ) : (
           <div

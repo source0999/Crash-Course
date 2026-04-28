@@ -1,24 +1,20 @@
-/** @file components/layouts/FeaturedServicesSection.tsx */
+"use client";
 
-/*
- * THEME ENFORCEMENT RULE (A+ Agency Standard)
- *
- * ❌ BANNED: #HEX, rgb(), rgba(), color-mix with hex
- * ✅ REQUIRED: var(--theme-bg), var(--theme-text), var(--theme-accent), var(--theme-surface)
- *
- * This file has been audited: no banned values present.
- */
+/** @file components/layouts/FeaturedServicesSection.tsx */
 
 // ─────────────────────────────────────────
 // SECTION: FeaturedServicesSection
-// WHAT: Featured showcase that adapts its design language to match activeLayout.
-// WHY: A single data source (featuredPairs from the RSC pipeline) rendered in 3
-//   distinct visual states so the featured section matches the active menu style.
-//   All hero/panel content uses px-4 minimum on mobile to prevent edge bleed.
-// PHASE 4: No changes needed — featuredPairs resolved server-side in app/page.tsx.
+// WHAT: Featured showcase bands; copy uses --ink-on-light-surface on soft bands.
+// WHY: Scroll reveal is owned by LayoutOrchestrator (RevealOnScroll) so page.tsx controls motion.
+// PHASE 4: featuredPairs still resolved server-side in app/page.tsx.
 // ─────────────────────────────────────────
 
-import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
+import { isVideoMedia, formatServicePrice, type Layout, type FeaturedPair } from "@/lib/utils";
+
+const INK = "var(--ink-on-light-surface)";
+function inkMuted(pct: number) {
+  return `color-mix(in srgb, var(--ink-on-light-surface) ${pct}%, transparent)`;
+}
 
 export default function FeaturedServicesSection({
   activeLayout,
@@ -29,9 +25,6 @@ export default function FeaturedServicesSection({
 }) {
   if (featuredPairs.length === 0) return null;
 
-  // ── Shared media renderer — identical logic in all three branches ──
-  // WHY: isVideoMedia() mirrors the admin media_type state machine —
-  // .mp4 extension OR media_type='video' both render as <video>.
   function PairMedia({
     pair,
     className,
@@ -62,42 +55,29 @@ export default function FeaturedServicesSection({
     );
   }
 
-  const formatPrice = (price: string | number) =>
-    typeof price === "number" ? `$${price}` : price;
-
   switch (activeLayout) {
-    // ── Cinematic: alternating left/right full-bleed panels ──
     case "cinematic":
       return (
-        <section
-          data-home-band="featured"
-          style={{
-            background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
-          }}
-        >
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4">
           <div className="max-w-6xl mx-auto px-4 md:px-8 pt-16 pb-6">
             <p
               className="text-[11px] uppercase tracking-[0.3em] mb-2"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
             >
               Featured Services
             </p>
             <h2
               className="text-3xl md:text-4xl font-light"
-              style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
+              style={{ fontFamily: "var(--font-display)", color: INK }}
             >
               Signature Menu
             </h2>
           </div>
-          {featuredPairs.map((pair, i) => (
+          {featuredPairs.slice(0, 6).map((pair, i) => (
             <div
               key={pair.serviceId}
-              // WHY: flex-col on mobile stacks media above text; md:flex-row-reverse
-              // on odd indices creates the alternating left/right cinematic rhythm.
               className={`flex flex-col ${i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
             >
-              {/* Media panel */}
               <div className="relative w-full md:w-1/2 overflow-hidden" style={{ height: "55svh" }}>
                 <PairMedia
                   pair={pair}
@@ -107,25 +87,21 @@ export default function FeaturedServicesSection({
                   className="absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(to bottom, color-mix(in srgb, var(--theme-bg) 20%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 50%, transparent) 100%)",
+                      "linear-gradient(to bottom, color-mix(in srgb, black 55%, transparent) 0%, color-mix(in srgb, black 22%, transparent) 100%)",
                   }}
                 />
               </div>
-              {/* Text panel — px-6 on mobile ensures no content touches screen edge */}
               <div
                 data-featured-panel="true"
                 data-featured-panel-index={i}
-                className="w-full md:w-1/2 flex flex-col justify-center px-6 md:px-10 py-10 md:py-14"
-                style={{
-                  background: i % 2 === 0
-                    ? "var(--home-band-b, var(--theme-surface))"
-                    : "var(--home-band-a, var(--theme-bg))",
-                  ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
-                }}
+                data-home-panel={i % 2 === 0 ? "light" : "tint"}
+                className={`w-full md:w-1/2 flex flex-col justify-center px-6 md:px-10 py-10 md:py-14 ${
+                  i % 2 === 0 ? "bg-white" : "bg-theme-1"
+                }`}
               >
                 <p
                   className="text-[11px] uppercase tracking-[0.35em] mb-4"
-                  style={{ color: "color-mix(in srgb, var(--theme-text) 35%, transparent)", fontFamily: "var(--font-sans)" }}
+                  style={{ color: inkMuted(38), fontFamily: "var(--font-sans)" }}
                 >
                   Featured
                 </p>
@@ -134,7 +110,7 @@ export default function FeaturedServicesSection({
                   style={{
                     fontFamily: "var(--font-display)",
                     fontSize: "clamp(2rem, 4vw, 3.5rem)",
-                    color: "var(--theme-text)",
+                    color: "inherit",
                   }}
                 >
                   {pair.service.name}
@@ -142,7 +118,7 @@ export default function FeaturedServicesSection({
                 <p
                   className="text-sm leading-relaxed mb-8 max-w-sm"
                   style={{
-                    color: "color-mix(in srgb, var(--theme-text) 55%, transparent)",
+                    color: inkMuted(48),
                     fontFamily: "var(--font-sans)",
                     fontWeight: 300,
                   }}
@@ -150,10 +126,10 @@ export default function FeaturedServicesSection({
                   {pair.service.description}
                 </p>
                 <span
-                  className="text-3xl font-light"
-                  style={{ fontFamily: "var(--font-display)", color: "var(--theme-accent)" }}
+                  className="text-xl font-bold"
+                  style={{ fontFamily: "var(--font-display)", color: "inherit" }}
                 >
-                  {formatPrice(pair.service.price)}
+                  {formatServicePrice(pair.service.price)}
                 </span>
               </div>
             </div>
@@ -161,32 +137,24 @@ export default function FeaturedServicesSection({
         </section>
       );
 
-    // ── Grid: portrait luxury cards ──
     case "grid":
       return (
-        <section
-          data-home-band="featured"
-          style={{
-            background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
-          }}
-          className="px-4 md:px-6 py-16"
-        >
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-6 py-16">
           <div className="max-w-6xl mx-auto">
             <p
               className="text-[11px] uppercase tracking-[0.3em] mb-3"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
             >
               Featured Services
             </p>
             <h2
               className="text-3xl md:text-4xl font-light mb-10"
-              style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
+              style={{ fontFamily: "var(--font-display)", color: INK }}
             >
               Signature Menu
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {featuredPairs.map((pair) => (
+              {featuredPairs.slice(0, 6).map((pair) => (
                 <article
                   key={pair.serviceId}
                   className="rounded-3xl overflow-hidden"
@@ -195,7 +163,6 @@ export default function FeaturedServicesSection({
                     boxShadow: "0 8px 40px color-mix(in srgb, var(--theme-bg) 10%, transparent)",
                   }}
                 >
-                  {/* Portrait media with bottom gradient overlay for name + price */}
                   <div className="relative aspect-[3/4]">
                     <PairMedia
                       pair={pair}
@@ -205,22 +172,18 @@ export default function FeaturedServicesSection({
                       className="absolute inset-0"
                       style={{
                         background:
-                          "linear-gradient(to top, color-mix(in srgb, var(--theme-bg) 85%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 30%, transparent) 50%, transparent 100%)",
+                          "linear-gradient(to top, color-mix(in srgb, black 78%, transparent) 0%, color-mix(in srgb, black 18%, transparent) 50%, transparent 100%)",
                       }}
                     />
-                    {/* px-6 ensures name/price never touch card edges on mobile */}
-                    <div className="absolute bottom-0 left-0 right-0 px-6 py-6">
+                    <div className="absolute bottom-0 left-0 right-0 px-6 py-6 text-white">
                       <h3
-                        className="text-2xl font-light mb-1"
-                        style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
+                        className="text-2xl font-light mb-1 drop-shadow-sm"
+                        style={{ fontFamily: "var(--font-display)" }}
                       >
                         {pair.service.name}
                       </h3>
-                      <span
-                        className="text-lg font-light"
-                        style={{ fontFamily: "var(--font-display)", color: "var(--theme-accent)" }}
-                      >
-                        {formatPrice(pair.service.price)}
+                      <span className="text-lg font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                        {formatServicePrice(pair.service.price)}
                       </span>
                     </div>
                   </div>
@@ -228,7 +191,7 @@ export default function FeaturedServicesSection({
                     <p
                       className="text-sm"
                       style={{
-                        color: "color-mix(in srgb, var(--theme-text) 60%, transparent)",
+                        color: inkMuted(42),
                         fontFamily: "var(--font-sans)",
                         fontWeight: 300,
                       }}
@@ -243,33 +206,24 @@ export default function FeaturedServicesSection({
         </section>
       );
 
-    // ── Editorial: magazine stack — full-width hero + 2-col strip ──
     case "editorial":
     default:
       return (
-        <section
-          data-home-band="featured"
-          style={{
-            background: "var(--home-band-a, var(--theme-bg))",
-            ["--theme-text" as string]: "var(--home-band-text, #1f3d63)",
-          }}
-          className="px-4 md:px-16 py-16"
-        >
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-16 py-16">
           <div className="max-w-6xl mx-auto">
             <p
               className="text-[11px] uppercase tracking-[0.3em] mb-3"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
             >
               Featured Services
             </p>
             <h2
               className="text-3xl md:text-4xl font-light mb-8"
-              style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
+              style={{ fontFamily: "var(--font-display)", color: INK }}
             >
               Signature Menu
             </h2>
 
-            {/* Slot 0 — full-width hero */}
             {featuredPairs[0] && (
               <div
                 className="relative w-full overflow-hidden rounded-3xl mb-5"
@@ -283,38 +237,32 @@ export default function FeaturedServicesSection({
                   className="absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(to bottom, color-mix(in srgb, var(--theme-bg) 20%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 65%, transparent) 100%)",
+                      "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
                   }}
                 />
-                {/* px-6 minimum ensures content never touches rounded card edge on mobile */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 md:px-8">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 md:px-8 text-white">
                   <p
-                    className="text-[11px] uppercase tracking-[0.35em] mb-4"
-                    style={{ color: "color-mix(in srgb, var(--theme-text) 50%, transparent)", fontFamily: "var(--font-sans)" }}
+                    className="text-[11px] uppercase tracking-[0.35em] mb-4 text-white/75"
+                    style={{ fontFamily: "var(--font-sans)" }}
                   >
                     01
                   </p>
                   <h3
-                    className="font-light mb-4 leading-tight"
+                    className="font-light mb-4 leading-tight drop-shadow-sm"
                     style={{
                       fontFamily: "var(--font-display)",
                       fontSize: "clamp(2.5rem, 6vw, 5rem)",
-                      color: "var(--theme-text)",
                     }}
                   >
                     {featuredPairs[0].service.name}
                   </h3>
-                  <span
-                    className="text-2xl font-light"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--theme-accent)" }}
-                  >
-                    {formatPrice(featuredPairs[0].service.price)}
+                  <span className="text-2xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                    {formatServicePrice(featuredPairs[0].service.price)}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Slots 1 & 2 — CRITICAL: grid-cols-1 on mobile, md:grid-cols-2 on desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {featuredPairs.slice(1, 3).map((pair, i) => (
                 <div
@@ -330,32 +278,27 @@ export default function FeaturedServicesSection({
                     className="absolute inset-0"
                     style={{
                       background:
-                        "linear-gradient(to bottom, color-mix(in srgb, var(--theme-bg) 20%, transparent) 0%, color-mix(in srgb, var(--theme-bg) 65%, transparent) 100%)",
+                        "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
                     }}
                   />
-                  {/* px-6 minimum keeps text off rounded card edges on any screen width */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
                     <p
-                      className="text-[11px] uppercase tracking-[0.35em] mb-3"
-                      style={{ color: "color-mix(in srgb, var(--theme-text) 50%, transparent)", fontFamily: "var(--font-sans)" }}
+                      className="text-[11px] uppercase tracking-[0.35em] mb-3 text-white/75"
+                      style={{ fontFamily: "var(--font-sans)" }}
                     >
                       {String(i + 2).padStart(2, "0")}
                     </p>
                     <h3
-                      className="font-light mb-3 leading-tight"
+                      className="font-light mb-3 leading-tight drop-shadow-sm"
                       style={{
                         fontFamily: "var(--font-display)",
                         fontSize: "clamp(1.5rem, 3vw, 2.5rem)",
-                        color: "var(--theme-text)",
                       }}
                     >
                       {pair.service.name}
                     </h3>
-                    <span
-                      className="text-xl font-light"
-                      style={{ fontFamily: "var(--font-display)", color: "var(--theme-accent)" }}
-                    >
-                      {formatPrice(pair.service.price)}
+                    <span className="text-xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                      {formatServicePrice(pair.service.price)}
                     </span>
                   </div>
                 </div>

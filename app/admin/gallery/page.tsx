@@ -4,6 +4,7 @@
 // SECTION: Admin Gallery Manager
 // WHAT: Full CRUD interface for gallery media — upload, delete, replace, and toggle visibility.
 // WHY: Lets the barber manage the public gallery without touching code or the database directly.
+//   All colors use --theme-* variables so the page respects whichever theme is active.
 // PHASE 4: No changes needed — already wired to live Supabase Storage and gallery table.
 // ─────────────────────────────────────────
 
@@ -291,61 +292,109 @@ export default function AdminGalleryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
+    <main
+      className="min-h-screen pt-28 pb-20 px-4 md:px-8"
+      style={{ background: "var(--theme-bg)" }}
+    >
       <div className="max-w-5xl mx-auto">
+
         {/* ── Header ── */}
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-10 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">Admin</p>
-            <h1 className="text-3xl font-bold text-white">Gallery Manager</h1>
+            <p
+              className="text-[10px] tracking-[0.38em] uppercase mb-1"
+              style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
+            >
+              Creative Studio
+            </p>
+            <h1
+              className="text-3xl font-bold"
+              style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+            >
+              Gallery Manager
+            </h1>
           </div>
-          <a href="/admin/dashboard" className="text-white/40 text-sm hover:text-white transition">
-            ← Back to Dashboard
+          <a
+            href="/admin/dashboard"
+            className="text-sm touch-manipulation min-h-[44px] flex items-center transition-opacity hover:opacity-70"
+            style={{ color: "color-mix(in srgb, var(--theme-text) 50%, transparent)", fontFamily: "var(--font-sans)" }}
+          >
+            ← Dashboard
           </a>
         </div>
 
         {/* ── Feedback banner ── */}
         {feedback && (
           <div
-            className={`mb-6 rounded-lg px-4 py-3 text-sm font-medium ${
-              feedback.type === "success"
-                ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                : "bg-red-500/20 text-red-300 border border-red-500/30"
-            }`}
+            className="mb-6 rounded-2xl px-5 py-3 text-sm font-medium"
+            style={{
+              background: feedback.type === "success"
+                ? "color-mix(in srgb, var(--theme-accent) 12%, transparent)"
+                : "color-mix(in srgb, #e05555 12%, transparent)",
+              border: feedback.type === "success"
+                ? "1px solid color-mix(in srgb, var(--theme-accent) 30%, transparent)"
+                : "1px solid color-mix(in srgb, #e05555 30%, transparent)",
+              color: feedback.type === "success" ? "var(--theme-accent)" : "#e05555",
+              fontFamily: "var(--font-sans)",
+            }}
           >
             {feedback.msg}
           </div>
         )}
 
         {/* ── Layout Preset Picker ── */}
-        <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
-          <p className="text-white font-semibold mb-1">Gallery Layout</p>
-          <p className="text-white/40 text-xs mb-4">Choose how your gallery looks to visitors</p>
+        <div
+          className="mb-8 rounded-2xl p-5"
+          style={{
+            border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
+            background: "var(--theme-surface)",
+          }}
+        >
+          <p
+            className="font-semibold mb-1"
+            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+          >
+            Gallery Layout
+          </p>
+          <p
+            className="text-xs mb-5"
+            style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+          >
+            Choose how your gallery looks to visitors
+          </p>
           <div className="flex gap-3 flex-wrap">
             {([
-              { key: "masonry", label: "⬡ Masonry", desc: "Pinterest style" },
-              { key: "grid", label: "⊞ Grid", desc: "Equal squares" },
-              { key: "fullwidth", label: "▬ Fullwidth", desc: "Cinematic rows" },
+              { key: "masonry",   label: "⬡ Masonry",   desc: "Pinterest style"  },
+              { key: "grid",      label: "⊞ Grid",       desc: "Equal squares"    },
+              { key: "fullwidth", label: "▬ Fullwidth",  desc: "Cinematic rows"   },
             ] as const).map((preset) => (
               <button
                 key={preset.key}
                 onClick={() => saveLayout(preset.key)}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  saveLayout(preset.key);
-                }}
+                onTouchEnd={(e) => { e.preventDefault(); saveLayout(preset.key); }}
                 disabled={layoutSaving}
-                className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
-                  layout === preset.key
-                    ? "bg-brand-accent text-black border-brand-accent"
-                    : "bg-white/5 text-white border-white/10 hover:bg-white/10"
-                }`}
+                className="flex-1 min-w-[100px] rounded-xl py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition-all duration-200"
+                style={{
+                  background: layout === preset.key
+                    ? "var(--theme-accent)"
+                    : "color-mix(in srgb, var(--theme-text) 5%, transparent)",
+                  color: layout === preset.key
+                    ? "var(--theme-bg)"
+                    : "color-mix(in srgb, var(--theme-text) 70%, transparent)",
+                  border: layout === preset.key
+                    ? "1.5px solid var(--theme-accent)"
+                    : "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
+                  fontFamily: "var(--font-sans)",
+                }}
               >
                 <div>{preset.label}</div>
                 <div
-                  className={`text-xs font-normal mt-0.5 ${
-                    layout === preset.key ? "text-black/60" : "text-white/40"
-                  }`}
+                  className="text-xs font-normal mt-0.5"
+                  style={{
+                    color: layout === preset.key
+                      ? "color-mix(in srgb, var(--theme-bg) 65%, transparent)"
+                      : "color-mix(in srgb, var(--theme-text) 35%, transparent)",
+                  }}
                 >
                   {preset.desc}
                 </div>
@@ -357,17 +406,23 @@ export default function AdminGalleryPage() {
         {/* ── Upload zone ── */}
         <div
           onClick={() => uploadRef.current?.click()}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            uploadRef.current?.click();
+          onTouchEnd={(e) => { e.preventDefault(); uploadRef.current?.click(); }}
+          className="mb-10 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center py-12 px-6 text-center touch-manipulation"
+          style={{
+            borderColor: "color-mix(in srgb, var(--theme-text) 18%, transparent)",
           }}
-          className="mb-10 rounded-2xl border-2 border-dashed border-white/20 hover:border-brand-accent transition cursor-pointer flex flex-col items-center justify-center py-12 px-6 text-center touch-manipulation"
         >
           <p className="text-4xl mb-3">📷</p>
-          <p className="text-white font-semibold text-lg">
+          <p
+            className="font-semibold text-lg mb-1"
+            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+          >
             {uploading ? "Uploading..." : "Tap to Upload Photos or Videos"}
           </p>
-          <p className="text-white/40 text-sm mt-1">
+          <p
+            className="text-sm"
+            style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+          >
             JPG, PNG, MP4, MOV supported. Multiple files OK.
           </p>
           <input
@@ -382,14 +437,25 @@ export default function AdminGalleryPage() {
 
         {/* ── Gallery grid ── */}
         {loading ? (
-          <p className="text-white/40 text-center py-20">Loading gallery...</p>
+          <p
+            className="text-center py-20"
+            style={{ color: "color-mix(in srgb, var(--theme-text) 35%, transparent)", fontFamily: "var(--font-sans)" }}
+          >
+            Loading gallery...
+          </p>
         ) : items.length === 0 ? (
-          <p className="text-white/40 text-center py-20">
+          <p
+            className="text-center py-20"
+            style={{ color: "color-mix(in srgb, var(--theme-text) 35%, transparent)", fontFamily: "var(--font-sans)" }}
+          >
             No media yet. Upload your first photo or video above.
           </p>
         ) : (
           <>
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/40">
+            <p
+              className="mb-4 text-xs uppercase tracking-[0.2em]"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+            >
               Drag grip to reorder gallery
             </p>
             <DndContext
@@ -403,24 +469,41 @@ export default function AdminGalleryPage() {
                     <SortableItem key={item.id} id={item.id}>
                       {(listeners, isDragging) => (
                         <div
-                          className={`relative rounded-xl overflow-hidden border ${
-                            item.is_active ? "border-white/10" : "border-white/5 opacity-50"
-                          } bg-white/5 transition-all ${isDragging ? "opacity-40" : ""}`}
+                          className="relative rounded-2xl overflow-hidden transition-all"
+                          style={{
+                            border: item.is_active
+                              ? "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)"
+                              : "1px solid color-mix(in srgb, var(--theme-text) 5%, transparent)",
+                            background: "var(--theme-surface)",
+                            opacity: item.is_active ? (isDragging ? 0.4 : 1) : 0.45,
+                          }}
                         >
-                          {/* Drag grip — touch-action:none stops iOS from stealing the gesture */}
+                          {/* WHY: Drag grip — touch-action:none stops iOS from stealing the gesture. */}
                           <div
                             {...listeners}
-                            style={{ touchAction: "none" }}
-                            className="absolute top-2 right-2 z-10 rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-cyan-300 cursor-grab active:cursor-grabbing touch-manipulation select-none"
+                            style={{
+                              touchAction: "none",
+                              position: "absolute",
+                              top: "8px",
+                              right: "8px",
+                              zIndex: 10,
+                              borderRadius: "8px",
+                              padding: "8px",
+                              background: "color-mix(in srgb, var(--theme-accent) 14%, transparent)",
+                              border: "1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent)",
+                              color: "var(--theme-accent)",
+                              cursor: "grab",
+                              userSelect: "none",
+                            }}
+                            className="touch-manipulation"
                           >
                             ⠿
                           </div>
 
                           {/* Media preview */}
                           <div
-                            className={`aspect-square overflow-hidden ${
-                              item.show_bg ? "bg-black" : "bg-transparent"
-                            }`}
+                            className="aspect-square overflow-hidden"
+                            style={{ background: item.show_bg ? "black" : "transparent" }}
                           >
                             {item.file_type === "video" ? (
                               <video
@@ -441,7 +524,14 @@ export default function AdminGalleryPage() {
 
                           {/* Hidden badge */}
                           {!item.is_active && (
-                            <div className="absolute top-2 left-2 bg-black/70 text-white/60 text-xs px-2 py-1 rounded-full">
+                            <div
+                              className="absolute top-2 left-2 text-xs px-2 py-1 rounded-full"
+                              style={{
+                                background: "color-mix(in srgb, var(--theme-bg) 80%, transparent)",
+                                color: "color-mix(in srgb, var(--theme-text) 55%, transparent)",
+                                fontFamily: "var(--font-sans)",
+                              }}
+                            >
                               Hidden
                             </div>
                           )}
@@ -450,44 +540,48 @@ export default function AdminGalleryPage() {
                           <div className="p-2 flex flex-col gap-2">
                             <button
                               onClick={() => handleToggleBg(item)}
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                handleToggleBg(item);
+                              onTouchEnd={(e) => { e.preventDefault(); handleToggleBg(item); }}
+                              className="w-full rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150"
+                              style={{
+                                background: "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                                color: "color-mix(in srgb, var(--theme-text) 65%, transparent)",
+                                fontFamily: "var(--font-sans)",
                               }}
-                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
                             >
                               {item.show_bg ? "BG: ON" : "BG: OFF"}
                             </button>
 
                             <button
                               onClick={() => handleToggle(item)}
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                handleToggle(item);
+                              onTouchEnd={(e) => { e.preventDefault(); handleToggle(item); }}
+                              className="w-full rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150"
+                              style={{
+                                background: "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                                color: "color-mix(in srgb, var(--theme-text) 65%, transparent)",
+                                fontFamily: "var(--font-sans)",
                               }}
-                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white"
                             >
-                              {item.is_active ? "👁 Hide from Gallery" : "✅ Show in Gallery"}
+                              {item.is_active ? "👁 Hide" : "✅ Show"}
                             </button>
 
                             <button
                               onClick={() => replaceRefs.current[item.id]?.click()}
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                replaceRefs.current[item.id]?.click();
-                              }}
+                              onTouchEnd={(e) => { e.preventDefault(); replaceRefs.current[item.id]?.click(); }}
                               disabled={replacing === item.id}
-                              className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-white/20 text-white disabled:opacity-40"
+                              className="w-full rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150 disabled:opacity-40"
+                              style={{
+                                background: "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                                color: "color-mix(in srgb, var(--theme-text) 65%, transparent)",
+                                fontFamily: "var(--font-sans)",
+                              }}
                             >
-                              {replacing === item.id ? "Replacing..." : "🔄 Replace Photo"}
+                              {replacing === item.id ? "Replacing..." : "🔄 Replace"}
                             </button>
                             <input
                               type="file"
                               accept="image/*,video/*"
                               className="hidden"
-                              ref={(el) => {
-                                replaceRefs.current[item.id] = el;
-                              }}
+                              ref={(el) => { replaceRefs.current[item.id] = el; }}
                               onChange={(e) => handleReplace(item, e.target.files)}
                             />
 
@@ -495,21 +589,25 @@ export default function AdminGalleryPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleDelete(item)}
-                                  onTouchEnd={(e) => {
-                                    e.preventDefault();
-                                    handleDelete(item);
+                                  onTouchEnd={(e) => { e.preventDefault(); handleDelete(item); }}
+                                  className="flex-1 rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150"
+                                  style={{
+                                    background: "color-mix(in srgb, #e05555 80%, transparent)",
+                                    color: "var(--color-alabaster)",
+                                    fontFamily: "var(--font-sans)",
                                   }}
-                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-red-500/80 hover:bg-red-500 text-white transition"
                                 >
                                   Yes, Delete
                                 </button>
                                 <button
                                   onClick={() => setConfirmDelete(null)}
-                                  onTouchEnd={(e) => {
-                                    e.preventDefault();
-                                    setConfirmDelete(null);
+                                  onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(null); }}
+                                  className="flex-1 rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150"
+                                  style={{
+                                    background: "color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                                    color: "color-mix(in srgb, var(--theme-text) 65%, transparent)",
+                                    fontFamily: "var(--font-sans)",
                                   }}
-                                  className="flex-1 rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
                                 >
                                   Cancel
                                 </button>
@@ -517,11 +615,13 @@ export default function AdminGalleryPage() {
                             ) : (
                               <button
                                 onClick={() => setConfirmDelete(item.id)}
-                                onTouchEnd={(e) => {
-                                  e.preventDefault();
-                                  setConfirmDelete(item.id);
+                                onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(item.id); }}
+                                className="w-full rounded-xl py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition-all duration-150"
+                                style={{
+                                  background: "color-mix(in srgb, var(--theme-text) 5%, transparent)",
+                                  color: "color-mix(in srgb, var(--theme-text) 40%, transparent)",
+                                  fontFamily: "var(--font-sans)",
                                 }}
-                                className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] transition bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white"
                               >
                                 🗑 Delete
                               </button>

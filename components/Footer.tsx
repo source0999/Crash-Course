@@ -1,220 +1,89 @@
+"use client";
+
 /** @file components/Footer.tsx */
 
 // ─────────────────────────────────────────
 // SECTION: Footer
-// WHAT: Site-wide footer with brand, nav links, and barber pole animation.
-// WHY: Consistent closure for every page — signals the brand and provides
-//   navigation anchors without requiring the user to scroll back to the top.
-// PHASE 4: No changes needed — static content, no DB dependency.
+// WHAT: `.site-footer` bar + inherited light/dark fg (earth/neon inversion in globals.css).
+// WHY: Client for onTouchEnd; avoids hard-coded theme-4 bar on palettes where slot 4 is light.
+// PHASE 4: Static content.
 // ─────────────────────────────────────────
 
 import Link from "next/link";
 
 const NAV_LINKS = [
-  { href: "/",        label: "Home"     },
+  { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
-  { href: "/gallery",  label: "Gallery"  },
-  { href: "/book",     label: "Book Now" },
+  { href: "/gallery", label: "Gallery" },
+  { href: "/book", label: "Book Now" },
 ] as const;
 
 export default function Footer() {
-  const topBarHeight = "5px";
-  const topBarBackgroundSize = "72px 100%";
-  const topBarAnimation = "barber-pole-h 5.2s linear infinite";
-  const topBarPatternType = "repeating-linear-gradient";
-  const brandPoleAnimation = "barber-pole 3.8s linear infinite";
-  const brandPoleBackgroundSize = "100% 36px";
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-fix",
-      hypothesisId: "H1",
-      location: "components/Footer.tsx:23",
-      message: "Footer rendered and top barber bar is active",
-      data: { topBarHeight },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "post-fix",
-      hypothesisId: "H11",
-      location: "components/Footer.tsx:28",
-      message: "Brand vertical pole smoothing config",
-      data: { brandPoleAnimation, brandPoleBackgroundSize },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-fix",
-      hypothesisId: "H2",
-      location: "components/Footer.tsx:24",
-      message: "Top barber bar animation config",
-      data: { topBarAnimation },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-fix",
-      hypothesisId: "H3",
-      location: "components/Footer.tsx:25",
-      message: "Top barber bar stripe density config",
-      data: { topBarBackgroundSize },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-fix",
-      hypothesisId: "H4",
-      location: "components/Footer.tsx:26",
-      message: "Top barber bar gradient direction for horizontal motion",
-      data: { gradientDirection: "135deg" },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-next-fix",
-      hypothesisId: "H6",
-      location: "components/Footer.tsx:26",
-      message: "Top barber bar currently uses repeating pattern",
-      data: { topBarPatternType },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  // #region agent log
-  fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "82ce2f" },
-    body: JSON.stringify({
-      sessionId: "82ce2f",
-      runId: "pre-next-fix",
-      hypothesisId: "H7",
-      location: "components/Footer.tsx:27",
-      message: "Top barber bar stripe stop widths can cause visible borders",
-      data: { accentPx: 5, mutedPx: 5 },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   return (
-    <footer
-      style={{
-        background: "var(--theme-surface)",
-        borderTop: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
-      }}
-    >
-      {/* ── Barber pole horizontal cap ───────────────────────────────────────── */}
+    <footer className="site-footer">
       <div
         aria-hidden="true"
+        className="h-[5px] w-full"
         style={{
-          height: topBarHeight,
           backgroundImage:
-            "repeating-linear-gradient(135deg, var(--theme-accent) 0px, var(--theme-accent) 18px, color-mix(in srgb, var(--theme-accent) 18%, transparent) 18px, color-mix(in srgb, var(--theme-accent) 18%, transparent) 36px)",
-          backgroundSize: topBarBackgroundSize,
-          animation: topBarAnimation,
+            "repeating-linear-gradient(135deg, var(--theme-5) 0px, var(--theme-5) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 36px)",
+          backgroundSize: "72px 100%",
+          animation: "barber-pole-h 5.2s linear infinite",
         }}
       />
 
-      <div className="max-w-6xl mx-auto px-6 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-6">
-
-          {/* Brand column */}
-          <div>
-            <p
-              className="text-2xl font-bold tracking-tight mb-2"
-              style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
-            >
+      <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
+          <div className="md:col-span-5">
+            <p className="text-3xl font-bold tracking-tight mb-1" style={{ fontFamily: "var(--font-display)" }}>
               Fades &amp; Facials
             </p>
             <p
-              className="text-xs uppercase tracking-[0.25em] mb-6"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 45%, transparent)", fontFamily: "var(--font-sans)" }}
+              className="text-[11px] uppercase tracking-[0.32em] mb-8 opacity-90"
+              style={{ fontFamily: "var(--font-sans)" }}
             >
-              Suwanee, GA
+              Luxury Grooming · Suwanee, GA
             </p>
-            {/* Inline barber pole accent element */}
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-4">
               <div
                 aria-hidden="true"
+                className="w-2 h-11 rounded-full shrink-0 overflow-hidden"
                 style={{
-                  width: "8px",
-                  height: "40px",
-                  borderRadius: "99px",
-                  overflow: "hidden",
-                  flexShrink: 0,
                   backgroundImage:
-                    "repeating-linear-gradient(-45deg, color-mix(in srgb, var(--theme-accent) 92%, white) 0px, color-mix(in srgb, var(--theme-accent) 92%, white) 8px, color-mix(in srgb, var(--theme-accent) 40%, black) 8px, color-mix(in srgb, var(--theme-accent) 40%, black) 16px)",
-                  backgroundSize: brandPoleBackgroundSize,
-                  animation: brandPoleAnimation,
+                    "repeating-linear-gradient(-45deg, var(--theme-5) 0px, var(--theme-5) 8px, color-mix(in srgb, currentColor 22%, transparent) 8px, color-mix(in srgb, currentColor 22%, transparent) 16px)",
+                  backgroundSize: "100% 36px",
+                  animation: "barber-pole 3.8s linear infinite",
                 }}
               />
               <p
-                className="text-xs"
-                style={{ color: "color-mix(in srgb, var(--theme-text) 35%, transparent)", fontFamily: "var(--font-sans)" }}
+                className="text-sm leading-relaxed max-w-[240px] font-light opacity-95"
+                style={{ fontFamily: "var(--font-sans)" }}
               >
-                Premium grooming, every visit.
+                Premium grooming, every visit. Where craft meets luxury.
               </p>
             </div>
           </div>
 
-          {/* Navigation column */}
-          <div>
+          <div className="md:col-span-3">
             <p
-              className="text-[10px] uppercase tracking-[0.3em] mb-5"
-              style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
+              className="text-[10px] uppercase tracking-[0.35em] mb-6"
+              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
             >
               Navigate
             </p>
-            <nav className="flex flex-col gap-3">
+            <nav className="flex flex-col gap-0">
               {NAV_LINKS.map(({ href, label }) => (
                 <Link
                   key={href}
                   href={href}
-                  className="text-sm transition-all duration-200 touch-manipulation min-h-[44px] flex items-center"
+                  className="text-sm py-2.5 transition-opacity duration-200 hover:opacity-80 touch-manipulation min-h-[44px] flex items-center"
                   style={{
-                    color: "color-mix(in srgb, var(--theme-text) 70%, transparent)",
                     fontFamily: "var(--font-sans)",
+                    borderBottom: "1px solid color-mix(in srgb, currentColor 14%, transparent)",
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
                   }}
                 >
                   {label}
@@ -223,11 +92,10 @@ export default function Footer() {
             </nav>
           </div>
 
-          {/* Contact / social column */}
-          <div>
+          <div className="md:col-span-4">
             <p
-              className="text-[10px] uppercase tracking-[0.3em] mb-5"
-              style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
+              className="text-[10px] uppercase tracking-[0.35em] mb-6"
+              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
             >
               Connect
             </p>
@@ -235,30 +103,61 @@ export default function Footer() {
               href="https://instagram.com/fadesandfacials"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm touch-manipulation min-h-[44px] flex items-center"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 70%, transparent)", fontFamily: "var(--font-sans)" }}
+              className="text-sm touch-manipulation min-h-[44px] flex items-center gap-2 group transition-opacity duration-200 hover:opacity-80"
+              style={{ fontFamily: "var(--font-sans)" }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+              }}
             >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="text-[var(--theme-5)] transition-transform duration-200 group-hover:scale-110 shrink-0"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+              </svg>
               @fadesandfacials
             </a>
-            <p
-              className="text-sm mt-2"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 45%, transparent)", fontFamily: "var(--font-sans)" }}
+
+            <div
+              className="mt-5 rounded-2xl p-4"
+              style={{
+                border: "1px solid color-mix(in srgb, currentColor 18%, transparent)",
+                background: "color-mix(in srgb, currentColor 6%, transparent)",
+              }}
             >
-              Suwanee, GA 30024
-            </p>
+              <p
+                className="text-[11px] uppercase tracking-[0.25em] mb-1"
+                style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
+              >
+                Location
+              </p>
+              <p className="text-sm" style={{ fontFamily: "var(--font-sans)" }}>
+                Shops at Johns Creek
+              </p>
+              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
+                4090 Johns Creek Pkwy # E
+              </p>
+              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
+                Suwanee, GA 30024
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div
-          className="mt-12 pt-6"
-          style={{ borderTop: "1px solid color-mix(in srgb, var(--theme-text) 6%, transparent)" }}
-        >
-          <p
-            className="text-[11px] text-center"
-            style={{ color: "color-mix(in srgb, var(--theme-text) 30%, transparent)", fontFamily: "var(--font-sans)" }}
-          >
-            © sourc3code 2026 • @fadesandfacials 2026
+        <div className="mt-16 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]">
+          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
+            © sourc3code @2026
+          </p>
+          <div aria-hidden="true" className="hidden sm:block w-1 h-1 rounded-full bg-[var(--theme-5)]" />
+          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
+            @fadesandfacials 2026
           </p>
         </div>
       </div>

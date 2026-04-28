@@ -54,30 +54,6 @@ type DbCategory = { id: number; name: string; sort_order?: number; created_at?: 
 const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
 const MAX_SERVICES_PER_CATEGORY = 5;
 const LELE_GIF_URL = "/lele.gif";
-const DEBUG_ENDPOINT = "http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413";
-const DEBUG_SESSION_ID = "d1134d";
-
-function sendDebugLog(payload: {
-  runId: string;
-  hypothesisId: string;
-  location: string;
-  message: string;
-  data: Record<string, unknown>;
-}) {
-  fetch(DEBUG_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": DEBUG_SESSION_ID },
-    body: JSON.stringify({
-      sessionId: DEBUG_SESSION_ID,
-      runId: payload.runId,
-      hypothesisId: payload.hypothesisId,
-      location: payload.location,
-      message: payload.message,
-      data: payload.data,
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-}
 
 // WHY: Normalize casing to Title Case before any DB insert to prevent data
 // fragmentation from case variants ("hot shave" vs "Hot Shave" would satisfy
@@ -146,10 +122,10 @@ function CategoryModal({
     // the same visual depth without triggering the Safari compositing bug.
     // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
     <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70">
-      <div className="mx-4 w-full max-w-md rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
-        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
-        <h2 className="mb-1 text-xl font-bold text-white">{title}</h2>
-        <p className="mb-6 text-sm text-white/40">{description}</p>
+      <div className="mx-4 w-full max-w-md rounded-2xl border border-[var(--theme-text)]/15 bg-[var(--theme-bg)] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-[var(--theme-accent)]">Services Manager</p>
+        <h2 className="mb-1 text-xl font-bold text-[var(--theme-text)]">{title}</h2>
+        <p className="mb-6 text-sm text-[var(--theme-text)]/40">{description}</p>
 
         <input
           autoFocus
@@ -160,7 +136,7 @@ function CategoryModal({
             if (e.key === "Escape") onCancel();
           }}
           placeholder="e.g. Fades, Beard Trims, Facials"
-          className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 min-h-[44px] text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand-accent"
+          className="w-full rounded-lg border border-[var(--theme-text)]/20 bg-[var(--theme-text)]/10 px-4 py-3 min-h-[44px] text-sm text-[var(--theme-text)] placeholder:text-[var(--theme-text)]/30 focus:outline-none focus:border-[var(--theme-accent)]"
         />
 
         {/* Inline error — stays visible inside the modal so the user never loses
@@ -175,7 +151,7 @@ function CategoryModal({
             onClick={onSubmit}
             onTouchEnd={(e) => { e.preventDefault(); onSubmit(); }}
             disabled={isSaving}
-            className="flex-1 rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 rounded-lg bg-[var(--theme-accent)] px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Saving..." : submitLabel}
           </button>
@@ -183,7 +159,7 @@ function CategoryModal({
             onClick={onCancel}
             onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
             disabled={isSaving}
-            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+            className="rounded-lg bg-[var(--theme-text)]/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-[var(--theme-text)]/20 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -207,18 +183,18 @@ function PurgeServicesModal({
   return (
     // WHY: Viewport centering prevents lost modals on scroll. Edit/Purge buttons prep for CRU architecture (No Category Deletions).
     <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70">
-      <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/15 bg-[#0f1e2e] p-8 shadow-2xl">
-        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Services Manager</p>
-        <h2 className="mb-2 text-xl font-bold text-white">Purge Services</h2>
-        <p className="mb-6 text-sm text-white/50">
-          Are you sure you want to delete ALL services in <span className="font-semibold text-white">{categoryName}</span>? This cannot be undone.
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-[var(--theme-text)]/15 bg-[var(--theme-bg)] p-8 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-[var(--theme-accent)]">Services Manager</p>
+        <h2 className="mb-2 text-xl font-bold text-[var(--theme-text)]">Purge Services</h2>
+        <p className="mb-6 text-sm text-[var(--theme-text)]/50">
+          Are you sure you want to delete ALL services in <span className="font-semibold text-[var(--theme-text)]">{categoryName}</span>? This cannot be undone.
         </p>
         <div className="flex gap-3">
           <button
             onClick={onConfirm}
             onTouchEnd={(e) => { e.preventDefault(); onConfirm(); }}
             disabled={isPurging}
-            className="flex-1 rounded-lg bg-red-500/80 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 rounded-lg bg-red-500/80 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPurging ? "Purging..." : "Yes, Purge Services"}
           </button>
@@ -226,7 +202,7 @@ function PurgeServicesModal({
             onClick={onCancel}
             onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
             disabled={isPurging}
-            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+            className="rounded-lg bg-[var(--theme-text)]/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-[var(--theme-text)]/20 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -250,18 +226,18 @@ function DeleteServiceDangerModal({
   return (
     // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
     <div className="fixed inset-0 z-[100000] flex h-screen w-screen items-center justify-center bg-black/70">
-      <div className="mx-4 w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#0f1e2e] p-8 shadow-2xl">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-red-400/30 bg-[var(--theme-bg)] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-red-300">Danger Zone</p>
-        <h2 className="mb-2 text-xl font-bold text-white">Delete Service</h2>
-        <p className="mb-6 text-sm text-white/50">
-          Delete <span className="font-semibold text-white">{serviceName}</span>? This action will remove the service and its associated media permanently.
+        <h2 className="mb-2 text-xl font-bold text-[var(--theme-text)]">Delete Service</h2>
+        <p className="mb-6 text-sm text-[var(--theme-text)]/50">
+          Delete <span className="font-semibold text-[var(--theme-text)]">{serviceName}</span>? This action will remove the service and its associated media permanently.
         </p>
         <div className="flex gap-3">
           <button
             onClick={onConfirm}
             onTouchEnd={(e) => { e.preventDefault(); onConfirm(); }}
             disabled={isDeleting}
-            className="flex-1 rounded-lg bg-red-500/85 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 rounded-lg bg-red-500/85 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isDeleting ? "Deleting..." : "Delete Service"}
           </button>
@@ -269,7 +245,7 @@ function DeleteServiceDangerModal({
             onClick={onCancel}
             onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
             disabled={isDeleting}
-            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+            className="rounded-lg bg-[var(--theme-text)]/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-[var(--theme-text)]/20 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -289,16 +265,16 @@ function ActionRequiredModal({
   return (
     // WHY: Z-index escalation prevents hidden error states. Price masking sanitizes DB inputs. Explicit upload buttons enable high-fidelity hero media.
     <div className="fixed inset-0 z-[100000] flex h-screen w-screen items-center justify-center bg-black/70">
-      <div className="mx-4 w-full max-w-lg rounded-2xl border border-amber-400/35 bg-[#0f1e2e] p-8 shadow-2xl">
+      <div className="mx-4 w-full max-w-lg rounded-2xl border border-amber-400/35 bg-[var(--theme-bg)] p-8 shadow-2xl">
         <p className="mb-1 text-xs uppercase tracking-[0.3em] text-amber-300">Action Required</p>
-        <p className="mb-6 text-base font-semibold text-white">{message}</p>
+        <p className="mb-6 text-base font-semibold text-[var(--theme-text)]">{message}</p>
         <button
           onClick={onClose}
           onTouchEnd={(e) => {
             e.preventDefault();
             onClose();
           }}
-          className="rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition hover:opacity-90"
+          className="rounded-lg bg-[var(--theme-accent)] px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:opacity-90"
         >
           Understood
         </button>
@@ -353,17 +329,17 @@ function FeaturedSlotModal({
     // WHY: Strict z-index hierarchy ensures errors are visible. Duplicate guards prevent React key collisions. Dynamic wiring fully integrates the DB-first cinematic media.
     // WHY: 5MB limit allows high-fidelity MP4s. Transactional modals prevent 'half-assigned' slots. Dnd-kit integration allows homepage reordering.
     <div className="fixed inset-0 z-[95000] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f1e2e] p-6 shadow-2xl">
-        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-brand-accent">Featured Slot</p>
-        <h2 className="mb-4 text-xl font-bold text-white">Assign / Edit Slot {slotNumber}</h2>
+      <div className="w-full max-w-xl rounded-2xl border border-[var(--theme-text)]/15 bg-[var(--theme-bg)] p-6 shadow-2xl">
+        <p className="mb-1 text-xs uppercase tracking-[0.3em] text-[var(--theme-accent)]">Featured Slot</p>
+        <h2 className="mb-4 text-xl font-bold text-[var(--theme-text)]">Assign / Edit Slot {slotNumber}</h2>
 
         <div className="space-y-3">
           <div>
-            <p className="mb-1 text-xs uppercase tracking-widest text-white/50">Service</p>
+            <p className="mb-1 text-xs uppercase tracking-widest text-[var(--theme-text)]/50">Service</p>
             <select
               value={selectedServiceId ?? ""}
               onChange={(e) => onSelectService(Number(e.target.value) || null)}
-              className="w-full rounded-lg border border-white/20 bg-[#0b1624] px-3 py-2 min-h-[44px] text-sm text-white focus:outline-none focus:border-brand-accent"
+              className="w-full rounded-lg border border-[var(--theme-text)]/20 bg-[var(--theme-surface)] px-3 py-2 min-h-[44px] text-sm text-[var(--theme-text)] focus:outline-none focus:border-[var(--theme-accent)]"
             >
               <option value="">Select Service</option>
               {Object.entries(groupedServices).map(([categoryName, categoryServices]) => (
@@ -379,11 +355,11 @@ function FeaturedSlotModal({
           </div>
 
           <div>
-            <p className="mb-1 text-xs uppercase tracking-widest text-white/50">Cinematic Media</p>
+            <p className="mb-1 text-xs uppercase tracking-widest text-[var(--theme-text)]/50">Cinematic Media</p>
             <select
               value={selectedMediaUrl ?? ""}
               onChange={(e) => onSelectMedia(e.target.value || null)}
-              className="w-full rounded-lg border border-purple-400/30 bg-[#0b1624] px-3 py-2 min-h-[44px] text-sm text-white focus:outline-none focus:border-purple-300"
+              className="w-full rounded-lg border border-purple-400/30 bg-[var(--theme-surface)] px-3 py-2 min-h-[44px] text-sm text-[var(--theme-text)] focus:outline-none focus:border-purple-300"
             >
               <option value="">Select from Preload Library</option>
               {mediaLibrary.map((mediaUrl) => (
@@ -432,7 +408,7 @@ function FeaturedSlotModal({
               if (canSave) onSave();
             }}
             disabled={!selectedServiceId || !selectedMediaUrl || isSaving}
-            className="flex-1 rounded-lg bg-brand-accent px-4 py-3 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-lg bg-[var(--theme-accent)] px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? "Saving..." : "Save Assignment"}
           </button>
@@ -443,7 +419,7 @@ function FeaturedSlotModal({
               onCancel();
             }}
             disabled={isSaving}
-            className="rounded-lg bg-white/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-40"
+            className="rounded-lg bg-[var(--theme-text)]/10 px-4 py-3 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-[var(--theme-text)]/20 disabled:opacity-40"
           >
             Cancel
           </button>
@@ -454,7 +430,6 @@ function FeaturedSlotModal({
 }
 
 export default function AdminServicesPage() {
-  const debugRunIdRef = useRef(`pre-fix-${Date.now()}`);
   const [services, setServices] = useState<DbService[]>([]);
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
@@ -580,20 +555,6 @@ export default function AdminServicesPage() {
         const parsedOrder = JSON.parse(orderRes.data.value) as string[];
         // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
         const dedupedOrder = [...new Set(parsedOrder)];
-        // #region agent log
-        sendDebugLog({
-          runId: debugRunIdRef.current,
-          hypothesisId: "H1_site_config_contains_duplicates",
-          location: "app/admin/services/page.tsx:fetchConfig",
-          message: "Fetched category_order from site_config",
-          data: {
-            parsedOrder,
-            dedupedOrder,
-            uniqueCount: new Set(dedupedOrder).size,
-            totalCount: parsedOrder.length,
-          },
-        });
-        // #endregion
         setCategoryOrder(dedupedOrder);
       } catch {}
     }
@@ -653,25 +614,6 @@ export default function AdminServicesPage() {
   // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
   const dedupedOrderedCategories = [...new Set(orderedCategories)];
 
-  useEffect(() => {
-    const duplicateOrderedCategories = dedupedOrderedCategories.filter(
-      (cat, index, arr) => arr.indexOf(cat) !== index,
-    );
-    // #region agent log
-    sendDebugLog({
-      runId: debugRunIdRef.current,
-      hypothesisId: "H4_render_uses_duplicate_keys",
-      location: "app/admin/services/page.tsx:orderedCategories-useEffect",
-      message: "Derived orderedCategories and duplicate-key risk",
-      data: {
-        categoryOrder,
-        categoryNames,
-          orderedCategories: dedupedOrderedCategories,
-        duplicateOrderedCategories,
-      },
-    });
-    // #endregion
-  }, [categoryOrder, categoryNames, dedupedOrderedCategories]);
   const featuredIds = new Set(
     featuredPairings
       .map((pairing) => pairing.serviceId)
@@ -1369,22 +1311,6 @@ export default function AdminServicesPage() {
         setCategoryModalError(`"${trimmedName}" already exists.`);
         return;
       }
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H2_local_append_reintroduces_duplicates",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-before-insert",
-        message: "Category submit before insert",
-        data: {
-          trimmedName,
-          categoryOrder,
-          orderedCategories: dedupedOrderedCategories,
-          existingCaseInsensitiveMatch: dedupedOrderedCategories.some(
-            (c) => c.toLowerCase() === trimmedName.toLowerCase(),
-          ),
-        },
-      });
-      // #endregion
 
       // Pre-flight: enforce the hard limit of 3 categories.
       // count: 'exact' + head: true returns only the count, no row data.
@@ -1428,21 +1354,6 @@ export default function AdminServicesPage() {
       // state updates before the DB round-trip confirms the insert.
       // WHY: Implemented Set() deduplication to auto-heal polluted categoryOrder arrays and resolve React duplicate key mapping errors.
       const updatedOrder = [...new Set([...categoryOrder, trimmedName])];
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H2_local_append_reintroduces_duplicates",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-updatedOrder",
-        message: "Computed updatedOrder before site_config upsert",
-        data: {
-          categoryOrder,
-          trimmedName,
-          updatedOrder,
-          uniqueCount: new Set(updatedOrder).size,
-          totalCount: updatedOrder.length,
-        },
-      });
-      // #endregion
       await supabase.from("site_config").upsert({
         key: "category_order",
         value: JSON.stringify(updatedOrder),
@@ -1454,18 +1365,6 @@ export default function AdminServicesPage() {
       setCategoryModalError(null);
       await fetchData();
       await fetchConfig();
-      // #region agent log
-      sendDebugLog({
-        runId: debugRunIdRef.current,
-        hypothesisId: "H3_fetch_then_local_set_conflict",
-        location: "app/admin/services/page.tsx:handleSubmitCategory-after-fetchData",
-        message: "Set categoryOrder after fetchData call",
-        data: {
-          updatedOrderAfterInsert: updatedOrder,
-          postFetchConfigCategoryOrderApplied: true,
-        },
-      });
-      // #endregion
       setFeedback({ type: "success", msg: `Category "${trimmedName}" created.` });
     } catch (err) {
       console.error("[categories:handleSubmitCategory]", err);
@@ -1543,7 +1442,7 @@ export default function AdminServicesPage() {
         <div className="flex w-full items-center gap-2">
           <div className="relative w-full">
             {isPriceField && (
-              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-brand-accent">
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[var(--theme-accent)]">
                 $
               </span>
             )}
@@ -1562,7 +1461,7 @@ export default function AdminServicesPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitEdit();
               }}
-              className={`bg-white/10 border border-brand-accent rounded px-2 py-1 text-white focus:outline-none w-full ${isPriceField ? "pl-6" : ""} ${className}`}
+              className={`bg-[var(--theme-text)]/10 border border-[var(--theme-accent)] rounded px-2 py-1 text-[var(--theme-text)] focus:outline-none w-full ${isPriceField ? "pl-6" : ""} ${className}`}
             />
           </div>
           <button
@@ -1571,7 +1470,7 @@ export default function AdminServicesPage() {
               e.preventDefault();
               commitEdit();
             }}
-            className="rounded-md border border-green-400/40 bg-green-500/20 px-2 py-1 min-h-[44px] min-w-[44px] text-xs font-semibold text-green-200 touch-manipulation transition hover:bg-green-500/30"
+            className="rounded-md border border-theme-3 bg-theme-4 px-2 py-1 min-h-[44px] min-w-[44px] text-xs font-semibold text-white touch-manipulation transition-colors duration-200 hover:bg-theme-5 hover:text-theme-4"
             aria-label="Save field"
             title="Save"
           >
@@ -1581,7 +1480,7 @@ export default function AdminServicesPage() {
       );
     }
     const displayValue =
-      field === "price" ? formatPriceDisplay(value) : value || <span className="text-white/30 italic">tap to edit</span>;
+      field === "price" ? formatPriceDisplay(value) : value || <span className="text-[var(--theme-text)]/30 italic">tap to edit</span>;
     return (
       <span
         onClick={() => startEdit(serviceId, field, value)}
@@ -1589,7 +1488,7 @@ export default function AdminServicesPage() {
           e.preventDefault();
           startEdit(serviceId, field, value);
         }}
-        className={`cursor-pointer hover:text-brand-accent transition touch-manipulation ${className}`}
+        className={`cursor-pointer hover:text-[var(--theme-accent)] transition touch-manipulation ${className}`}
         title="Tap to edit"
       >
         {displayValue}
@@ -1609,9 +1508,9 @@ export default function AdminServicesPage() {
   }) {
     return (
       <div
-        className={`rounded-xl border bg-white/5 p-4 transition-all select-none ${
+        className={`rounded-xl border bg-[var(--theme-text)]/5 p-4 transition-all select-none ${
           isDragging ? "opacity-40" : "hover:scale-[1.02]"
-        } ${service.is_active !== false ? "border-white/10" : "border-white/5 opacity-60"}`}
+        } ${service.is_active !== false ? "border-[var(--theme-text)]/10" : "border-[var(--theme-text)]/5 opacity-60"}`}
       >
         {/* Drag handle — touch-action:none prevents iOS scroll from stealing the gesture */}
         <div className="mb-3 flex items-center gap-2 text-xs select-none">
@@ -1626,19 +1525,19 @@ export default function AdminServicesPage() {
         </div>
 
         {/* Name */}
-        <div className="mb-1 flex items-center gap-2 text-white font-semibold text-base">
+        <div className="mb-1 flex items-center gap-2 text-[var(--theme-text)] font-semibold text-base">
           <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="name" value={service.name} />
         </div>
 
         {/* Price */}
-        <div className="mb-2 flex items-center gap-2 text-brand-accent font-bold text-sm">
+        <div className="mb-2 flex items-center gap-2 text-[var(--theme-accent)] font-bold text-sm">
           <span className="text-amber-300 transition-colors hover:text-amber-200">✎</span>
           <EditableField serviceId={service.id} field="price" value={service.price} />
         </div>
 
         {/* Description */}
-        <div className="text-white/50 text-xs mb-3">
+        <div className="text-[var(--theme-text)]/50 text-xs mb-3">
           <EditableField
             serviceId={service.id}
             field="description"
@@ -1649,15 +1548,15 @@ export default function AdminServicesPage() {
         {/* Media Upload + live preview */}
         <div className="mb-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-white/70 text-xs uppercase tracking-widest">Media Upload</span>
+            <span className="text-[var(--theme-text)]/70 text-xs uppercase tracking-widest">Media Upload</span>
             <label
               className={`cursor-pointer ${uploadingServiceId === service.id ? "pointer-events-none" : ""}`}
             >
               <span
-                className={`inline-flex items-center justify-center rounded-lg border border-brand-accent/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
+                className={`inline-flex items-center justify-center rounded-lg border border-[var(--theme-accent)]/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
                   uploadingServiceId === service.id
-                    ? "bg-brand-accent/10 text-brand-accent/60"
-                    : "bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/25"
+                    ? "bg-[var(--theme-accent)]/10 text-[var(--theme-accent)]/60"
+                    : "bg-[var(--theme-accent)]/15 text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/25"
                 }`}
               >
                 {uploadingServiceId === service.id ? "Uploading..." : "Upload Photo"}
@@ -1687,7 +1586,7 @@ export default function AdminServicesPage() {
               className={`mb-2 w-full rounded-lg px-3 py-2 text-xs font-semibold min-h-[44px] touch-manipulation transition ${
                 service.image === LELE_GIF_URL
                   ? "bg-purple-500/25 text-purple-200 border border-purple-400/40"
-                  : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  : "bg-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/20 text-[var(--theme-text)] border border-[var(--theme-text)]/10"
               }`}
             >
               {service.image === LELE_GIF_URL
@@ -1695,7 +1594,7 @@ export default function AdminServicesPage() {
                 : "Cinematic Mode (GIF): Off"}
             </button>
           ) : (
-            <div className="mb-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 min-h-[44px] text-xs text-white/40 flex items-center">
+            <div className="mb-2 rounded-lg border border-[var(--theme-text)]/10 bg-[var(--theme-text)]/5 px-3 py-2 min-h-[44px] text-xs text-[var(--theme-text)]/40 flex items-center">
               Cinematic Mode locked (only featured slots).
             </div>
           )}
@@ -1704,10 +1603,10 @@ export default function AdminServicesPage() {
             <img
               src={service.image}
               alt={`${service.name} preview`}
-              className="h-20 w-full rounded-lg object-cover border border-white/10"
+              className="h-20 w-full rounded-lg object-cover border border-[var(--theme-text)]/10"
             />
           ) : (
-            <div className="h-20 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
+            <div className="h-20 w-full rounded-lg border border-dashed border-[var(--theme-text)]/15 bg-[var(--theme-text)]/5 flex items-center justify-center text-[var(--theme-text)]/30 text-xs uppercase tracking-widest">
               No Image
             </div>
           )}
@@ -1715,7 +1614,7 @@ export default function AdminServicesPage() {
 
         {/* Actions */}
         <div className="flex flex-col gap-2 mt-2">
-          <div className="w-full rounded-lg py-2 px-3 text-xs font-semibold min-h-[44px] flex items-center bg-white/5 border border-white/10 text-white/50">
+          <div className="w-full rounded-lg py-2 px-3 text-xs font-semibold min-h-[44px] flex items-center bg-[var(--theme-text)]/5 border border-[var(--theme-text)]/10 text-[var(--theme-text)]/50">
             Featured state managed in top slots.
           </div>
           <button
@@ -1724,7 +1623,7 @@ export default function AdminServicesPage() {
               e.preventDefault();
               handleToggle(service);
             }}
-            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-white/20 text-white transition"
+            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/20 text-[var(--theme-text)] transition"
           >
             {service.is_active !== false ? "👁 Hide Service" : "✅ Show Service"}
           </button>
@@ -1735,7 +1634,7 @@ export default function AdminServicesPage() {
               e.preventDefault();
               handleOpenDeleteServiceModal(service);
             }}
-            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-white/10 hover:bg-red-500/40 text-white/60 hover:text-white transition"
+            className="w-full rounded-lg py-2 text-xs font-semibold touch-manipulation min-h-[44px] bg-[var(--theme-text)]/10 hover:bg-red-500/40 text-[var(--theme-text)]/60 hover:text-[var(--theme-text)] transition"
           >
             🗑 Delete
           </button>
@@ -1745,7 +1644,7 @@ export default function AdminServicesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] pt-28 pb-20 px-4 md:px-8">
+    <main className="min-h-screen bg-[var(--theme-bg)] pt-28 pb-20 px-4 md:px-8">
       {isAddingCategory && (
         <CategoryModal
           value={newCategoryName}
@@ -1806,10 +1705,10 @@ export default function AdminServicesPage() {
         {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-1">Admin</p>
-            <h1 className="text-3xl font-bold text-white">Services Manager</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[var(--theme-accent)] mb-1">Admin</p>
+            <h1 className="text-3xl font-bold text-[var(--theme-text)]">Services Manager</h1>
           </div>
-          <a href="/admin/dashboard" className="text-white/40 text-sm hover:text-white transition">
+          <a href="/admin/dashboard" className="text-[var(--theme-text)]/40 text-sm hover:text-[var(--theme-text)] transition">
             ← Back to Dashboard
           </a>
         </div>
@@ -1822,7 +1721,7 @@ export default function AdminServicesPage() {
             <div
               className={`rounded-lg px-4 py-3 text-sm font-medium shadow-xl pointer-events-auto ${
                 feedback.type === "success"
-                  ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                  ? "bg-theme-5/50 text-theme-4 border border-theme-3"
                   : "bg-red-500/20 text-red-300 border border-red-500/30"
               }`}
             >
@@ -1872,12 +1771,12 @@ export default function AdminServicesPage() {
                 return (
                   <div
                     key={mediaUrl}
-                    className="rounded-lg border border-white/15 bg-white/5 p-3"
+                    className="rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/5 p-3"
                   >
                     {isVideo ? (
                       <video
                         src={mediaUrl}
-                        className="h-24 w-full rounded-lg border border-white/10 object-cover"
+                        className="h-24 w-full rounded-lg border border-[var(--theme-text)]/10 object-cover"
                         autoPlay
                         muted
                         loop
@@ -1887,7 +1786,7 @@ export default function AdminServicesPage() {
                       <img
                         src={mediaUrl}
                         alt="Library cinematic preview"
-                        className="h-24 w-full rounded-lg border border-white/10 object-cover"
+                        className="h-24 w-full rounded-lg border border-[var(--theme-text)]/10 object-cover"
                       />
                     )}
                     <button
@@ -1896,7 +1795,7 @@ export default function AdminServicesPage() {
                         e.preventDefault();
                         handleDeleteLibraryMedia(mediaUrl);
                       }}
-                      className="mt-2 w-full rounded-lg bg-red-500/70 px-3 py-2 min-h-[44px] text-xs font-semibold text-white touch-manipulation transition hover:bg-red-500"
+                      className="mt-2 w-full rounded-lg bg-red-500/70 px-3 py-2 min-h-[44px] text-xs font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-red-500"
                     >
                       Delete from Library
                     </button>
@@ -1904,7 +1803,7 @@ export default function AdminServicesPage() {
                 );
               })
             ) : (
-              <p className="text-xs text-white/40">No cinematic preloads uploaded yet.</p>
+              <p className="text-xs text-[var(--theme-text)]/40">No cinematic preloads uploaded yet.</p>
             )}
           </div>
         </div>
@@ -1926,26 +1825,26 @@ export default function AdminServicesPage() {
                   <SortableItem key={`featured-slot-${slotIndex}`} id={`featured-slot-${slotIndex}`}>
                     {(slotListeners, isSlotDragging) => (
                       <div
-                        className={`rounded-lg border border-white/15 bg-white/5 p-3 ${
+                        className={`rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/5 p-3 ${
                           isSlotDragging ? "opacity-40" : ""
                         }`}
                       >
                         <div className="mb-2 flex items-center justify-between">
-                          <p className="text-xs uppercase tracking-widest text-white/50">
+                          <p className="text-xs uppercase tracking-widest text-[var(--theme-text)]/50">
                             Slot {slotIndex + 1}
                           </p>
                           <span
                             {...slotListeners}
                             style={{ touchAction: "none" }}
-                            className="rounded-md border border-white/15 bg-white/8 px-2 py-1 text-xs text-white/60 cursor-grab active:cursor-grabbing touch-manipulation"
+                            className="rounded-md border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/8 px-2 py-1 text-xs text-[var(--theme-text)]/60 cursor-grab active:cursor-grabbing touch-manipulation"
                           >
                             ⠿
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-white truncate">
+                        <p className="text-sm font-semibold text-[var(--theme-text)] truncate">
                           {slotService ? slotService.name : "Empty"}
                         </p>
-                        <p className="mt-1 text-xs text-white/45">
+                        <p className="mt-1 text-xs text-[var(--theme-text)]/45">
                           {slotService
                             ? `Status: Slot ${slotIndex + 1}: ${slotService.name}`
                             : `Status: Slot ${slotIndex + 1}: Empty`}
@@ -1955,7 +1854,7 @@ export default function AdminServicesPage() {
                           /\.mp4(\?|$)/i.test(featuredPairings[slotIndex]?.mediaUrl ?? "") ? (
                             <video
                               src={featuredPairings[slotIndex]?.mediaUrl ?? ""}
-                              className="mt-2 h-24 w-full rounded-lg border border-white/10 object-cover"
+                              className="mt-2 h-24 w-full rounded-lg border border-[var(--theme-text)]/10 object-cover"
                               autoPlay
                               muted
                               loop
@@ -1965,11 +1864,11 @@ export default function AdminServicesPage() {
                             <img
                               src={featuredPairings[slotIndex]?.mediaUrl ?? ""}
                               alt={`Slot ${slotIndex + 1} cinematic preview`}
-                              className="mt-2 h-24 w-full rounded-lg border border-white/10 object-cover"
+                              className="mt-2 h-24 w-full rounded-lg border border-[var(--theme-text)]/10 object-cover"
                             />
                           )
                         ) : (
-                          <div className="mt-2 h-24 w-full rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center justify-center text-white/35 text-xs uppercase tracking-widest">
+                          <div className="mt-2 h-24 w-full rounded-lg border border-dashed border-[var(--theme-text)]/20 bg-[var(--theme-text)]/5 flex items-center justify-center text-[var(--theme-text)]/35 text-xs uppercase tracking-widest">
                             No Cinematic Media
                           </div>
                         )}
@@ -1980,7 +1879,7 @@ export default function AdminServicesPage() {
                             e.preventDefault();
                             handleOpenFeaturedSlotModal(slotIndex);
                           }}
-                          className="mt-3 w-full rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 min-h-[44px] text-xs font-semibold text-white touch-manipulation transition"
+                          className="mt-3 w-full rounded-lg bg-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/20 px-3 py-2 min-h-[44px] text-xs font-semibold text-[var(--theme-text)] touch-manipulation transition"
                         >
                           Assign / Edit Slot
                         </button>
@@ -2000,9 +1899,9 @@ export default function AdminServicesPage() {
         )}
 
         {/* ── Layout Preset Picker ── */}
-        <div className="mb-8 rounded-xl border border-white/10 bg-white/5 p-5">
-          <p className="text-white font-semibold mb-1">Public Services Layout</p>
-          <p className="text-white/40 text-xs mb-4">
+        <div className="mb-8 rounded-xl border border-[var(--theme-text)]/10 bg-[var(--theme-text)]/5 p-5">
+          <p className="text-[var(--theme-text)] font-semibold mb-1">Public Services Layout</p>
+          <p className="text-[var(--theme-text)]/40 text-xs mb-4">
             Choose how visitors see your services page at /services
           </p>
           <div className="flex gap-3 flex-wrap">
@@ -2021,14 +1920,14 @@ export default function AdminServicesPage() {
                 disabled={layoutSaving}
                 className={`flex-1 min-w-[100px] rounded-lg py-3 px-4 text-sm font-semibold touch-manipulation min-h-[44px] transition border ${
                   layout === preset.key
-                    ? "bg-brand-accent text-black border-brand-accent"
-                    : "bg-white/5 text-white border-white/10 hover:bg-white/10"
+                    ? "bg-[var(--theme-accent)] text-[var(--theme-text)] border-[var(--theme-accent)]"
+                    : "bg-[var(--theme-text)]/5 text-[var(--theme-text)] border-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/10"
                 }`}
               >
                 <div>{preset.label}</div>
                 <div
                   className={`text-xs font-normal mt-0.5 ${
-                    layout === preset.key ? "text-black/60" : "text-white/40"
+                    layout === preset.key ? "text-[var(--theme-text)]/60" : "text-[var(--theme-text)]/40"
                   }`}
                 >
                   {preset.desc}
@@ -2046,7 +1945,7 @@ export default function AdminServicesPage() {
               e.preventDefault();
               handleAddCategory();
             }}
-            className="rounded-lg bg-brand-accent px-5 py-2 text-sm font-semibold text-black touch-manipulation min-h-[44px] hover:opacity-90 transition"
+            className="rounded-lg bg-[var(--theme-accent)] px-5 py-2 text-sm font-semibold text-[var(--theme-text)] touch-manipulation min-h-[44px] hover:opacity-90 transition"
           >
             + Add Category
           </button>
@@ -2054,34 +1953,34 @@ export default function AdminServicesPage() {
 
         {/* ── Categories + Services ── */}
         {loading ? (
-          <p className="text-white/40 text-center py-20">Loading services...</p>
+          <p className="text-[var(--theme-text)]/40 text-center py-20">Loading services...</p>
         ) : (
           <>
             {dedupedOrderedCategories.length === 0 && !isFetching && (
-              <p className="mb-8 rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-white/70">
+              <p className="mb-8 rounded-lg border border-[var(--theme-text)]/10 bg-[var(--theme-text)]/5 px-4 py-4 text-center text-sm text-[var(--theme-text)]/70">
                 No categories found. Add your first one above.
               </p>
             )}
             {isCreating && (
               // WHY: Universal centering ensures accessibility on long pages. Explicit save buttons and currency symbols provide professional UI feedback.
               <div className="fixed inset-0 z-[90000] flex h-screen w-screen items-center justify-center bg-black/70 px-4">
-                <div className="w-full max-w-4xl rounded-2xl border border-brand-accent/40 bg-[#0f1e2e] p-4 shadow-2xl">
+                <div className="w-full max-w-4xl rounded-2xl border border-[var(--theme-accent)]/40 bg-[var(--theme-bg)] p-4 shadow-2xl">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <input
                     value={draftData.name}
                     onChange={(e) => setDraftData((prev) => ({ ...prev, name: e.target.value }))}
                     placeholder="Service Name"
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                    className="w-full rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/10 px-3 py-2 min-h-[44px] text-[var(--theme-text)] placeholder:text-[var(--theme-text)]/40 focus:outline-none focus:border-[var(--theme-accent)]"
                   />
                   {/*
-                   * <select> requires an opaque bg — bg-white/10 lets the OS
+                   * <select> requires an opaque bg — bg-[var(--theme-text)]/10 lets the OS
                    * option list bleed through on Safari/Chrome. #0f1e2e matches
                    * the page background so the dropdown looks native and dark.
                    */}
                   <select
                     value={draftData.category}
                     onChange={(e) => setDraftData((prev) => ({ ...prev, category: e.target.value }))}
-                    className="w-full rounded-lg border border-white/15 bg-[#0f1e2e] px-3 py-2 min-h-[44px] text-white focus:outline-none focus:border-brand-accent"
+                    className="w-full rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-bg)] px-3 py-2 min-h-[44px] text-[var(--theme-text)] focus:outline-none focus:border-[var(--theme-accent)]"
                   >
                     <option value="" disabled>Select a category</option>
                     {dedupedOrderedCategories.map((cat) => (
@@ -2100,21 +1999,21 @@ export default function AdminServicesPage() {
                       setDraftData((prev) => ({ ...prev, price: numericValue }));
                     }}
                     placeholder="Price"
-                    className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 min-h-[44px] text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent"
+                    className="w-full rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/10 px-3 py-2 min-h-[44px] text-[var(--theme-text)] placeholder:text-[var(--theme-text)]/40 focus:outline-none focus:border-[var(--theme-accent)]"
                   />
                 </div>
 
-                <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="mt-3 rounded-lg border border-[var(--theme-text)]/10 bg-[var(--theme-text)]/5 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-white/70 text-xs uppercase tracking-widest">Upload Media</span>
+                    <span className="text-[var(--theme-text)]/70 text-xs uppercase tracking-widest">Upload Media</span>
                     <label
                       className={`cursor-pointer ${isUploadingDraftMedia ? "pointer-events-none" : ""}`}
                     >
                       <span
-                        className={`inline-flex items-center justify-center rounded-lg border border-brand-accent/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
+                        className={`inline-flex items-center justify-center rounded-lg border border-[var(--theme-accent)]/40 px-3 py-2 text-xs font-semibold min-h-[44px] transition ${
                           isUploadingDraftMedia
-                            ? "bg-brand-accent/10 text-brand-accent/60"
-                            : "bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/25"
+                            ? "bg-[var(--theme-accent)]/10 text-[var(--theme-accent)]/60"
+                            : "bg-[var(--theme-accent)]/15 text-[var(--theme-accent)] hover:bg-[var(--theme-accent)]/25"
                         }`}
                       >
                         {isUploadingDraftMedia ? "Uploading..." : "Upload Photo"}
@@ -2138,10 +2037,10 @@ export default function AdminServicesPage() {
                     <img
                       src={draftData.image}
                       alt="Draft service preview"
-                      className="h-24 w-full rounded-lg object-cover border border-white/10"
+                      className="h-24 w-full rounded-lg object-cover border border-[var(--theme-text)]/10"
                     />
                   ) : (
-                    <div className="h-24 w-full rounded-lg border border-dashed border-white/15 bg-white/5 flex items-center justify-center text-white/30 text-xs uppercase tracking-widest">
+                    <div className="h-24 w-full rounded-lg border border-dashed border-[var(--theme-text)]/15 bg-[var(--theme-text)]/5 flex items-center justify-center text-[var(--theme-text)]/30 text-xs uppercase tracking-widest">
                       No Media Uploaded
                     </div>
                   )}
@@ -2158,7 +2057,7 @@ export default function AdminServicesPage() {
                     // placeholder "Select a category" option is still showing —
                     // the DB insert requires a non-empty category string.
                     disabled={isSavingDraft || !draftData.category}
-                    className="rounded-lg bg-brand-accent px-4 py-2 min-h-[44px] text-sm font-semibold text-black touch-manipulation transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="rounded-lg bg-[var(--theme-accent)] px-4 py-2 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSavingDraft ? "Saving..." : "Save Service"}
                   </button>
@@ -2169,7 +2068,7 @@ export default function AdminServicesPage() {
                       handleCancelDraft();
                     }}
                     disabled={isSavingDraft}
-                    className="rounded-lg bg-white/10 px-4 py-2 min-h-[44px] text-sm font-semibold text-white touch-manipulation transition hover:bg-white/20 disabled:opacity-60"
+                    className="rounded-lg bg-[var(--theme-text)]/10 px-4 py-2 min-h-[44px] text-sm font-semibold text-[var(--theme-text)] touch-manipulation transition hover:bg-[var(--theme-text)]/20 disabled:opacity-60"
                   >
                     Cancel
                   </button>
@@ -2193,7 +2092,7 @@ export default function AdminServicesPage() {
                         <div
                           className={`relative rounded-2xl border transition-all pt-12 px-5 pb-5 ${
                             isCatDragging ? "opacity-40" : ""
-                          } border-white/10 bg-white/3`}
+                          } border-[var(--theme-text)]/10 bg-[var(--theme-text)]/3`}
                         >
                         {/*
                          * Category drag handle — pinned to top-left, visually separate
@@ -2203,14 +2102,14 @@ export default function AdminServicesPage() {
                         <span
                           {...catListeners}
                           style={{ touchAction: "none" }}
-                          className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-white/40 hover:text-white hover:bg-white/15 cursor-grab active:cursor-grabbing select-none text-xs transition touch-manipulation"
+                          className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-lg border border-[var(--theme-text)]/15 bg-[var(--theme-text)]/8 px-3 py-2 text-[var(--theme-text)]/40 hover:text-[var(--theme-text)] hover:bg-[var(--theme-text)]/15 cursor-grab active:cursor-grabbing select-none text-xs transition touch-manipulation"
                         >
                           ⠿ <span className="hidden sm:inline">move category</span>
                         </span>
 
                         {/* Category header — title + action buttons */}
                         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                          <h2 className="text-xl font-bold text-white">
+                          <h2 className="text-xl font-bold text-[var(--theme-text)]">
                             <EditableField
                               serviceId={-1}
                               field="category"
@@ -2227,7 +2126,7 @@ export default function AdminServicesPage() {
                                 handleAddService(cat);
                               }}
                               disabled={isCreating}
-                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="rounded-lg bg-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/20 px-4 py-2 text-xs font-semibold text-[var(--theme-text)] touch-manipulation min-h-[44px] transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {isCreating ? "Draft Open" : "+ Add Service"}
                             </button>
@@ -2237,7 +2136,7 @@ export default function AdminServicesPage() {
                                 e.preventDefault();
                                 handleOpenRenameCategory(cat);
                               }}
-                              className="rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold text-white touch-manipulation min-h-[44px] transition"
+                              className="rounded-lg bg-[var(--theme-text)]/10 hover:bg-[var(--theme-text)]/20 px-4 py-2 text-xs font-semibold text-[var(--theme-text)] touch-manipulation min-h-[44px] transition"
                             >
                               ✏️ Rename
                             </button>
@@ -2247,7 +2146,7 @@ export default function AdminServicesPage() {
                                 e.preventDefault();
                                 handleOpenPurgeServices(cat);
                               }}
-                              className="rounded-lg bg-white/5 hover:bg-red-500/30 px-4 py-2 text-xs font-semibold text-white/70 hover:text-white touch-manipulation min-h-[44px] transition"
+                              className="rounded-lg bg-[var(--theme-text)]/5 hover:bg-red-500/30 px-4 py-2 text-xs font-semibold text-[var(--theme-text)]/70 hover:text-[var(--theme-text)] touch-manipulation min-h-[44px] transition"
                             >
                               🗑️ Purge Services
                             </button>

@@ -27,3 +27,17 @@ export function isVideoMedia(url: string | null, mediaType?: string | null): boo
   if (mediaType === "video") return true;
   return /\.mp4(\?|$)/i.test(url ?? "");
 }
+
+// ─────────────────────────────────────────
+// SECTION: formatServicePrice
+// WHAT: Normalizes DB price strings/numbers for display with a leading $.
+// WHY: Supabase may store "45" or "$45" or 45 — one helper keeps menus and cards consistent.
+// PHASE 4: No schema change; display-only.
+// ─────────────────────────────────────────
+export function formatServicePrice(price: string | number): string {
+  if (typeof price === "number" && Number.isFinite(price)) return `$${price}`;
+  const t = String(price).trim();
+  if (!t) return "$0";
+  if (t.startsWith("$")) return t;
+  return `$${t}`;
+}

@@ -2,60 +2,182 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────
-   SECTION: Design Tokens
-   WHAT: Palette primitives and Dual Flicker semantic theme engine.
-   WHY: Components consume only --theme-* vars — palette changes propagate site-wide with zero component edits.
+   SECTION: Design Tokens (Tailwind v4 @theme)
+   WHAT: Maps Tailwind color utilities to CSS variables that change per [data-theme].
+   WHY: No tailwind.config — theme-* and legacy color-* names resolve at runtime
+     from --theme-1…5 set on <html data-theme="…">.
    PHASE 4: No changes needed.
    ───────────────────────────────────────── */
 
 @theme {
-  /* ── Dual Flicker Premium Palette ── */
-  --color-alabaster: #f8f5f0;   /* Warm off-white — inviting, never blinding */
-  --color-ink:       #0f172a;   /* Deep slate — rich, near-black backdrop     */
-  --color-accent:    #00f5ff;   /* Cyan — signature Dual Flicker pop           */
-  --color-surface:   #1e2937;   /* Elevated dark card surface                  */
+  --color-theme-1: var(--theme-1);
+  --color-theme-2: var(--theme-2);
+  --color-theme-3: var(--theme-3);
+  --color-theme-4: var(--theme-4);
+  --color-theme-5: var(--theme-5);
 
-  /* ── Typography — Syne for display, Inter for body ── */
+  /* Legacy names — alias the numbered roles for hero / featured overlays. */
+  --color-lavender:  var(--theme-1);
+  --color-alabaster: var(--theme-2);
+  --color-slate:     var(--theme-3);
+  --color-jet:       var(--theme-4);
+  --color-icy:       var(--theme-5);
+  --color-ink:       var(--theme-4);
+  --color-accent:    var(--theme-5);
+
   --font-display: "Syne", sans-serif;
   --font-sans:    "Inter", system-ui, sans-serif;
 }
 
-/* ── Dual Flicker Theme Engine ─────────────────────────────────────────────────
-   [data-theme] is stamped on <html> by RootLayout at request time.
-   Semantic tokens (--theme-*) are what every component must use — never raw values.
+/* ── Theme Engine — numbered roles + semantic aliases per palette ─────────────
+   [data-theme] is stamped on <html> by RootLayout; admin + localStorage can override
+   client-side. --theme-1 = lightest surface … --theme-5 = accent / hover pop.
    ─────────────────────────────────────────────────────────────────────────── */
 
-[data-theme="luxury-dark"] {
-  --theme-bg:       var(--color-ink);
-  --theme-text:     var(--color-alabaster);
-  --theme-accent:   var(--color-accent);
-  --theme-surface:  var(--color-surface);
-  --home-band-a:    color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-  --home-band-b:    var(--color-surface);
-  --home-band-text: var(--color-alabaster);
-}
+@layer base {
+  :root,
+  [data-theme="default"],
+  [data-theme="luxury-dark"] {
+    --theme-1: #EAE8FF;
+    --theme-2: #D8D5DB;
+    --theme-3: #ADACB5;
+    --theme-4: #2D3142;
+    --theme-5: #B0D7FF;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
 
-[data-theme="monochrome"] {
-  --theme-bg:      var(--color-alabaster);
-  --theme-text:    var(--color-ink);
-  --theme-accent:  var(--color-accent);
-  --theme-surface: color-mix(in srgb, var(--color-ink) 3%, white);
-}
+  [data-theme="palette-a"] {
+    --theme-1: #FEF7F9;
+    --theme-2: #F9D0DC;
+    --theme-3: #F3A9C0;
+    --theme-4: #4C1929;
+    --theme-5: #E15B80;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
 
-[data-theme="earth"] {
-  /* Warm dark leather — distinct from the primary palette */
-  --theme-bg:      #1c160f;
-  --theme-text:    #f5f0e8;
-  --theme-accent:  var(--color-accent);
-  --theme-surface: #2c241c;
-}
+  [data-theme="palette-b"] {
+    --theme-1: #F1FAEE;
+    --theme-2: #A8DADC;
+    --theme-3: #457B9D;
+    --theme-4: #1D3557;
+    --theme-5: #E63946;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
 
-[data-theme="neon"] {
-  /* True black with neon pop — distinct from the primary palette */
-  --theme-bg:      #080808;
-  --theme-text:    #e8e8e8;
-  --theme-accent:  var(--color-accent);
-  --theme-surface: #141414;
+  [data-theme="palette-c"] {
+    --theme-1: #FFF8E7;
+    --theme-2: #8ECAE6;
+    --theme-3: #219EBC;
+    --theme-4: #023047;
+    --theme-5: #FB8500;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
+
+  [data-theme="monochrome"] {
+    --theme-1: #f8f5f0;
+    --theme-2: #ebe6df;
+    --theme-3: #c9c4bc;
+    --theme-4: #2D3142;
+    --theme-5: #B0D7FF;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  color-mix(in srgb, var(--theme-4) 4%, white);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
+
+  [data-theme="earth"] {
+    --theme-1: #1c160f;
+    --theme-2: #2c241c;
+    --theme-3: #4a3d30;
+    --theme-4: #f5f0e8;
+    --theme-5: #B0D7FF;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
+
+  [data-theme="neon"] {
+    --theme-1: #080808;
+    --theme-2: #141414;
+    --theme-3: #3a3a3a;
+    --theme-4: #e8e8e8;
+    --theme-5: #B0D7FF;
+    --theme-bg:       var(--theme-1);
+    --theme-text:     var(--theme-4);
+    --theme-accent:   var(--theme-5);
+    --theme-surface:  var(--theme-2);
+    --home-band-a:    var(--theme-2);
+    --home-band-b:    var(--theme-1);
+    --home-band-text: var(--theme-4);
+  }
+
+  /* ── Readable copy on physically light bands (theme-1 / theme-2 / white) ──
+     WHY: --theme-text follows page mode (light on earth/neon); light cards must
+     always use a dark ink token so type never disappears on white panels. */
+  :root,
+  [data-theme="default"],
+  [data-theme="luxury-dark"],
+  [data-theme="palette-a"],
+  [data-theme="palette-b"],
+  [data-theme="palette-c"],
+  [data-theme="monochrome"] {
+    --ink-on-light-surface: var(--theme-4);
+  }
+  [data-theme="earth"],
+  [data-theme="neon"] {
+    --ink-on-light-surface: var(--theme-1);
+  }
+
+  /* White “even” cinematic panels: same ink as other light surfaces. */
+  [data-home-panel="light"] {
+    color: var(--ink-on-light-surface);
+  }
+  /* Tinted panel (theme-1 slot): use theme-4 for dark-tint bands, theme-4 for light tints. */
+  [data-home-panel="tint"] {
+    color: var(--theme-4);
+  }
+
+  /* Site footer: default uses dark slot 4 as bar; earth/neon slot 4 is light — invert bar. */
+  .site-footer {
+    background-color: var(--theme-4);
+    color: var(--theme-1);
+  }
+  [data-theme="earth"] .site-footer,
+  [data-theme="neon"] .site-footer {
+    background-color: var(--theme-1);
+    color: var(--theme-4);
+  }
 }
 
 html,
@@ -67,18 +189,15 @@ body {
 }
 
 body {
-  background-color: var(--theme-bg, var(--color-ink));
-  color: var(--theme-text, var(--color-alabaster));
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
   -webkit-font-smoothing: antialiased;
 }
 
-/* WHY: Removes the grey/blue tap flash that Android and iOS apply to interactive
-   elements on touch — prevents the flicker on every pill, button, and card tap. */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ─── Gallery entrance animation ─── */
 @keyframes gallery-enter {
   from {
     opacity: 0;
@@ -90,19 +209,22 @@ body {
   }
 }
 
-/* ─── Barber pole — vertical (Navbar accent) ─────────────────────────────────
-   Moves background-position downward, creating the classic upward-scrolling
-   stripe illusion. No transforms — pure background animation, 60fps on GPU.
-   ─────────────────────────────────────────────────────────────────────────── */
 @keyframes barber-pole {
   from { background-position: 0 0; }
   to   { background-position: 0 40px; }
 }
 
-/* ─── Barber pole — horizontal (Footer top strip) ───────────────────────────
-   Same illusion oriented horizontally across the footer cap.
-   ─────────────────────────────────────────────────────────────────────────── */
 @keyframes barber-pole-h {
   from { background-position: 0 0; }
   to   { background-position: 72px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -63,21 +63,40 @@ const { error } = await supabase.auth.signInWithOtp({
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1e2e] flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <main className="min-h-screen flex items-center justify-center px-4 bg-transparent">
+      <div className="w-full max-w-sm rounded-2xl border border-theme-3 bg-white p-8 shadow-sm">
         {/* Header */}
         <div className="mb-10 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-brand-accent mb-2">
-            Fades & Facials
+          <p
+            className="text-xs tracking-[0.3em] uppercase mb-2"
+            style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
+          >
+            Fades &amp; Facials
           </p>
-          <h1 className="text-3xl font-bold text-white">Admin Access</h1>
+          <h1
+            className="text-3xl font-bold"
+            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+          >
+            Admin Access
+          </h1>
         </div>
 
         {sent && (
-          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500/30 px-4 py-3 text-green-300 text-sm text-center">
-            ✅ Magic link sent! Check your email and click the link.
+          <div
+            className="mb-4 rounded-lg px-4 py-3 text-sm text-center"
+            style={{
+              background: "color-mix(in srgb, var(--theme-accent) 18%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent)",
+              color: "var(--theme-text)",
+              fontFamily: "var(--font-sans)",
+            }}
+          >
+            Magic link sent! Check your email and click the link.
             {cooldown > 0 && (
-              <p className="mt-1 text-green-300/60 text-xs">
+              <p
+                className="mt-1 text-xs"
+                style={{ color: "color-mix(in srgb, var(--theme-text) 55%, transparent)" }}
+              >
                 Need another? Wait {cooldown}s before resending.
               </p>
             )}
@@ -90,13 +109,29 @@ const { error } = await supabase.auth.signInWithOtp({
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand-accent transition min-h-[44px]"
+            className="w-full rounded-lg px-4 py-3 focus:outline-none transition min-h-[44px]"
+            style={{
+              background: "var(--theme-surface)",
+              border: "1px solid color-mix(in srgb, var(--theme-text) 15%, transparent)",
+              color: "var(--theme-text)",
+              fontFamily: "var(--font-sans)",
+            }}
           />
 
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {error && (
+            <p
+              className="text-sm text-center"
+              style={{ color: "color-mix(in srgb, #e05c5c 80%, var(--theme-text))", fontFamily: "var(--font-sans)" }}
+            >
+              {error}
+            </p>
+          )}
 
           {urlError && !error && (
-            <p className="text-red-400 text-sm text-center">
+            <p
+              className="text-sm text-center"
+              style={{ color: "color-mix(in srgb, #e05c5c 80%, var(--theme-text))", fontFamily: "var(--font-sans)" }}
+            >
               {urlError === "otp_expired"
                 ? "Link expired — request a new one below."
                 : "Auth failed — try again."}
@@ -110,7 +145,8 @@ const { error } = await supabase.auth.signInWithOtp({
               handleSubmit();
             }}
             disabled={loading || cooldown > 0}
-            className="w-full rounded-lg bg-brand-accent px-6 py-3 text-black font-semibold transition hover:opacity-90 disabled:opacity-50 min-h-[44px] touch-manipulation"
+            className="w-full rounded-lg px-6 py-3 font-semibold shadow-md transition-colors duration-200 bg-theme-4 text-white hover:bg-theme-5 hover:text-theme-4 disabled:opacity-50 min-h-[44px] touch-manipulation"
+            style={{ fontFamily: "var(--font-sans)" }}
           >
             {loading
               ? "Sending..."

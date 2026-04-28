@@ -14,6 +14,13 @@ import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { uploadServiceMedia } from "@/lib/supabase";
 import LogoutButton from "./LogoutButton";
+import {
+  SITE_THEME_STORAGE_KEY,
+  isValidSiteThemeId,
+  normalizeThemeFromDb,
+  type PaletteThemeId,
+  type SiteThemeId,
+} from "@/lib/theme";
 
 // ── Module-level Supabase client (matches pattern in other admin pages) ──
 const supabase = createBrowserClient(
@@ -23,15 +30,33 @@ const supabase = createBrowserClient(
 
 type Layout = "cinematic" | "grid" | "editorial";
 
-// ── Theme IDs must match the [data-theme] blocks in app/globals.css ──
-const THEMES = [
-  { id: "luxury-dark", label: "Luxury Dark" },
-  { id: "monochrome",  label: "Monochrome"  },
-  { id: "earth",       label: "Earth"       },
-  { id: "neon",        label: "Neon"        },
-] as const;
-
-type ThemeId = (typeof THEMES)[number]["id"];
+// ── Public palette ids — must match [data-theme] in app/globals.css @layer base ──
+const PALETTE_THEMES: {
+  id: PaletteThemeId;
+  label: string;
+  preview: [string, string, string, string, string];
+}[] = [
+  {
+    id: "default",
+    label: "Studio default",
+    preview: ["#EAE8FF", "#D8D5DB", "#ADACB5", "#2D3142", "#B0D7FF"],
+  },
+  {
+    id: "palette-a",
+    label: "Rose & wine",
+    preview: ["#FEF7F9", "#F9D0DC", "#F3A9C0", "#4C1929", "#E15B80"],
+  },
+  {
+    id: "palette-b",
+    label: "Coastal",
+    preview: ["#F1FAEE", "#A8DADC", "#457B9D", "#1D3557", "#E63946"],
+  },
+  {
+    id: "palette-c",
+    label: "Sun & sea",
+    preview: ["#FFF8E7", "#8ECAE6", "#219EBC", "#023047", "#FB8500"],
+  },
+];
 
 const LAYOUT_OPTIONS: { id: Layout; icon: string; label: string; description: string }[] = [
   { id: "cinematic", icon: "◈", label: "Cinematic", description: "Alternating full-bleed panels" },
@@ -54,7 +79,7 @@ export default function AdminDashboard() {
 
   const [userEmail, setUserEmail]           = useState<string | null>(null);
   const [activeLayout, setActiveLayout]     = useState<Layout>("cinematic");
-  const [activeTheme, setActiveTheme]       = useState<ThemeId>("luxury-dark");
+  const [activeTheme, setActiveTheme]       = useState<SiteThemeId>("default");
   const [heroUrl, setHeroUrl]               = useState<string>("");
   const [mediaLibrary, setMediaLibrary]     = useState<string[]>([]);
   const [isLoading, setIsLoading]           = useState(true);
@@ -83,8 +108,18 @@ export default function AdminDashboard() {
       const layout = get("active_layout");
       if (layout) setActiveLayout(layout as Layout);
 
-      const theme = get("active_theme");
-      if (theme) setActiveTheme(theme as ThemeId);
+      const fromDb = normalizeThemeFromDb(get("active_theme"));
+      try {
+        const stored = localStorage.getItem(SITE_THEME_STORAGE_KEY);
+        if (stored && isValidSiteThemeId(stored)) {
+          setActiveTheme(stored);
+          document.documentElement.setAttribute("data-theme", stored);
+        } else {
+          setActiveTheme(fromDb);
+        }
+      } catch {
+        setActiveTheme(fromDb);
+      }
 
       const hero = get("global_hero_url");
       if (hero) setHeroUrl(hero);
@@ -123,9 +158,15 @@ export default function AdminDashboard() {
     }
   }
 
-  async function handleSelectTheme(nextTheme: ThemeId) {
+  async function handleSelectTheme(nextTheme: SiteThemeId) {
     if (isSavingTheme || activeTheme === nextTheme) return;
     setActiveTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    try {
+      localStorage.setItem(SITE_THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      /* ignore */
+    }
     setIsSavingTheme(true);
     setThemeSaveSuccess(false);
     try {
@@ -191,68 +232,94 @@ export default function AdminDashboard() {
   if (isLoading) return null;
 
   return (
-    <main
-      className="min-h-screen pt-28 pb-20 px-6"
-      style={{ background: "var(--theme-bg)", color: "var(--theme-text)" }}
-    >
+    <main className="min-h-screen pt-28 pb-20 px-6 bg-transparent text-theme-4">
       <div className="max-w-3xl mx-auto">
 
-        {/* ── Header ── */}
-        <div className="mb-10">
-          <p
-            className="text-xs tracking-[0.3em] uppercase mb-2"
-            style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
-          >
-            Admin Panel
-          </p>
+        {/* ── Header — Creative Studio identity ── */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-3">
+            {/* WHY: Barber pole mini accent signals the brand inside the admin, not just the public site. */}
+            <div
+              aria-hidden="true"
+              style={{
+                width: "5px",
+                height: "32px",
+                borderRadius: "99px",
+                overflow: "hidden",
+                flexShrink: 0,
+                backgroundImage:
+                  "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 4px, color-mix(in srgb, var(--theme-text) 8%, transparent) 4px, color-mix(in srgb, var(--theme-text) 8%, transparent) 8px)",
+                backgroundSize: "100% 40px",
+                animation: "barber-pole 1.4s linear infinite",
+              }}
+            />
+            <p
+              className="text-[10px] tracking-[0.38em] uppercase"
+              style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
+            >
+              Creative Studio
+            </p>
+          </div>
           <h1
-            className="text-4xl font-bold"
-            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+            className="font-bold leading-tight"
+            style={{
+              color: "var(--theme-text)",
+              fontFamily: "var(--font-display)",
+              fontSize: "clamp(2rem, 5vw, 2.75rem)",
+            }}
           >
-            Dashboard
+            Fades &amp; Facials
           </h1>
           {userEmail && (
             <p
               className="mt-2 text-sm"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 50%, transparent)", fontFamily: "var(--font-sans)" }}
+              style={{ color: "color-mix(in srgb, var(--theme-text) 45%, transparent)", fontFamily: "var(--font-sans)" }}
             >
-              Signed in as <span style={{ color: "var(--theme-accent)" }}>{userEmail}</span>
+              {userEmail}
             </p>
           )}
         </div>
 
-        {/* ── Navigation Cards ── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-14">
+        {/* ── Navigation Cards — elevated touch targets for iPhone use ── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-14">
           <Link
             href="/admin/gallery"
-            className="rounded-xl p-6 transition touch-manipulation"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
-              background: "color-mix(in srgb, var(--theme-text) 5%, transparent)",
-              minHeight: "44px",
-            }}
+            className="group rounded-2xl p-6 border border-theme-3 bg-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] touch-manipulation shadow-sm"
+            style={{ minHeight: "88px", boxShadow: "0 2px 12px color-mix(in srgb, var(--theme-4) 6%, transparent)" }}
           >
-            <p className="font-semibold text-lg" style={{ color: "var(--theme-text)" }}>Gallery</p>
+            <div className="flex items-start justify-between mb-2">
+              <p
+                className="font-semibold text-lg"
+                style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+              >
+                Gallery
+              </p>
+              <span style={{ color: "var(--theme-accent)", fontSize: "1.1rem" }}>◈</span>
+            </div>
             <p
-              className="text-sm mt-1"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+              className="text-sm"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 45%, transparent)", fontFamily: "var(--font-sans)" }}
             >
               Upload and manage media
             </p>
           </Link>
           <Link
             href="/admin/services"
-            className="rounded-xl p-6 transition touch-manipulation"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
-              background: "color-mix(in srgb, var(--theme-text) 5%, transparent)",
-              minHeight: "44px",
-            }}
+            className="rounded-2xl p-6 border border-theme-3 bg-white transition touch-manipulation shadow-sm"
+            style={{ minHeight: "44px", boxShadow: "0 2px 12px color-mix(in srgb, var(--theme-4) 6%, transparent)" }}
           >
-            <p className="font-semibold text-lg" style={{ color: "var(--theme-text)" }}>Services</p>
+            <div className="flex items-start justify-between mb-2">
+              <p
+                className="font-semibold text-lg"
+                style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+              >
+                Services
+              </p>
+              <span style={{ color: "var(--theme-accent)", fontSize: "1.1rem" }}>≡</span>
+            </div>
             <p
-              className="text-sm mt-1"
-              style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
+              className="text-sm"
+              style={{ color: "color-mix(in srgb, var(--theme-text) 45%, transparent)", fontFamily: "var(--font-sans)" }}
             >
               Edit service listings
             </p>
@@ -260,22 +327,16 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── Site Appearance ── */}
-        <div
-          className="rounded-2xl p-6 md:p-8"
-          style={{
-            border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
-            background: "color-mix(in srgb, var(--theme-text) 2%, transparent)",
-          }}
-        >
-          <div className="mb-8">
+        <div className="rounded-2xl p-6 md:p-8 border border-theme-3 bg-white shadow-sm">
+          <div className="mb-10">
             <p
-              className="text-xs tracking-[0.3em] uppercase mb-1"
+              className="text-[10px] tracking-[0.38em] uppercase mb-1"
               style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
             >
               Appearance
             </p>
             <h2
-              className="text-2xl font-semibold mb-1"
+              className="text-2xl font-semibold mb-2"
               style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
             >
               Site Appearance
@@ -284,7 +345,7 @@ export default function AdminDashboard() {
               className="text-sm"
               style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
-              Layout and theme apply immediately. Global hero has a separate save action.
+              Layout and theme apply instantly. Global hero requires a separate save.
             </p>
           </div>
 
@@ -349,25 +410,29 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          {/* ── Theme Selector ── */}
+          {/* ── Site theme — swatches set data-theme + localStorage + site_config ── */}
           <div className="mb-10">
             <p
               className="text-xs uppercase tracking-widest mb-4"
               style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
-              Theme
+              Site theme
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {THEMES.map((t) => {
+              {PALETTE_THEMES.map((t) => {
                 const active = activeTheme === t.id;
                 return (
                   <button
                     key={t.id}
+                    type="button"
                     onClick={() => { void handleSelectTheme(t.id); }}
-                    onTouchEnd={(e) => { e.preventDefault(); void handleSelectTheme(t.id); }}
-                    className="rounded-2xl p-4 text-left transition-all duration-200 touch-manipulation"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      void handleSelectTheme(t.id);
+                    }}
+                    className="rounded-2xl p-3 text-left transition-all duration-200 touch-manipulation flex flex-col gap-2"
                     style={{
-                      minHeight: "56px",
+                      minHeight: "88px",
                       border: active
                         ? "1.5px solid var(--theme-accent)"
                         : "1px solid color-mix(in srgb, var(--theme-text) 10%, transparent)",
@@ -376,10 +441,15 @@ export default function AdminDashboard() {
                         : "color-mix(in srgb, var(--theme-text) 4%, transparent)",
                     }}
                   >
+                    <div className="flex h-8 w-full max-w-[140px] overflow-hidden rounded-md">
+                      {t.preview.map((hex) => (
+                        <span key={hex} className="min-w-0 flex-1 shrink" style={{ backgroundColor: hex }} />
+                      ))}
+                    </div>
                     <p
-                      className="text-sm font-medium"
+                      className="text-xs font-semibold leading-snug"
                       style={{
-                        color: active ? "var(--theme-accent)" : "color-mix(in srgb, var(--theme-text) 80%, transparent)",
+                        color: active ? "var(--theme-accent)" : "color-mix(in srgb, var(--theme-text) 85%, transparent)",
                         fontFamily: "var(--font-sans)",
                       }}
                     >
@@ -393,8 +463,10 @@ export default function AdminDashboard() {
               className="mt-3 text-xs"
               style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
             >
-              Active: {THEMES.find((t) => t.id === activeTheme)?.label}
-              {isSavingTheme ? " · saving..." : themeSaveSuccess ? " · saved" : ""}
+              Active: {PALETTE_THEMES.find((t) => t.id === activeTheme)?.label ?? activeTheme}
+              {isSavingTheme ? " · saving…" : themeSaveSuccess ? " · saved to site" : ""}
+              {" · "}
+              Persists in this browser via localStorage, and for all visitors via site config.
             </p>
           </div>
 

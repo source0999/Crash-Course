@@ -1,46 +1,27 @@
-/** @file components/layouts/CinematicLayout.tsx */
+"use client";
 
-/*
- * THEME ENFORCEMENT RULE (A+ Agency Standard)
- *
- * ❌ BANNED: #HEX, rgb(), rgba(), color-mix with hex
- * ✅ REQUIRED: var(--theme-bg), var(--theme-text), var(--theme-accent), var(--theme-surface)
- *
- * This file has been audited: no banned values present.
- */
+/** @file components/layouts/CinematicLayout.tsx */
 
 // ─────────────────────────────────────────
 // SECTION: CinematicLayout
-// WHAT: Pure service menu list styled in the active theme palette.
-// WHY: Hero hoisted to GlobalHero; featured slots hoisted to FeaturedServicesSection.
-//   This component is a focused catalogue of all services.
-// PHASE 4: No changes needed — allServices from DB.
+// WHAT: Service menu list on bg-theme-2 with dark ink (theme-4) for all type.
+// WHY: theme-text inverts on earth/neon; soft bands always use theme-4. Reveal wraps in LayoutOrchestrator.
+// PHASE 4: allServices from DB.
 // ─────────────────────────────────────────
 
-import type { LayoutProps } from "@/lib/utils";
+import { formatServicePrice, type LayoutProps } from "@/lib/utils";
+
+const MUTED = "color-mix(in srgb, var(--theme-4) 40%, transparent)";
+const SUBTLE = "color-mix(in srgb, var(--theme-4) 22%, transparent)";
 
 export default function CinematicLayout({ allServices }: LayoutProps) {
   return (
-    <section
-      data-home-band="menu"
-      className="px-6 md:px-8 py-20"
-      style={{
-        background: "var(--home-band-b, var(--theme-bg))",
-        color: "var(--home-band-text, var(--theme-text))",
-        ["--theme-text" as string]: "var(--home-band-text, var(--theme-text))",
-      }}
-    >
+    <section data-home-band="menu" className="px-6 md:px-8 py-20 bg-theme-2 text-theme-4">
       <div className="max-w-5xl mx-auto">
-        <p
-          className="text-[11px] uppercase tracking-[0.3em] mb-3"
-          style={{ color: "color-mix(in srgb, var(--theme-text) 40%, transparent)", fontFamily: "var(--font-sans)" }}
-        >
+        <p className="text-[11px] uppercase tracking-[0.3em] mb-3" style={{ color: MUTED, fontFamily: "var(--font-sans)" }}>
           The Full Menu
         </p>
-        <h2
-          className="text-4xl md:text-5xl font-light mb-12"
-          style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
-        >
+        <h2 className="text-4xl md:text-5xl font-light mb-12" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
           Our Services
         </h2>
         <div>
@@ -50,16 +31,11 @@ export default function CinematicLayout({ allServices }: LayoutProps) {
               className="flex items-center justify-between py-6"
               style={{
                 borderBottom:
-                  i < allServices.length - 1
-                    ? "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)"
-                    : "none",
+                  i < allServices.length - 1 ? `1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)` : "none",
               }}
             >
               <div className="flex items-center gap-5">
-                <span
-                  className="text-xs tabular-nums shrink-0"
-                  style={{ color: "color-mix(in srgb, var(--theme-text) 20%, transparent)", fontFamily: "var(--font-sans)" }}
-                >
+                <span className="text-xs tabular-nums shrink-0" style={{ color: SUBTLE, fontFamily: "var(--font-sans)" }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 {s.image && (
@@ -73,27 +49,21 @@ export default function CinematicLayout({ allServices }: LayoutProps) {
                   </div>
                 )}
                 <div>
-                  <h3
-                    className="text-xl font-light"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
-                  >
+                  <h3 className="text-xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
                     {s.name}
                   </h3>
                   {s.duration && (
                     <p
                       className="text-xs uppercase tracking-widest mt-0.5"
-                      style={{ color: "color-mix(in srgb, var(--theme-text) 30%, transparent)", fontFamily: "var(--font-sans)" }}
+                      style={{ color: MUTED, fontFamily: "var(--font-sans)" }}
                     >
                       {s.duration}
                     </p>
                   )}
                 </div>
               </div>
-              <span
-                className="text-2xl font-light"
-                style={{ fontFamily: "var(--font-display)", color: "var(--theme-accent)" }}
-              >
-                {typeof s.price === "number" ? `$${s.price}` : s.price}
+              <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
+                {formatServicePrice(s.price)}
               </span>
             </div>
           ))}
