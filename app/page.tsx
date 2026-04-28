@@ -15,14 +15,22 @@
  *   4. VisitUsSection — RevealOnScroll wrap in this file; footer from root layout
  */
 
+import dynamic from "next/dynamic";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import type { DbService } from "@/lib/supabase";
 import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
-import LayoutOrchestrator from "@/components/layouts/LayoutOrchestrator";
-import BookNowPill from "@/components/BookNowPill";
 import VisitUsSection from "@/components/VisitUsSection";
 import HeroTextReveal from "@/components/HeroTextReveal";
 import RevealOnScroll from "@/components/RevealOnScroll";
+
+// LayoutOrchestrator is below the fold — defer its JS chunk so it doesn't block initial hydration.
+const LayoutOrchestrator = dynamic(
+  () => import("@/components/layouts/LayoutOrchestrator"),
+  { loading: () => <div className="bg-theme-2 min-h-[600px]" /> }
+);
+
+// BookNowPill's Framer Motion float is non-critical — split into its own chunk.
+const BookNowPill = dynamic(() => import("@/components/BookNowPill"));
 
 const DEFAULT_GLOBAL_HERO_URL =
   "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
@@ -95,7 +103,7 @@ export default async function HomePage() {
             muted
             loop
             playsInline
-            preload="none"
+            preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: "center 15%" }}
           />

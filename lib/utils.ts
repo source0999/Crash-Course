@@ -25,7 +25,7 @@ export type LayoutProps = { allServices: DbService[] };
 // the logic is never duplicated.
 export function isVideoMedia(url: string | null, mediaType?: string | null): boolean {
   if (mediaType === "video") return true;
-  return /\.mp4(\?|$)/i.test(url ?? "");
+  return /\.(mp4|webm)(\?|$)/i.test(url ?? "");
 }
 
 // ─────────────────────────────────────────

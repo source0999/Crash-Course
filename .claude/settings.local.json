@@ -6,7 +6,9 @@
       "Bash(npx tsc *)",
       "PowerShell(Remove-Item *)",
       "Bash(npm install *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(ffmpeg -version)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }

@@ -64,6 +64,7 @@ app/layout.tsx
 app/page.tsx
 app/services/page.tsx
 app/services/ServicesBody.tsx
+CLAUDE_EXECUTION_ROADMAP.md
 components/BookNowPill.tsx
 components/Eruda.tsx
 components/Footer.tsx
@@ -1847,309 +1848,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 </file>
 
-<file path="app/services/ServicesBody.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: ServicesBody
-// WHAT: Featured + category grids with scroll reveals, surface-paired type, motion CTAs.
-// WHY: theme-text + theme-surface stay paired per palette; Book uses theme-1 on theme-4.
-// PHASE 4: Data from RSC parent only.
-// ─────────────────────────────────────────
-
-import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import type { DbService } from "@/lib/supabase";
-import { formatServicePrice } from "@/lib/utils";
-import RevealOnScroll from "@/components/RevealOnScroll";
-
-type Layout = "cards" | "list" | "minimal";
-
-type Props = {
-  services: DbService[];
-  categories: string[];
-  layout: Layout;
-  featuredServices: DbService[];
-};
-
-const MotionLink = motion(Link);
-
-const BOOK_CTA_CLASS =
-  "inline-flex items-center justify-center rounded-lg px-4 py-2 text-[11px] uppercase tracking-[0.12em] font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-4 text-theme-1 hover:bg-theme-5 hover:text-black";
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 50 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.65,
-      delay: Math.min(i * 0.06, 0.5),
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-    },
-  }),
-};
-
-const featuredVariants = {
-  hidden: { opacity: 0, y: 50 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.7,
-      delay: i * 0.1,
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-    },
-  }),
-};
-
-function BookNowLink({ reducedMotion }: { reducedMotion: boolean }) {
-  return (
-    <MotionLink
-      href="/book"
-      className={BOOK_CTA_CLASS}
-      style={{ fontFamily: "var(--font-sans)" }}
-      whileHover={reducedMotion ? undefined : { scale: 1.05 }}
-      whileTap={reducedMotion ? undefined : { scale: 0.95 }}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-      }}
-    >
-      Book Now
-    </MotionLink>
-  );
-}
-
-export default function ServicesBody({ services, categories, layout, featuredServices }: Props) {
-  const reduced = useReducedMotion();
-
-  return (
-    <>
-      {featuredServices.length > 0 && (
-        <RevealOnScroll as="section" className="mb-14">
-          <p
-            className="text-[10px] uppercase tracking-[0.35em] mb-4"
-            style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
-          >
-            Featured
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {featuredServices.map((service, i) => (
-              <motion.article
-                key={`featured-${service.id}`}
-                custom={i}
-                variants={reduced ? {} : featuredVariants}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: "-100px" }}
-                className="relative overflow-hidden rounded-2xl"
-                style={{ minHeight: "220px" }}
-              >
-                {service.image ? (
-                  <img
-                    src={service.image}
-                    alt={service.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0" style={{ background: "var(--theme-surface)" }} />
-                )}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(to top, color-mix(in srgb, black 82%, transparent) 0%, transparent 55%)",
-                  }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                  <p className="text-sm font-semibold mb-0.5" style={{ fontFamily: "var(--font-display)" }}>
-                    {service.name}
-                  </p>
-                  <p className="text-xs text-white/85" style={{ fontFamily: "var(--font-sans)" }}>
-                    {service.category}
-                  </p>
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        </RevealOnScroll>
-      )}
-
-      <div className="flex flex-col gap-14">
-        {categories.map((cat) => {
-          const catServices = services.filter((s) => s.category === cat);
-          return (
-            <RevealOnScroll key={cat} as="section">
-              <div
-                className="flex items-center gap-4 mb-7 pb-3"
-                style={{ borderBottom: "1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)" }}
-              >
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: "5px",
-                    height: "28px",
-                    borderRadius: "99px",
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    backgroundImage:
-                      "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 4px, color-mix(in srgb, var(--theme-4) 12%, transparent) 4px, color-mix(in srgb, var(--theme-4) 12%, transparent) 8px)",
-                    backgroundSize: "100% 40px",
-                    animation: "barber-pole 1.2s linear infinite",
-                  }}
-                />
-                <h2 className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
-                  {cat}
-                </h2>
-              </div>
-
-              {layout === "cards" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {catServices.map((s, i) => (
-                    <motion.div
-                      key={s.id}
-                      custom={i}
-                      variants={reduced ? {} : cardVariants}
-                      initial="hidden"
-                      whileInView="show"
-                      viewport={{ once: true, margin: "-100px" }}
-                      className="rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-xl"
-                      style={{
-                        background: "var(--theme-surface)",
-                        border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
-                        boxShadow: "0 4px 24px color-mix(in srgb, var(--theme-bg) 30%, transparent)",
-                      }}
-                    >
-                      {s.image && (
-                        <div className="aspect-video overflow-hidden">
-                          <img
-                            src={s.image}
-                            alt={s.name}
-                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-                      <div className="p-5">
-                        <h3
-                          className="font-semibold text-lg mb-1"
-                          style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
-                        >
-                          {s.name}
-                        </h3>
-                        <p className="font-bold text-xl mb-3" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
-                          {formatServicePrice(s.price)}
-                        </p>
-                        {s.description && (
-                          <p
-                            className="text-sm leading-relaxed mb-4"
-                            style={{
-                              color: "color-mix(in srgb, var(--theme-text) 52%, transparent)",
-                              fontFamily: "var(--font-sans)",
-                              fontWeight: 300,
-                            }}
-                          >
-                            {s.description}
-                          </p>
-                        )}
-                        <BookNowLink reducedMotion={Boolean(reduced)} />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {layout === "list" && (
-                <div className="flex flex-col gap-2">
-                  {catServices.map((s, i) => (
-                    <motion.div
-                      key={s.id}
-                      custom={i}
-                      variants={reduced ? {} : cardVariants}
-                      initial="hidden"
-                      whileInView="show"
-                      viewport={{ once: true, margin: "-100px" }}
-                      className="flex items-center justify-between rounded-xl px-5 py-4"
-                      style={{
-                        background: "var(--theme-surface)",
-                        border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        {s.image && (
-                          <img
-                            src={s.image}
-                            alt={s.name}
-                            className="w-14 h-14 rounded-xl object-cover shrink-0"
-                            loading="lazy"
-                          />
-                        )}
-                        <div>
-                          <p
-                            className="font-medium"
-                            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
-                          >
-                            {s.name}
-                          </p>
-                          {s.description && (
-                            <p
-                              className="text-sm mt-0.5"
-                              style={{
-                                color: "color-mix(in srgb, var(--theme-text) 48%, transparent)",
-                                fontFamily: "var(--font-sans)",
-                              }}
-                            >
-                              {s.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 ml-4 shrink-0">
-                        <p className="font-bold text-xl" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
-                          {formatServicePrice(s.price)}
-                        </p>
-                        <BookNowLink reducedMotion={Boolean(reduced)} />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {layout === "minimal" && (
-                <div>
-                  {catServices.map((s, i) => (
-                    <motion.div
-                      key={s.id}
-                      custom={i}
-                      variants={reduced ? {} : cardVariants}
-                      initial="hidden"
-                      whileInView="show"
-                      viewport={{ once: true, margin: "-100px" }}
-                      className="flex items-center justify-between py-4"
-                      style={{ borderBottom: "1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)" }}
-                    >
-                      <p style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}>
-                        {s.name}
-                      </p>
-                      <div className="flex items-center gap-4 ml-4 shrink-0">
-                        <p className="font-bold text-xl" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
-                          {formatServicePrice(s.price)}
-                        </p>
-                        <BookNowLink reducedMotion={Boolean(reduced)} />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </RevealOnScroll>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-</file>
-
 <file path="components/Eruda.tsx">
 "use client";
 
@@ -2314,45 +2012,6 @@ export default function RevealOnScroll({
       {children}
     </Tag>
   );
-}
-</file>
-
-<file path="components/SmoothScrolling.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: SmoothScrolling
-// WHAT: Lenis smooth-scroll loop bound to requestAnimationFrame.
-// WHY: Webflow-grade inertial scroll site-wide without fighting Next layout.
-// PHASE 4: No DB.
-// ─────────────────────────────────────────
-
-import { useEffect } from "react";
-import Lenis from "@studio-freight/lenis";
-
-type Props = { children: React.ReactNode };
-
-export default function SmoothScrolling({ children }: Props) {
-  useEffect(() => {
-    const lenis = new Lenis({
-      smoothWheel: true,
-      touchMultiplier: 1.15,
-    });
-
-    let rafId = 0;
-    function raf(time: number) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
-
-  return <>{children}</>;
 }
 </file>
 
@@ -68576,49 +68235,6 @@ export function getURL(): string {
 }
 </file>
 
-<file path="middleware.ts">
-// ─────────────────────────────────────────
-// SECTION: Admin Route Protection Middleware
-// WHAT: Guards all /admin/* routes — redirects to /admin login if no session.
-// WHY: Prevents unauthenticated access to admin dashboard and sub-pages.
-// PHASE 4: No changes needed.
-// ─────────────────────────────────────────
-import { NextRequest, NextResponse } from "next/server";
-import { createMiddlewareSupabaseClient } from "@/lib/supabase";
-
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const { pathname } = request.nextUrl;
-
-  // Always allow the callback route through — it sets the session
-  if (pathname === "/admin/callback") {
-    return response;
-  }
-
-  // Allow the login page itself through unauthenticated
-  if (pathname === "/admin") {
-    return response;
-  }
-
-  // For all other /admin/* routes, check session
-  const supabase = createMiddlewareSupabaseClient(request, response);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    const loginUrl = new URL("/admin", request.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  return response;
-}
-
-export const config = {
-  matcher: ["/admin/:path*"],
-};
-</file>
-
 <file path="postcss.config.mjs">
 const config = {
   plugins: {
@@ -68713,313 +68329,371 @@ feature/, fix/, docs/, chore/
 Current branch: feature/admin-auth (commit and branch to feature/admin-gallery-ordering next)
 </file>
 
-<file path="components/BookNowPill.tsx">
+<file path="app/services/ServicesBody.tsx">
 "use client";
 
 // ─────────────────────────────────────────
-// SECTION: BookNowPill
-// WHAT: Persistent floating CTA anchored to viewport bottom-center with spring float.
-// WHY: Keeps booking reachable at all scroll positions. Float animation uses translate3d
-//   only — compositor layer, zero repaints. Framer Motion respects prefers-reduced-motion.
-// PHASE 4: No changes needed — links to /book internal route.
+// SECTION: ServicesBody
+// WHAT: Featured + category grids with scroll reveals, surface-paired type, motion CTAs.
+// WHY: theme-text + theme-surface stay paired per palette; Book uses theme-1 on theme-4.
+// PHASE 4: Data from RSC parent only.
 // ─────────────────────────────────────────
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import type { DbService } from "@/lib/supabase";
+import { formatServicePrice } from "@/lib/utils";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
-const MotionLink = motion(Link);
+type Layout = "cards" | "list" | "minimal";
 
-export default function BookNowPill() {
+type Props = {
+  services: DbService[];
+  categories: string[];
+  layout: Layout;
+  featuredServices: DbService[];
+};
+
+const MotionLink = motion.create(Link);
+
+const BOOK_CTA_CLASS =
+  "inline-flex items-center justify-center rounded-lg px-4 py-2 text-[11px] uppercase tracking-[0.12em] font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-4 text-theme-1 hover:bg-theme-5 hover:text-black";
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 50 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.65,
+      delay: Math.min(i * 0.06, 0.5),
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  }),
+};
+
+const featuredVariants = {
+  hidden: { opacity: 0, y: 50 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.7,
+      delay: i * 0.1,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  }),
+};
+
+function BookNowLink({ reducedMotion }: { reducedMotion: boolean }) {
+  return (
+    <MotionLink
+      href="/book"
+      className={BOOK_CTA_CLASS}
+      style={{ fontFamily: "var(--font-sans)" }}
+      whileHover={reducedMotion ? undefined : { scale: 1.05 }}
+      whileTap={reducedMotion ? undefined : { scale: 0.95 }}
+    >
+      Book Now
+    </MotionLink>
+  );
+}
+
+export default function ServicesBody({ services, categories, layout, featuredServices }: Props) {
   const reduced = useReducedMotion();
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-auto pb-[max(2rem,env(safe-area-inset-bottom))]">
-      {/* WHY: Outer motion.div owns the float so the Link's transform stack stays clean. */}
-      <motion.div
-        animate={reduced ? {} : {
-          y: [0, -10, 0],
-        }}
-        transition={{
-          duration: 3.4,
-          repeat: Infinity,
-          ease: "easeInOut",
-          repeatType: "loop",
-        }}
-      >
-        <MotionLink
-          href="/book"
-          className="group relative inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm tracking-[0.04em] uppercase font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-5 text-theme-4 hover:bg-theme-4 hover:text-theme-1"
-          style={{ fontFamily: "var(--font-sans)" }}
-          whileHover={reduced ? undefined : { scale: 1.05 }}
-          whileTap={reduced ? undefined : { scale: 0.95 }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-          }}
-        >
-          <span className="relative z-10">Book Now</span>
-        </MotionLink>
-      </motion.div>
-    </div>
-  );
-}
-</file>
-
-<file path="components/layouts/CinematicLayout.tsx">
-"use client";
-
-/** @file components/layouts/CinematicLayout.tsx */
-
-// ─────────────────────────────────────────
-// SECTION: CinematicLayout
-// WHAT: Service menu list on bg-theme-2 with dark ink (theme-4) for all type.
-// WHY: theme-text inverts on earth/neon; soft bands always use theme-4. Reveal wraps in LayoutOrchestrator.
-// PHASE 4: allServices from DB.
-// ─────────────────────────────────────────
-
-import { formatServicePrice, type LayoutProps } from "@/lib/utils";
-
-const MUTED = "color-mix(in srgb, var(--theme-4) 40%, transparent)";
-const SUBTLE = "color-mix(in srgb, var(--theme-4) 22%, transparent)";
-
-export default function CinematicLayout({ allServices }: LayoutProps) {
-  return (
-    <section data-home-band="menu" className="px-6 md:px-8 py-20 bg-theme-2 text-theme-4">
-      <div className="max-w-5xl mx-auto">
-        <p className="text-[11px] uppercase tracking-[0.3em] mb-3" style={{ color: MUTED, fontFamily: "var(--font-sans)" }}>
-          The Full Menu
-        </p>
-        <h2 className="text-4xl md:text-5xl font-light mb-12" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-          Our Services
-        </h2>
-        <div>
-          {allServices.map((s, i) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between py-6"
-              style={{
-                borderBottom:
-                  i < allServices.length - 1 ? `1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)` : "none",
-              }}
-            >
-              <div className="flex items-center gap-5">
-                <span className="text-xs tabular-nums shrink-0" style={{ color: SUBTLE, fontFamily: "var(--font-sans)" }}>
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                {s.image && (
-                  <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-xl overflow-hidden">
-                    <img
-                      src={s.image}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      alt={s.name}
-                    />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-                    {s.name}
-                  </h3>
-                  {s.duration && (
-                    <p
-                      className="text-xs uppercase tracking-widest mt-0.5"
-                      style={{ color: MUTED, fontFamily: "var(--font-sans)" }}
-                    >
-                      {s.duration}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
-                {formatServicePrice(s.price)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-</file>
-
-<file path="components/layouts/EditorialLayout.tsx">
-"use client";
-
-/** @file components/layouts/EditorialLayout.tsx */
-
-// ─────────────────────────────────────────
-// SECTION: EditorialLayout
-// WHAT: Editorial menu on bg-theme-2; all type uses theme-4 / mixes for contrast.
-// PHASE 4: allServices from DB.
-// ─────────────────────────────────────────
-
-import { formatServicePrice, type LayoutProps } from "@/lib/utils";
-
-const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
-
-export default function EditorialLayout({ allServices }: LayoutProps) {
-  return (
-    <section
-      data-home-band="menu"
-      className="px-6 md:px-16 py-24 bg-theme-2 text-theme-4 border-t border-theme-3"
-    >
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-start gap-6 md:gap-8 mb-16">
-          <span
-            className="text-8xl md:text-9xl font-light leading-none"
-            style={{
-              fontFamily: "var(--font-display)",
-              color: M(8),
-            }}
+    <>
+      {featuredServices.length > 0 && (
+        <RevealOnScroll as="section" className="mb-14">
+          <p
+            className="text-[10px] uppercase tracking-[0.35em] mb-4"
+            style={{ color: "var(--theme-accent)", fontFamily: "var(--font-sans)" }}
           >
-            01
-          </span>
-          <div className="pt-4">
-            <p className="uppercase tracking-[0.3em] text-xs mb-2" style={{ color: M(40), fontFamily: "var(--font-sans)" }}>
-              The Menu
-            </p>
-            <h2 className="text-4xl md:text-5xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-              Our Services
-            </h2>
-          </div>
-        </div>
-
-        <div className="space-y-0">
-          {allServices.map((s, i) => (
-            <div
-              key={s.id}
-              className="group grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-4 md:gap-12 py-7 transition-all duration-300 hover:px-6 hover:rounded-2xl hover:-mx-6"
-              style={{
-                borderBottom: i < allServices.length - 1 ? `1px solid ${M(10)}` : "none",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--theme-4) 5%, transparent)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-              }}
-            >
-              <div className="flex items-start gap-4">
-                {s.image && (
-                  <div className="w-20 h-28 shrink-0 overflow-hidden rounded-lg">
-                    <img src={s.image} className="w-full h-full object-cover" loading="lazy" alt={s.name} />
-                  </div>
+            Featured
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {featuredServices.map((service, i) => (
+              <motion.article
+                key={`featured-${service.id}`}
+                custom={i}
+                variants={reduced ? {} : featuredVariants}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-100px" }}
+                className="relative overflow-hidden rounded-2xl"
+                style={{ minHeight: "220px" }}
+              >
+                {service.image ? (
+                  <img
+                    src={service.image}
+                    alt={service.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0" style={{ background: "var(--theme-surface)" }} />
                 )}
-                <div>
-                  <h3 className="text-xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-                    {s.name}
-                  </h3>
-                  <p
-                    className="text-xs uppercase tracking-widest mt-1"
-                    style={{ color: M(35), fontFamily: "var(--font-sans)" }}
-                  >
-                    {s.duration ?? ""}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to top, color-mix(in srgb, black 82%, transparent) 0%, transparent 55%)",
+                  }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                  <p className="text-sm font-semibold mb-0.5" style={{ fontFamily: "var(--font-display)" }}>
+                    {service.name}
+                  </p>
+                  <p className="text-xs text-white/85" style={{ fontFamily: "var(--font-sans)" }}>
+                    {service.category}
                   </p>
                 </div>
-              </div>
-              <p
-                className="text-sm leading-relaxed self-center"
-                style={{
-                  color: M(48),
-                  fontFamily: "var(--font-sans)",
-                  fontWeight: 300,
-                }}
-              >
-                {s.description}
-              </p>
-              <div className="self-center">
-                <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
-                  {formatServicePrice(s.price)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-</file>
+              </motion.article>
+            ))}
+          </div>
+        </RevealOnScroll>
+      )}
 
-<file path="components/layouts/GridLayout.tsx">
-"use client";
-
-/** @file components/layouts/GridLayout.tsx */
-
-// ─────────────────────────────────────────
-// SECTION: GridLayout
-// WHAT: Service grid on bg-theme-2; card copy uses theme-4 for contrast on light surfaces.
-// PHASE 4: allServices from DB.
-// ─────────────────────────────────────────
-
-import { formatServicePrice, type LayoutProps } from "@/lib/utils";
-
-const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
-
-export default function GridLayout({ allServices }: LayoutProps) {
-  return (
-    <section data-home-band="menu" className="px-4 md:px-5 py-20 max-w-7xl mx-auto bg-theme-2 text-theme-4">
-      <div className="text-center mb-14">
-        <p className="uppercase tracking-[0.3em] text-xs mb-3" style={{ color: M(40), fontFamily: "var(--font-sans)" }}>
-          What We Offer
-        </p>
-        <h2 className="text-4xl md:text-5xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-          Our Services
-        </h2>
-        <div className="mx-auto mt-5" style={{ width: "40px", height: "1px", background: M(25) }} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {allServices.map((s, i) => {
-          const alt = i % 3 === 1;
+      <div className="flex flex-col gap-14">
+        {categories.map((cat) => {
+          const catServices = services.filter((s) => s.category === cat);
           return (
-            <div
-              key={s.id}
-              className="group rounded-3xl overflow-hidden transition-shadow duration-500 hover:shadow-lg"
-              style={{
-                background: alt ? "var(--theme-surface)" : "color-mix(in srgb, var(--theme-4) 4%, white)",
-                border: alt ? "none" : `1px solid ${M(10)}`,
-                boxShadow: alt
-                  ? "0 8px 40px color-mix(in srgb, var(--theme-bg) 25%, transparent)"
-                  : "0 2px 20px color-mix(in srgb, var(--theme-bg) 5%, transparent)",
-              }}
-            >
-              {s.image && (
-                <div className="relative aspect-video w-full overflow-hidden">
-                  <img src={s.image} alt={s.name} className="object-cover w-full h-full" loading="lazy" />
+            <RevealOnScroll key={cat} as="section">
+              <div
+                className="flex items-center gap-4 mb-7 pb-3"
+                style={{ borderBottom: "1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)" }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: "5px",
+                    height: "28px",
+                    borderRadius: "99px",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    backgroundImage:
+                      "repeating-linear-gradient(-45deg, var(--theme-accent) 0px, var(--theme-accent) 4px, color-mix(in srgb, var(--theme-4) 12%, transparent) 4px, color-mix(in srgb, var(--theme-4) 12%, transparent) 8px)",
+                    backgroundSize: "100% 40px",
+                    animation: "barber-pole 1.2s linear infinite",
+                  }}
+                />
+                <h2 className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
+                  {cat}
+                </h2>
+              </div>
+
+              {layout === "cards" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {catServices.map((s, i) => (
+                    <motion.div
+                      key={s.id}
+                      custom={i}
+                      variants={reduced ? {} : cardVariants}
+                      initial="hidden"
+                      whileInView="show"
+                      viewport={{ once: true, margin: "-100px" }}
+                      className="rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-xl"
+                      style={{
+                        background: "var(--theme-surface)",
+                        border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                        boxShadow: "0 4px 24px color-mix(in srgb, var(--theme-bg) 30%, transparent)",
+                      }}
+                    >
+                      {s.image && (
+                        <div className="aspect-video overflow-hidden">
+                          <img
+                            src={s.image}
+                            alt={s.name}
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                      <div className="p-5">
+                        <h3
+                          className="font-semibold text-lg mb-1"
+                          style={{ fontFamily: "var(--font-display)", color: "var(--theme-text)" }}
+                        >
+                          {s.name}
+                        </h3>
+                        <p className="font-bold text-xl mb-3" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
+                          {formatServicePrice(s.price)}
+                        </p>
+                        {s.description && (
+                          <p
+                            className="text-sm leading-relaxed mb-4"
+                            style={{
+                              color: "color-mix(in srgb, var(--theme-text) 52%, transparent)",
+                              fontFamily: "var(--font-sans)",
+                              fontWeight: 300,
+                            }}
+                          >
+                            {s.description}
+                          </p>
+                        )}
+                        <BookNowLink reducedMotion={Boolean(reduced)} />
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               )}
-              <div className="p-6 md:p-8 text-theme-4">
-                <h3 className="text-2xl font-light mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
-                  {s.name}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed mb-8"
-                  style={{
-                    color: M(45),
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 300,
-                  }}
-                >
-                  {s.description}
-                </p>
-                <div
-                  className="flex justify-between items-end pt-5"
-                  style={{ borderTop: `1px solid ${M(12)}` }}
-                >
-                  <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
-                    {formatServicePrice(s.price)}
-                  </span>
-                  <span className="text-xs uppercase tracking-widest" style={{ color: M(35), fontFamily: "var(--font-sans)" }}>
-                    {s.duration ?? ""}
-                  </span>
+
+              {layout === "list" && (
+                <div className="flex flex-col gap-2">
+                  {catServices.map((s, i) => (
+                    <motion.div
+                      key={s.id}
+                      custom={i}
+                      variants={reduced ? {} : cardVariants}
+                      initial="hidden"
+                      whileInView="show"
+                      viewport={{ once: true, margin: "-100px" }}
+                      className="flex items-center justify-between rounded-xl px-5 py-4"
+                      style={{
+                        background: "var(--theme-surface)",
+                        border: "1px solid color-mix(in srgb, var(--theme-text) 8%, transparent)",
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        {s.image && (
+                          <img
+                            src={s.image}
+                            alt={s.name}
+                            className="w-14 h-14 rounded-xl object-cover shrink-0"
+                            loading="lazy"
+                          />
+                        )}
+                        <div>
+                          <p
+                            className="font-medium"
+                            style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}
+                          >
+                            {s.name}
+                          </p>
+                          {s.description && (
+                            <p
+                              className="text-sm mt-0.5"
+                              style={{
+                                color: "color-mix(in srgb, var(--theme-text) 48%, transparent)",
+                                fontFamily: "var(--font-sans)",
+                              }}
+                            >
+                              {s.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 ml-4 shrink-0">
+                        <p className="font-bold text-xl" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
+                          {formatServicePrice(s.price)}
+                        </p>
+                        <BookNowLink reducedMotion={Boolean(reduced)} />
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              </div>
-            </div>
+              )}
+
+              {layout === "minimal" && (
+                <div>
+                  {catServices.map((s, i) => (
+                    <motion.div
+                      key={s.id}
+                      custom={i}
+                      variants={reduced ? {} : cardVariants}
+                      initial="hidden"
+                      whileInView="show"
+                      viewport={{ once: true, margin: "-100px" }}
+                      className="flex items-center justify-between py-4"
+                      style={{ borderBottom: "1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)" }}
+                    >
+                      <p style={{ color: "var(--theme-text)", fontFamily: "var(--font-display)" }}>
+                        {s.name}
+                      </p>
+                      <div className="flex items-center gap-4 ml-4 shrink-0">
+                        <p className="font-bold text-xl" style={{ fontFamily: "var(--font-sans)", color: "var(--theme-text)" }}>
+                          {formatServicePrice(s.price)}
+                        </p>
+                        <BookNowLink reducedMotion={Boolean(reduced)} />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </RevealOnScroll>
           );
         })}
       </div>
-    </section>
+    </>
   );
+}
+</file>
+
+<file path="CLAUDE_EXECUTION_ROADMAP.md">
+# CLAUDE EXECUTION ROADMAP — Performance & SEO Push (v2.1)
+
+## Phase 0: Image & Media Optimization (Highest Impact)
+- Convert all GIFs → MP4/WebM + use <video> with preload="none"
+- Wrap every image with Next.js <Image> component + proper sizes/quality
+- Add blur placeholders where possible
+
+## Phase 1: JS & Main Thread
+- Lazy load non-critical client components (HeroTextReveal, MagneticBookNow, etc.)
+- Reduce Framer Motion usage where possible (use CSS for simple animations)
+
+## Phase 2: Caching & Build Optimizations
+- Update next.config.ts with image formats, headers, and compiler options
+- Enable compression and immutable caching for static assets
+
+## Phase 3: SEO Polish
+- Add full metadata (title, description, og:image, etc.)
+- Add LocalBusiness JSON-LD schema
+- Ensure all images have meaningful alt text
+
+Output only complete updated files with // WHY: comments.
+</file>
+
+<file path="components/SmoothScrolling.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: SmoothScrolling
+// WHAT: Lenis smooth-scroll loop bound to requestAnimationFrame.
+// WHY: Webflow-grade inertial scroll site-wide without fighting Next layout.
+// PHASE 4: No DB.
+// ─────────────────────────────────────────
+
+import { useEffect } from "react";
+import Lenis from "@studio-freight/lenis";
+
+type Props = { children: React.ReactNode };
+
+export default function SmoothScrolling({ children }: Props) {
+  useEffect(() => {
+    // WHY iOS: Lenis only calls preventDefault on touch when isSmooth is true for that event;
+    // isSmooth = (syncTouch && touch) || (smoothWheel && wheel). Keep syncTouch false so
+    // touch scrolling stays native; wheel smoothing only (see node_modules @studio-freight/lenis onVirtualScroll).
+    const lenis = new Lenis({
+      smoothWheel: true,
+      syncTouch: false,
+      touchMultiplier: 1.15,
+      gestureOrientation: "vertical",
+    });
+
+    let rafId = 0;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, []);
+
+  return <>{children}</>;
 }
 </file>
 
@@ -71270,6 +70944,66 @@ export function formatServicePrice(price: string | number): string {
 }
 </file>
 
+<file path="middleware.ts">
+// ─────────────────────────────────────────
+// SECTION: Admin Route Protection Middleware
+// WHAT: Guards all /admin/* routes — redirects to /admin login if no session.
+// WHY: Prevents unauthenticated access to admin dashboard and sub-pages.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+import { NextRequest, NextResponse } from "next/server";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase";
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Case-insensitive /admin prefix → canonical lowercase (App Router paths are lowercase).
+  const adminMatch = pathname.match(/^\/admin(.*)$/i);
+  if (adminMatch && pathname !== `/admin${adminMatch[1]}`) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/admin${adminMatch[1]}`;
+    return NextResponse.redirect(url);
+  }
+
+  const response = NextResponse.next();
+
+  // Always allow the callback route through — it sets the session
+  if (pathname === "/admin/callback") {
+    return response;
+  }
+
+  // Allow the login page itself through unauthenticated
+  if (pathname === "/admin") {
+    return response;
+  }
+
+  // For all other /admin/* routes, check session
+  const supabase = createMiddlewareSupabaseClient(request, response);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    const loginUrl = new URL("/admin", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  // Include /admin (no subpath): "/admin/:path*" alone does not match the login route on some Next versions.
+  matcher: [
+    "/admin",
+    "/Admin",
+    "/ADMIN",
+    "/admin/:path*",
+    "/Admin/:path*",
+    "/ADMIN/:path*",
+  ],
+};
+</file>
+
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -71615,486 +71349,328 @@ export default async function GalleryPage() {
 }
 </file>
 
-<file path="components/Footer.tsx">
+<file path="components/BookNowPill.tsx">
 "use client";
 
-/** @file components/Footer.tsx */
-
 // ─────────────────────────────────────────
-// SECTION: Footer
-// WHAT: `.site-footer` bar + inherited light/dark fg (earth/neon inversion in globals.css).
-// WHY: Client for onTouchEnd; avoids hard-coded theme-4 bar on palettes where slot 4 is light.
-// PHASE 4: Static content.
+// SECTION: BookNowPill
+// WHAT: Persistent floating CTA anchored to viewport bottom-center with spring float.
+// WHY: Never preventDefault on touchEnd for Links — Safari needs default for synthesized click (SPA/iOS routing).
+// PHASE 4: No changes needed — links to /book internal route.
 // ─────────────────────────────────────────
 
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/book", label: "Book Now" },
-] as const;
+const MotionLink = motion.create(Link);
 
-export default function Footer() {
+export default function BookNowPill() {
+  const reduced = useReducedMotion();
+
   return (
-    <footer className="site-footer">
-      <div
-        aria-hidden="true"
-        className="h-[5px] w-full"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(135deg, var(--theme-5) 0px, var(--theme-5) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 36px)",
-          backgroundSize: "72px 100%",
-          animation: "barber-pole-h 5.2s linear infinite",
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-auto pb-[max(2rem,env(safe-area-inset-bottom))]">
+      {/* WHY: Outer motion.div owns the float so the Link's transform stack stays clean. */}
+      <motion.div
+        animate={reduced ? {} : {
+          y: [0, -10, 0],
         }}
-      />
-
-      <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
-          <div className="md:col-span-5">
-            <p className="text-3xl font-bold tracking-tight mb-1" style={{ fontFamily: "var(--font-display)" }}>
-              Fades &amp; Facials
-            </p>
-            <p
-              className="text-[11px] uppercase tracking-[0.32em] mb-8 opacity-90"
-              style={{ fontFamily: "var(--font-sans)" }}
-            >
-              Luxury Grooming · Suwanee, GA
-            </p>
-
-            <div className="flex items-center gap-4">
-              <div
-                aria-hidden="true"
-                className="w-2 h-11 rounded-full shrink-0 overflow-hidden"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(-45deg, var(--theme-5) 0px, var(--theme-5) 8px, color-mix(in srgb, currentColor 22%, transparent) 8px, color-mix(in srgb, currentColor 22%, transparent) 16px)",
-                  backgroundSize: "100% 36px",
-                  animation: "barber-pole 3.8s linear infinite",
-                }}
-              />
-              <p
-                className="text-sm leading-relaxed max-w-[240px] font-light opacity-95"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                Premium grooming, every visit. Where craft meets luxury.
-              </p>
-            </div>
-          </div>
-
-          <div className="md:col-span-3">
-            <p
-              className="text-[10px] uppercase tracking-[0.35em] mb-6"
-              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
-            >
-              Navigate
-            </p>
-            <nav className="flex flex-col gap-0">
-              {NAV_LINKS.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="text-sm py-2.5 transition-opacity duration-200 hover:opacity-80 touch-manipulation min-h-[44px] flex items-center"
-                  style={{
-                    fontFamily: "var(--font-sans)",
-                    borderBottom: "1px solid color-mix(in srgb, currentColor 14%, transparent)",
-                  }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                  }}
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          <div className="md:col-span-4">
-            <p
-              className="text-[10px] uppercase tracking-[0.35em] mb-6"
-              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
-            >
-              Connect
-            </p>
-            <a
-              href="https://instagram.com/fadesandfacials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm touch-manipulation min-h-[44px] flex items-center gap-2 group transition-opacity duration-200 hover:opacity-80"
-              style={{ fontFamily: "var(--font-sans)" }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-              }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="text-[var(--theme-5)] transition-transform duration-200 group-hover:scale-110 shrink-0"
-              >
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-              </svg>
-              @fadesandfacials
-            </a>
-
-            <div
-              className="mt-5 rounded-2xl p-4"
-              style={{
-                border: "1px solid color-mix(in srgb, currentColor 18%, transparent)",
-                background: "color-mix(in srgb, currentColor 6%, transparent)",
-              }}
-            >
-              <p
-                className="text-[11px] uppercase tracking-[0.25em] mb-1"
-                style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
-              >
-                Location
-              </p>
-              <p className="text-sm" style={{ fontFamily: "var(--font-sans)" }}>
-                Shops at Johns Creek
-              </p>
-              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
-                4090 Johns Creek Pkwy # E
-              </p>
-              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
-                Suwanee, GA 30024
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]">
-          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
-            © sourc3code @2026
-          </p>
-          <div aria-hidden="true" className="hidden sm:block w-1 h-1 rounded-full bg-[var(--theme-5)]" />
-          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
-            @fadesandfacials 2026
-          </p>
-        </div>
-      </div>
-    </footer>
+        transition={{
+          duration: 3.4,
+          repeat: Infinity,
+          ease: "easeInOut",
+          repeatType: "loop",
+        }}
+      >
+        <MotionLink
+          href="/book"
+          className="group relative inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm tracking-[0.04em] uppercase font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-5 text-theme-4 hover:bg-theme-4 hover:text-theme-1"
+          style={{ fontFamily: "var(--font-sans)" }}
+          whileHover={reduced ? undefined : { scale: 1.05 }}
+          whileTap={reduced ? undefined : { scale: 0.95 }}
+        >
+          <span className="relative z-10">Book Now</span>
+        </MotionLink>
+      </motion.div>
+    </div>
   );
 }
 </file>
 
-<file path="components/layouts/FeaturedServicesSection.tsx">
+<file path="components/layouts/CinematicLayout.tsx">
 "use client";
 
-/** @file components/layouts/FeaturedServicesSection.tsx */
+/** @file components/layouts/CinematicLayout.tsx */
 
 // ─────────────────────────────────────────
-// SECTION: FeaturedServicesSection
-// WHAT: Featured showcase bands; copy uses --ink-on-light-surface on soft bands.
-// WHY: Scroll reveal is owned by LayoutOrchestrator (RevealOnScroll) so page.tsx controls motion.
-// PHASE 4: featuredPairs still resolved server-side in app/page.tsx.
+// SECTION: CinematicLayout
+// WHAT: Service menu list on bg-theme-2 with dark ink (theme-4) for all type.
+// WHY: theme-text inverts on earth/neon; soft bands always use theme-4. Reveal wraps in LayoutOrchestrator.
+// PHASE 4: allServices from DB.
 // ─────────────────────────────────────────
 
-import { isVideoMedia, formatServicePrice, type Layout, type FeaturedPair } from "@/lib/utils";
+import Image from "next/image";
+import { formatServicePrice, type LayoutProps } from "@/lib/utils";
 
-const INK = "var(--ink-on-light-surface)";
-function inkMuted(pct: number) {
-  return `color-mix(in srgb, var(--ink-on-light-surface) ${pct}%, transparent)`;
+const MUTED = "color-mix(in srgb, var(--theme-4) 40%, transparent)";
+const SUBTLE = "color-mix(in srgb, var(--theme-4) 22%, transparent)";
+
+export default function CinematicLayout({ allServices }: LayoutProps) {
+  return (
+    <section data-home-band="menu" className="px-6 md:px-8 py-20 bg-theme-2 text-theme-4">
+      <div className="max-w-5xl mx-auto">
+        <p className="text-[11px] uppercase tracking-[0.3em] mb-3" style={{ color: MUTED, fontFamily: "var(--font-sans)" }}>
+          The Full Menu
+        </p>
+        <h2 className="text-4xl md:text-5xl font-light mb-12" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+          Our Services
+        </h2>
+        <div>
+          {allServices.map((s, i) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between py-6"
+              style={{
+                borderBottom:
+                  i < allServices.length - 1 ? `1px solid color-mix(in srgb, var(--theme-4) 10%, transparent)` : "none",
+              }}
+            >
+              <div className="flex items-center gap-5">
+                <span className="text-xs tabular-nums shrink-0" style={{ color: SUBTLE, fontFamily: "var(--font-sans)" }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                {s.image && (
+                  <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-xl overflow-hidden">
+                    <Image
+                      src={s.image}
+                      alt={s.name}
+                      fill
+                      sizes="80px"
+                      quality={75}
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+                    {s.name}
+                  </h3>
+                  {s.duration && (
+                    <p
+                      className="text-xs uppercase tracking-widest mt-0.5"
+                      style={{ color: MUTED, fontFamily: "var(--font-sans)" }}
+                    >
+                      {s.duration}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
+                {formatServicePrice(s.price)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
+</file>
 
-export default function FeaturedServicesSection({
-  activeLayout,
-  featuredPairs,
-}: {
-  activeLayout: Layout;
-  featuredPairs: FeaturedPair[];
-}) {
-  if (featuredPairs.length === 0) return null;
+<file path="components/layouts/EditorialLayout.tsx">
+"use client";
 
-  function PairMedia({
-    pair,
-    className,
-  }: {
-    pair: FeaturedPair;
-    className: string;
-  }) {
-    if (!pair.mediaUrl)
-      return <div className={className} style={{ background: "var(--theme-surface)" }} />;
-    if (isVideoMedia(pair.mediaUrl, pair.service.media_type)) {
-      return (
-        <video
-          src={pair.mediaUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className={className}
-        />
-      );
-    }
-    return (
-      <img
-        src={pair.mediaUrl}
-        alt={pair.service.name}
-        className={className}
-      />
-    );
-  }
+/** @file components/layouts/EditorialLayout.tsx */
 
-  switch (activeLayout) {
-    case "cinematic":
-      return (
-        <section data-home-band="featured" className="bg-theme-2 text-theme-4">
-          <div className="max-w-6xl mx-auto px-4 md:px-8 pt-16 pb-6">
-            <p
-              className="text-[11px] uppercase tracking-[0.3em] mb-2"
-              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
-            >
-              Featured Services
+// ─────────────────────────────────────────
+// SECTION: EditorialLayout
+// WHAT: Editorial menu on bg-theme-2; all type uses theme-4 / mixes for contrast.
+// PHASE 4: allServices from DB.
+// ─────────────────────────────────────────
+
+import Image from "next/image";
+import { formatServicePrice, type LayoutProps } from "@/lib/utils";
+
+const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
+
+export default function EditorialLayout({ allServices }: LayoutProps) {
+  return (
+    <section
+      data-home-band="menu"
+      className="px-6 md:px-16 py-24 bg-theme-2 text-theme-4 border-t border-theme-3"
+    >
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-start gap-6 md:gap-8 mb-16">
+          <span
+            className="text-8xl md:text-9xl font-light leading-none"
+            style={{
+              fontFamily: "var(--font-display)",
+              color: M(8),
+            }}
+          >
+            01
+          </span>
+          <div className="pt-4">
+            <p className="uppercase tracking-[0.3em] text-xs mb-2" style={{ color: M(40), fontFamily: "var(--font-sans)" }}>
+              The Menu
             </p>
-            <h2
-              className="text-3xl md:text-4xl font-light"
-              style={{ fontFamily: "var(--font-display)", color: INK }}
-            >
-              Signature Menu
+            <h2 className="text-4xl md:text-5xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+              Our Services
             </h2>
           </div>
-          {featuredPairs.slice(0, 6).map((pair, i) => (
+        </div>
+
+        <div className="space-y-0">
+          {allServices.map((s, i) => (
             <div
-              key={pair.serviceId}
-              className={`flex flex-col ${i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
+              key={s.id}
+              className="group grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-4 md:gap-12 py-7 transition-all duration-300 hover:px-6 hover:rounded-2xl hover:-mx-6"
+              style={{
+                borderBottom: i < allServices.length - 1 ? `1px solid ${M(10)}` : "none",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "color-mix(in srgb, var(--theme-4) 5%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+              }}
             >
-              <div className="relative w-full md:w-1/2 overflow-hidden" style={{ height: "55svh" }}>
-                <PairMedia
-                  pair={pair}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom, color-mix(in srgb, black 55%, transparent) 0%, color-mix(in srgb, black 22%, transparent) 100%)",
-                  }}
-                />
+              <div className="flex items-start gap-4">
+                {s.image && (
+                  <div className="relative w-20 h-28 shrink-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={s.image}
+                      alt={s.name}
+                      fill
+                      sizes="80px"
+                      quality={75}
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+                    {s.name}
+                  </h3>
+                  <p
+                    className="text-xs uppercase tracking-widest mt-1"
+                    style={{ color: M(35), fontFamily: "var(--font-sans)" }}
+                  >
+                    {s.duration ?? ""}
+                  </p>
+                </div>
               </div>
-              <div
-                data-featured-panel="true"
-                data-featured-panel-index={i}
-                data-home-panel={i % 2 === 0 ? "light" : "tint"}
-                className={`w-full md:w-1/2 flex flex-col justify-center px-6 md:px-10 py-10 md:py-14 ${
-                  i % 2 === 0 ? "bg-white" : "bg-theme-1"
-                }`}
+              <p
+                className="text-sm leading-relaxed self-center"
+                style={{
+                  color: M(48),
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 300,
+                }}
               >
-                <p
-                  className="text-[11px] uppercase tracking-[0.35em] mb-4"
-                  style={{ color: inkMuted(38), fontFamily: "var(--font-sans)" }}
-                >
-                  Featured
-                </p>
-                <h3
-                  className="font-light mb-4 leading-tight"
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: "clamp(2rem, 4vw, 3.5rem)",
-                    color: "inherit",
-                  }}
-                >
-                  {pair.service.name}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed mb-8 max-w-sm"
-                  style={{
-                    color: inkMuted(48),
-                    fontFamily: "var(--font-sans)",
-                    fontWeight: 300,
-                  }}
-                >
-                  {pair.service.description}
-                </p>
-                <span
-                  className="text-xl font-bold"
-                  style={{ fontFamily: "var(--font-display)", color: "inherit" }}
-                >
-                  {formatServicePrice(pair.service.price)}
+                {s.description}
+              </p>
+              <div className="self-center">
+                <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
+                  {formatServicePrice(s.price)}
                 </span>
               </div>
             </div>
           ))}
-        </section>
-      );
+        </div>
+      </div>
+    </section>
+  );
+}
+</file>
 
-    case "grid":
-      return (
-        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-6 py-16">
-          <div className="max-w-6xl mx-auto">
-            <p
-              className="text-[11px] uppercase tracking-[0.3em] mb-3"
-              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
+<file path="components/layouts/GridLayout.tsx">
+"use client";
+
+/** @file components/layouts/GridLayout.tsx */
+
+// ─────────────────────────────────────────
+// SECTION: GridLayout
+// WHAT: Service grid on bg-theme-2; card copy uses theme-4 for contrast on light surfaces.
+// PHASE 4: allServices from DB.
+// ─────────────────────────────────────────
+
+import Image from "next/image";
+import { formatServicePrice, type LayoutProps } from "@/lib/utils";
+
+const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
+
+export default function GridLayout({ allServices }: LayoutProps) {
+  return (
+    <section data-home-band="menu" className="px-4 md:px-5 py-20 max-w-7xl mx-auto bg-theme-2 text-theme-4">
+      <div className="text-center mb-14">
+        <p className="uppercase tracking-[0.3em] text-xs mb-3" style={{ color: M(40), fontFamily: "var(--font-sans)" }}>
+          What We Offer
+        </p>
+        <h2 className="text-4xl md:text-5xl font-light" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+          Our Services
+        </h2>
+        <div className="mx-auto mt-5" style={{ width: "40px", height: "1px", background: M(25) }} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {allServices.map((s, i) => {
+          const alt = i % 3 === 1;
+          return (
+            <div
+              key={s.id}
+              className="group rounded-3xl overflow-hidden transition-shadow duration-500 hover:shadow-lg"
+              style={{
+                background: alt ? "var(--theme-surface)" : "color-mix(in srgb, var(--theme-4) 4%, white)",
+                border: alt ? "none" : `1px solid ${M(10)}`,
+                boxShadow: alt
+                  ? "0 8px 40px color-mix(in srgb, var(--theme-bg) 25%, transparent)"
+                  : "0 2px 20px color-mix(in srgb, var(--theme-bg) 5%, transparent)",
+              }}
             >
-              Featured Services
-            </p>
-            <h2
-              className="text-3xl md:text-4xl font-light mb-10"
-              style={{ fontFamily: "var(--font-display)", color: INK }}
-            >
-              Signature Menu
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {featuredPairs.slice(0, 6).map((pair) => (
-                <article
-                  key={pair.serviceId}
-                  className="rounded-3xl overflow-hidden"
+              {s.image && (
+                <div className="relative aspect-video w-full overflow-hidden">
+                  <Image
+                    src={s.image}
+                    alt={s.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={75}
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <div className="p-6 md:p-8 text-theme-4">
+                <h3 className="text-2xl font-light mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--theme-4)" }}>
+                  {s.name}
+                </h3>
+                <p
+                  className="text-sm leading-relaxed mb-8"
                   style={{
-                    background: "var(--theme-surface)",
-                    boxShadow: "0 8px 40px color-mix(in srgb, var(--theme-bg) 10%, transparent)",
+                    color: M(45),
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 300,
                   }}
                 >
-                  <div className="relative aspect-[3/4]">
-                    <PairMedia
-                      pair={pair}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          "linear-gradient(to top, color-mix(in srgb, black 78%, transparent) 0%, color-mix(in srgb, black 18%, transparent) 50%, transparent 100%)",
-                      }}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 px-6 py-6 text-white">
-                      <h3
-                        className="text-2xl font-light mb-1 drop-shadow-sm"
-                        style={{ fontFamily: "var(--font-display)" }}
-                      >
-                        {pair.service.name}
-                      </h3>
-                      <span className="text-lg font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
-                        {formatServicePrice(pair.service.price)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="px-6 py-5">
-                    <p
-                      className="text-sm"
-                      style={{
-                        color: inkMuted(42),
-                        fontFamily: "var(--font-sans)",
-                        fontWeight: 300,
-                      }}
-                    >
-                      {pair.service.description}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      );
-
-    case "editorial":
-    default:
-      return (
-        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-16 py-16">
-          <div className="max-w-6xl mx-auto">
-            <p
-              className="text-[11px] uppercase tracking-[0.3em] mb-3"
-              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
-            >
-              Featured Services
-            </p>
-            <h2
-              className="text-3xl md:text-4xl font-light mb-8"
-              style={{ fontFamily: "var(--font-display)", color: INK }}
-            >
-              Signature Menu
-            </h2>
-
-            {featuredPairs[0] && (
-              <div
-                className="relative w-full overflow-hidden rounded-3xl mb-5"
-                style={{ minHeight: "60svh" }}
-              >
-                <PairMedia
-                  pair={featuredPairs[0]}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+                  {s.description}
+                </p>
                 <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 md:px-8 text-white">
-                  <p
-                    className="text-[11px] uppercase tracking-[0.35em] mb-4 text-white/75"
-                    style={{ fontFamily: "var(--font-sans)" }}
-                  >
-                    01
-                  </p>
-                  <h3
-                    className="font-light mb-4 leading-tight drop-shadow-sm"
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: "clamp(2.5rem, 6vw, 5rem)",
-                    }}
-                  >
-                    {featuredPairs[0].service.name}
-                  </h3>
-                  <span className="text-2xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
-                    {formatServicePrice(featuredPairs[0].service.price)}
+                  className="flex justify-between items-end pt-5"
+                  style={{ borderTop: `1px solid ${M(12)}` }}
+                >
+                  <span className="text-xl font-bold text-theme-4" style={{ fontFamily: "var(--font-display)" }}>
+                    {formatServicePrice(s.price)}
+                  </span>
+                  <span className="text-xs uppercase tracking-widest" style={{ color: M(35), fontFamily: "var(--font-sans)" }}>
+                    {s.duration ?? ""}
                   </span>
                 </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {featuredPairs.slice(1, 3).map((pair, i) => (
-                <div
-                  key={pair.serviceId}
-                  className="relative overflow-hidden rounded-3xl"
-                  style={{ minHeight: "40svh" }}
-                >
-                  <PairMedia
-                    pair={pair}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
-                    }}
-                  />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
-                    <p
-                      className="text-[11px] uppercase tracking-[0.35em] mb-3 text-white/75"
-                      style={{ fontFamily: "var(--font-sans)" }}
-                    >
-                      {String(i + 2).padStart(2, "0")}
-                    </p>
-                    <h3
-                      className="font-light mb-3 leading-tight drop-shadow-sm"
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: "clamp(1.5rem, 3vw, 2.5rem)",
-                      }}
-                    >
-                      {pair.service.name}
-                    </h3>
-                    <span className="text-xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
-                      {formatServicePrice(pair.service.price)}
-                    </span>
-                  </div>
-                </div>
-              ))}
             </div>
-          </div>
-        </section>
-      );
-  }
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 </file>
 
@@ -72173,161 +71749,6 @@ export default function LayoutOrchestrator({ allServices, featuredPairs, activeL
         <LayoutComponent allServices={menuServices} />
       </RevealOnScroll>
     </>
-  );
-}
-</file>
-
-<file path="components/VisitUsSection.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: VisitUsSection
-// WHAT: Shared "Find Us" section — map embed, address, hours grid, luxury ping animation.
-// WHY: Client component so Framer Motion ping ring animates over the map on mount; scroll reveal wraps in page.tsx.
-//   Ping uses scale + opacity only (compositor-only, no repaints). Map is lazy-loaded.
-// PHASE 4: Hours data is hardcoded. Could be moved to site_config table.
-// ─────────────────────────────────────────
-
-import { motion, useReducedMotion } from "framer-motion";
-
-export default function VisitUsSection() {
-  const reduced = useReducedMotion();
-
-  const embedSrc =
-    "https://maps.google.com/maps?q=4090+Johns+Creek+Pkwy+%23+E,+Suwanee,+GA+30024&t=&z=15&ie=UTF8&iwloc=&output=embed";
-
-  return (
-    <section data-home-band="visit" className="relative z-20 px-6 py-24 text-theme-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-
-          {/* ── Map container with luxury ping ring ── */}
-          <div
-            className="relative w-full aspect-video lg:aspect-square rounded-3xl overflow-hidden"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--theme-4) 22%, transparent)",
-              boxShadow: "0 20px 60px color-mix(in srgb, var(--theme-4) 12%, transparent)",
-            }}
-          >
-            {/* WHY: Lazy-loaded map keeps LCP clean — only loads when scrolled into view. */}
-            <iframe
-              src={embedSrc}
-              width="100%"
-              height="100%"
-              style={{
-                border: 0,
-                minHeight: "400px",
-                filter: "invert(100%) hue-rotate(180deg) brightness(85%) contrast(115%)",
-              }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Fades and Facials location"
-            />
-            {/* Bottom vignette overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none rounded-3xl"
-              style={{
-                background:
-                  "linear-gradient(to bottom, transparent 70%, color-mix(in srgb, var(--theme-1) 35%, transparent) 100%)",
-              }}
-            />
-            {/* WHY: Luxury ping ring — scale + opacity only so it stays on the compositor
-                layer. Signals "live location" without distracting from the map content. */}
-            <motion.div
-              className="absolute inset-[-1px] rounded-3xl pointer-events-none"
-              style={{ border: "2px solid var(--theme-5)" }}
-              animate={reduced ? {} : {
-                scale:   [1, 1.025, 1],
-                opacity: [0.55, 0.1, 0.55],
-              }}
-              transition={{
-                duration: 2.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-                repeatType: "loop",
-              }}
-            />
-          </div>
-
-          {/* ── Address + hours ── */}
-          <div style={{ fontFamily: "'Manrope', sans-serif" }}>
-            <p
-              className="uppercase tracking-[0.3em] text-xs mb-3"
-              style={{ color: "color-mix(in srgb, var(--theme-4) 65%, transparent)", fontFamily: "'Manrope', sans-serif" }}
-            >
-              Find Us
-            </p>
-            <h2
-              className="text-4xl md:text-5xl font-light mb-6"
-              style={{ fontFamily: "'Bodoni Moda', serif", color: "var(--theme-4)" }}
-            >
-              Visit Us
-            </h2>
-            <p className="text-sm tracking-widest uppercase font-medium mb-1" style={{ color: "var(--theme-4)" }}>
-              Shops at Johns Creek
-            </p>
-            <p className="text-sm tracking-widest uppercase" style={{ color: "color-mix(in srgb, var(--theme-4) 78%, transparent)" }}>
-              4090 Johns Creek Pkwy # E
-            </p>
-            <p className="text-sm tracking-widest uppercase mb-4" style={{ color: "color-mix(in srgb, var(--theme-4) 78%, transparent)" }}>
-              Suwanee, GA 30024
-            </p>
-            <a
-              href="https://maps.google.com/?q=4090+Johns+Creek+Pkwy+E+Suwanee+GA+30024"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-1 text-xs uppercase tracking-widest transition-opacity hover:opacity-70 touch-manipulation min-h-[44px]"
-              style={{ color: "var(--theme-4)", fontFamily: "'Manrope', sans-serif" }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-              }}
-            >
-              Get Directions
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
-
-            <div className="mt-8 grid grid-cols-2 gap-4" style={{ fontFamily: "'Manrope', sans-serif" }}>
-              {[
-                { day: "Mon – Tue", hours: "Closed" },
-                { day: "Wed – Fri", hours: "10am – 7pm" },
-                { day: "Saturday", hours: "9am – 6pm" },
-                { day: "Sunday",   hours: "11am – 4pm" },
-              ].map(({ day, hours }) => (
-                <div
-                  key={day}
-                  className="rounded-2xl p-4"
-                  style={{
-                    background: "color-mix(in srgb, var(--theme-4) 6%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--theme-4) 18%, transparent)",
-                  }}
-                >
-                  <p
-                    className="text-sm uppercase tracking-widest mb-1"
-                    style={{ color: "color-mix(in srgb, var(--theme-4) 65%, transparent)" }}
-                  >
-                    {day}
-                  </p>
-                  <p
-                    className="text-sm font-medium uppercase tracking-widest"
-                    style={{
-                      color:
-                        hours === "Closed"
-                          ? "color-mix(in srgb, var(--theme-4) 45%, transparent)"
-                          : "var(--theme-4)",
-                    }}
-                  >
-                    {hours}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 </file>
@@ -73145,28 +72566,638 @@ export default function GalleryGrid({ items, layout = "masonry" }: Props) {
 }
 </file>
 
-<file path="next.config.ts">
-import type { NextConfig } from "next";
+<file path="components/Footer.tsx">
+"use client";
 
-const nextConfig: NextConfig = {
-  // ─────────────────────────────────────────
-  // MOBILE DEV ACCESS — allowedDevOrigins
-  // WHAT: Allows devices on the local network to connect to the Next.js dev server.
-  // WHY: Next.js 15 blocks cross-origin requests to dev resources by default.
-  //      Without this, phones/tablets on the same WiFi get a blocked HMR connection,
-  //      changes don't reflect on device, and scroll/interaction bugs appear "unfixed"
-  //      even after correct code changes are applied.
-  // HOW TO FIND YOUR IP: Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
-  //      and look for your IPv4 address under your WiFi adapter.
-  // PRODUCTION: This setting only affects the dev server. It has zero effect on builds.
-  // ─────────────────────────────────────────
-  allowedDevOrigins: ['10.0.0.126', '100.82.31.124'],
-  images: {
-    qualities: [75, 100],
-  },
-};
+/** @file components/Footer.tsx */
 
-export default nextConfig;
+// ─────────────────────────────────────────
+// SECTION: Footer
+// WHAT: `.site-footer` bar + inherited light/dark fg (earth/neon inversion in globals.css).
+// WHY: Client bar; Footer links omit touchEnd preventDefault so iOS forwards click to SPA/external nav.
+// PHASE 4: Static content.
+// ─────────────────────────────────────────
+
+import Link from "next/link";
+
+const NAV_LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/services", label: "Services" },
+  { href: "/gallery", label: "Gallery" },
+  { href: "/book", label: "Book Now" },
+] as const;
+
+export default function Footer() {
+  return (
+    <footer className="site-footer">
+      <div
+        aria-hidden="true"
+        className="h-[5px] w-full"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(135deg, var(--theme-5) 0px, var(--theme-5) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 18px, color-mix(in srgb, var(--theme-3) 45%, transparent) 36px)",
+          backgroundSize: "72px 100%",
+          animation: "barber-pole-h 5.2s linear infinite",
+        }}
+      />
+
+      <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
+          <div className="md:col-span-5">
+            <p className="text-3xl font-bold tracking-tight mb-1" style={{ fontFamily: "var(--font-display)" }}>
+              Fades &amp; Facials
+            </p>
+            <p
+              className="text-[11px] uppercase tracking-[0.32em] mb-8 opacity-90"
+              style={{ fontFamily: "var(--font-sans)" }}
+            >
+              Luxury Grooming · Suwanee, GA
+            </p>
+
+            <div className="flex items-center gap-4">
+              <div
+                aria-hidden="true"
+                className="w-2 h-11 rounded-full shrink-0 overflow-hidden"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(-45deg, var(--theme-5) 0px, var(--theme-5) 8px, color-mix(in srgb, currentColor 22%, transparent) 8px, color-mix(in srgb, currentColor 22%, transparent) 16px)",
+                  backgroundSize: "100% 36px",
+                  animation: "barber-pole 3.8s linear infinite",
+                }}
+              />
+              <p
+                className="text-sm leading-relaxed max-w-[240px] font-light opacity-95"
+                style={{ fontFamily: "var(--font-sans)" }}
+              >
+                Premium grooming, every visit. Where craft meets luxury.
+              </p>
+            </div>
+          </div>
+
+          <div className="md:col-span-3">
+            <p
+              className="text-[10px] uppercase tracking-[0.35em] mb-6"
+              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
+            >
+              Navigate
+            </p>
+            <nav className="flex flex-col gap-0">
+              {NAV_LINKS.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="text-sm py-2.5 transition-opacity duration-200 hover:opacity-80 touch-manipulation min-h-[44px] flex items-center"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    borderBottom: "1px solid color-mix(in srgb, currentColor 14%, transparent)",
+                  }}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <div className="md:col-span-4">
+            <p
+              className="text-[10px] uppercase tracking-[0.35em] mb-6"
+              style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
+            >
+              Connect
+            </p>
+            <a
+              href="https://instagram.com/fadesandfacials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm touch-manipulation min-h-[44px] flex items-center gap-2 group transition-opacity duration-200 hover:opacity-80"
+              style={{ fontFamily: "var(--font-sans)" }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="text-[var(--theme-5)] transition-transform duration-200 group-hover:scale-110 shrink-0"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              @fadesandfacials
+            </a>
+
+            <div
+              className="mt-5 rounded-2xl p-4"
+              style={{
+                border: "1px solid color-mix(in srgb, currentColor 18%, transparent)",
+                background: "color-mix(in srgb, currentColor 6%, transparent)",
+              }}
+            >
+              <p
+                className="text-[11px] uppercase tracking-[0.25em] mb-1"
+                style={{ fontFamily: "var(--font-sans)", color: "var(--theme-5)" }}
+              >
+                Location
+              </p>
+              <p className="text-sm" style={{ fontFamily: "var(--font-sans)" }}>
+                Shops at Johns Creek
+              </p>
+              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
+                4090 Johns Creek Pkwy # E
+              </p>
+              <p className="text-sm opacity-90" style={{ fontFamily: "var(--font-sans)" }}>
+                Suwanee, GA 30024
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[color-mix(in_srgb,currentColor_18%,transparent)]">
+          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
+            © sourc3code @2026
+          </p>
+          <div aria-hidden="true" className="hidden sm:block w-1 h-1 rounded-full bg-[var(--theme-5)]" />
+          <p className="text-[11px] opacity-60" style={{ fontFamily: "var(--font-sans)" }}>
+            @fadesandfacials 2026
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+</file>
+
+<file path="components/layouts/FeaturedServicesSection.tsx">
+"use client";
+
+/** @file components/layouts/FeaturedServicesSection.tsx */
+
+// ─────────────────────────────────────────
+// SECTION: FeaturedServicesSection
+// WHAT: Featured showcase bands; copy uses --ink-on-light-surface on soft bands.
+// WHY: Scroll reveal is owned by LayoutOrchestrator (RevealOnScroll) so page.tsx controls motion.
+// PHASE 4: featuredPairs still resolved server-side in app/page.tsx.
+// ─────────────────────────────────────────
+
+import Image from "next/image";
+import { isVideoMedia, formatServicePrice, type Layout, type FeaturedPair } from "@/lib/utils";
+
+const INK = "var(--ink-on-light-surface)";
+function inkMuted(pct: number) {
+  return `color-mix(in srgb, var(--ink-on-light-surface) ${pct}%, transparent)`;
+}
+
+export default function FeaturedServicesSection({
+  activeLayout,
+  featuredPairs,
+}: {
+  activeLayout: Layout;
+  featuredPairs: FeaturedPair[];
+}) {
+  if (featuredPairs.length === 0) return null;
+
+  function PairMedia({
+    pair,
+    className,
+  }: {
+    pair: FeaturedPair;
+    className: string;
+  }) {
+    if (!pair.mediaUrl)
+      return <div className={className} style={{ background: "var(--theme-surface)" }} />;
+    if (isVideoMedia(pair.mediaUrl, pair.service.media_type)) {
+      return (
+        <video
+          src={pair.mediaUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="none"
+          className={className}
+        />
+      );
+    }
+    return (
+      <Image
+        src={pair.mediaUrl}
+        alt={pair.service.name}
+        fill
+        sizes="(max-width: 768px) 100vw, 50vw"
+        quality={75}
+        className="object-cover"
+      />
+    );
+  }
+
+  switch (activeLayout) {
+    case "cinematic":
+      return (
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4">
+          <div className="max-w-6xl mx-auto px-4 md:px-8 pt-16 pb-6">
+            <p
+              className="text-[11px] uppercase tracking-[0.3em] mb-2"
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
+            >
+              Featured Services
+            </p>
+            <h2
+              className="text-3xl md:text-4xl font-light"
+              style={{ fontFamily: "var(--font-display)", color: INK }}
+            >
+              Signature Menu
+            </h2>
+          </div>
+          {featuredPairs.slice(0, 6).map((pair, i) => (
+            <div
+              key={pair.serviceId}
+              className={`flex flex-col ${i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
+            >
+              <div className="relative w-full md:w-1/2 overflow-hidden" style={{ height: "55svh" }}>
+                <PairMedia
+                  pair={pair}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, color-mix(in srgb, black 55%, transparent) 0%, color-mix(in srgb, black 22%, transparent) 100%)",
+                  }}
+                />
+              </div>
+              <div
+                data-featured-panel="true"
+                data-featured-panel-index={i}
+                data-home-panel={i % 2 === 0 ? "light" : "tint"}
+                className={`w-full md:w-1/2 flex flex-col justify-center px-6 md:px-10 py-10 md:py-14 ${
+                  i % 2 === 0 ? "bg-white" : "bg-theme-1"
+                }`}
+              >
+                <p
+                  className="text-[11px] uppercase tracking-[0.35em] mb-4"
+                  style={{ color: inkMuted(38), fontFamily: "var(--font-sans)" }}
+                >
+                  Featured
+                </p>
+                <h3
+                  className="font-light mb-4 leading-tight"
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                    color: "inherit",
+                  }}
+                >
+                  {pair.service.name}
+                </h3>
+                <p
+                  className="text-sm leading-relaxed mb-8 max-w-sm"
+                  style={{
+                    color: inkMuted(48),
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 300,
+                  }}
+                >
+                  {pair.service.description}
+                </p>
+                <span
+                  className="text-xl font-bold"
+                  style={{ fontFamily: "var(--font-display)", color: "inherit" }}
+                >
+                  {formatServicePrice(pair.service.price)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </section>
+      );
+
+    case "grid":
+      return (
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-6 py-16">
+          <div className="max-w-6xl mx-auto">
+            <p
+              className="text-[11px] uppercase tracking-[0.3em] mb-3"
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
+            >
+              Featured Services
+            </p>
+            <h2
+              className="text-3xl md:text-4xl font-light mb-10"
+              style={{ fontFamily: "var(--font-display)", color: INK }}
+            >
+              Signature Menu
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {featuredPairs.slice(0, 6).map((pair) => (
+                <article
+                  key={pair.serviceId}
+                  className="rounded-3xl overflow-hidden"
+                  style={{
+                    background: "var(--theme-surface)",
+                    boxShadow: "0 8px 40px color-mix(in srgb, var(--theme-bg) 10%, transparent)",
+                  }}
+                >
+                  <div className="relative aspect-[3/4]">
+                    <PairMedia
+                      pair={pair}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background:
+                          "linear-gradient(to top, color-mix(in srgb, black 78%, transparent) 0%, color-mix(in srgb, black 18%, transparent) 50%, transparent 100%)",
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 px-6 py-6 text-white">
+                      <h3
+                        className="text-2xl font-light mb-1 drop-shadow-sm"
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
+                        {pair.service.name}
+                      </h3>
+                      <span className="text-lg font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                        {formatServicePrice(pair.service.price)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-6 py-5">
+                    <p
+                      className="text-sm"
+                      style={{
+                        color: inkMuted(42),
+                        fontFamily: "var(--font-sans)",
+                        fontWeight: 300,
+                      }}
+                    >
+                      {pair.service.description}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+
+    case "editorial":
+    default:
+      return (
+        <section data-home-band="featured" className="bg-theme-2 text-theme-4 px-4 md:px-16 py-16">
+          <div className="max-w-6xl mx-auto">
+            <p
+              className="text-[11px] uppercase tracking-[0.3em] mb-3"
+              style={{ color: inkMuted(42), fontFamily: "var(--font-sans)" }}
+            >
+              Featured Services
+            </p>
+            <h2
+              className="text-3xl md:text-4xl font-light mb-8"
+              style={{ fontFamily: "var(--font-display)", color: INK }}
+            >
+              Signature Menu
+            </h2>
+
+            {featuredPairs[0] && (
+              <div
+                className="relative w-full overflow-hidden rounded-3xl mb-5"
+                style={{ minHeight: "60svh" }}
+              >
+                <PairMedia
+                  pair={featuredPairs[0]}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
+                  }}
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 md:px-8 text-white">
+                  <p
+                    className="text-[11px] uppercase tracking-[0.35em] mb-4 text-white/75"
+                    style={{ fontFamily: "var(--font-sans)" }}
+                  >
+                    01
+                  </p>
+                  <h3
+                    className="font-light mb-4 leading-tight drop-shadow-sm"
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: "clamp(2.5rem, 6vw, 5rem)",
+                    }}
+                  >
+                    {featuredPairs[0].service.name}
+                  </h3>
+                  <span className="text-2xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                    {formatServicePrice(featuredPairs[0].service.price)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {featuredPairs.slice(1, 3).map((pair, i) => (
+                <div
+                  key={pair.serviceId}
+                  className="relative overflow-hidden rounded-3xl"
+                  style={{ minHeight: "40svh" }}
+                >
+                  <PairMedia
+                    pair={pair}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(to bottom, color-mix(in srgb, black 45%, transparent) 0%, color-mix(in srgb, black 62%, transparent) 100%)",
+                    }}
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 text-white">
+                    <p
+                      className="text-[11px] uppercase tracking-[0.35em] mb-3 text-white/75"
+                      style={{ fontFamily: "var(--font-sans)" }}
+                    >
+                      {String(i + 2).padStart(2, "0")}
+                    </p>
+                    <h3
+                      className="font-light mb-3 leading-tight drop-shadow-sm"
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontSize: "clamp(1.5rem, 3vw, 2.5rem)",
+                      }}
+                    >
+                      {pair.service.name}
+                    </h3>
+                    <span className="text-xl font-light text-white/90" style={{ fontFamily: "var(--font-display)" }}>
+                      {formatServicePrice(pair.service.price)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+  }
+}
+</file>
+
+<file path="components/VisitUsSection.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: VisitUsSection
+// WHAT: Shared "Find Us" section — map embed, address, hours grid, luxury ping animation.
+// WHY: Client component so Framer Motion ping ring animates over the map on mount; scroll reveal wraps in page.tsx.
+//   Ping uses scale + opacity only (compositor-only, no repaints). Map is lazy-loaded.
+// PHASE 4: Hours data is hardcoded. Could be moved to site_config table.
+// ─────────────────────────────────────────
+
+import { motion, useReducedMotion } from "framer-motion";
+
+export default function VisitUsSection() {
+  const reduced = useReducedMotion();
+
+  const embedSrc =
+    "https://maps.google.com/maps?q=4090+Johns+Creek+Pkwy+%23+E,+Suwanee,+GA+30024&t=&z=15&ie=UTF8&iwloc=&output=embed";
+
+  return (
+    <section data-home-band="visit" className="relative z-20 px-6 py-24 text-theme-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+          {/* ── Map container with luxury ping ring ── */}
+          <div
+            className="relative w-full aspect-video lg:aspect-square rounded-3xl overflow-hidden"
+            style={{
+              border: "1px solid color-mix(in srgb, var(--theme-4) 22%, transparent)",
+              boxShadow: "0 20px 60px color-mix(in srgb, var(--theme-4) 12%, transparent)",
+            }}
+          >
+            {/* WHY: Lazy-loaded map keeps LCP clean — only loads when scrolled into view. */}
+            <iframe
+              src={embedSrc}
+              width="100%"
+              height="100%"
+              style={{
+                border: 0,
+                minHeight: "400px",
+                filter: "invert(100%) hue-rotate(180deg) brightness(85%) contrast(115%)",
+              }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Fades and Facials location"
+            />
+            {/* Bottom vignette overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none rounded-3xl"
+              style={{
+                background:
+                  "linear-gradient(to bottom, transparent 70%, color-mix(in srgb, var(--theme-1) 35%, transparent) 100%)",
+              }}
+            />
+            {/* WHY: Luxury ping ring — scale + opacity only so it stays on the compositor
+                layer. Signals "live location" without distracting from the map content. */}
+            <motion.div
+              className="absolute inset-[-1px] rounded-3xl pointer-events-none"
+              style={{ border: "2px solid var(--theme-5)" }}
+              animate={reduced ? {} : {
+                scale:   [1, 1.025, 1],
+                opacity: [0.55, 0.1, 0.55],
+              }}
+              transition={{
+                duration: 2.8,
+                repeat: Infinity,
+                ease: "easeInOut",
+                repeatType: "loop",
+              }}
+            />
+          </div>
+
+          {/* ── Address + hours ── */}
+          <div style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <p
+              className="uppercase tracking-[0.3em] text-xs mb-3"
+              style={{ color: "color-mix(in srgb, var(--theme-4) 65%, transparent)", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Find Us
+            </p>
+            <h2
+              className="text-4xl md:text-5xl font-light mb-6"
+              style={{ fontFamily: "'Bodoni Moda', serif", color: "var(--theme-4)" }}
+            >
+              Visit Us
+            </h2>
+            <p className="text-sm tracking-widest uppercase font-medium mb-1" style={{ color: "var(--theme-4)" }}>
+              Shops at Johns Creek
+            </p>
+            <p className="text-sm tracking-widest uppercase" style={{ color: "color-mix(in srgb, var(--theme-4) 78%, transparent)" }}>
+              4090 Johns Creek Pkwy # E
+            </p>
+            <p className="text-sm tracking-widest uppercase mb-4" style={{ color: "color-mix(in srgb, var(--theme-4) 78%, transparent)" }}>
+              Suwanee, GA 30024
+            </p>
+            <a
+              href="https://maps.google.com/?q=4090+Johns+Creek+Pkwy+E+Suwanee+GA+30024"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-1 text-xs uppercase tracking-widest transition-opacity hover:opacity-70 touch-manipulation min-h-[44px]"
+              style={{ color: "var(--theme-4)", fontFamily: "'Manrope', sans-serif" }}
+            >
+              Get Directions
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 17L17 7M17 7H7M17 7v10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+
+            <div className="mt-8 grid grid-cols-2 gap-4" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {[
+                { day: "Mon – Tue", hours: "Closed" },
+                { day: "Wed – Fri", hours: "10am – 7pm" },
+                { day: "Saturday", hours: "9am – 6pm" },
+                { day: "Sunday",   hours: "11am – 4pm" },
+              ].map(({ day, hours }) => (
+                <div
+                  key={day}
+                  className="rounded-2xl p-4"
+                  style={{
+                    background: "color-mix(in srgb, var(--theme-4) 6%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--theme-4) 18%, transparent)",
+                  }}
+                >
+                  <p
+                    className="text-sm uppercase tracking-widest mb-1"
+                    style={{ color: "color-mix(in srgb, var(--theme-4) 65%, transparent)" }}
+                  >
+                    {day}
+                  </p>
+                  <p
+                    className="text-sm font-medium uppercase tracking-widest"
+                    style={{
+                      color:
+                        hours === "Closed"
+                          ? "color-mix(in srgb, var(--theme-4) 45%, transparent)"
+                          : "var(--theme-4)",
+                    }}
+                  >
+                    {hours}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 </file>
 
 <file path="TODO.md">
@@ -73197,6 +73228,53 @@ app/admin/dashboard/page.tsx (Layout/Theme/Hero picker polish, mobile-optimized)
 app/admin/services/page.tsx (enhanced drag UI)
 app/admin/gallery/page.tsx (enhanced drag UI)
 app/admin/page.tsx (login polish if needed)
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // ─────────────────────────────────────────
+  // MOBILE DEV ACCESS — allowedDevOrigins
+  // WHY: Next.js 15 blocks cross-origin dev requests by default; phones on WiFi need this.
+  // PRODUCTION: zero effect on builds.
+  // ─────────────────────────────────────────
+  allowedDevOrigins: ['10.0.0.126', '100.82.31.124'],
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    qualities: [75, 100],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'eioptwfwdgqnkcbeaoqp.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+      },
+    ],
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/images/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
 </file>
 
 <file path=".claude/settings.local.json">
@@ -76847,8 +76925,25 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
+  title: {
+    default: "Fades & Facials — Premium Barber & Skincare Studio",
+    template: "%s | Fades & Facials",
+  },
+  description:
+    "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments in a relaxed, upscale studio.",
+  keywords: ["barber", "fades", "facials", "beard care", "hot shave", "barbershop", "haircut", "skincare"],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    title: "Fades & Facials — Premium Barber & Skincare Studio",
+    description: "Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+    siteName: "Fades & Facials",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fades & Facials",
+    description: "Premium barber and facial services.",
+  },
 };
 
 export default async function RootLayout({
@@ -76879,6 +76974,21 @@ export default async function RootLayout({
       className={`${syne.variable} ${inter.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "HairSalon",
+              name: "Fades & Facials",
+              description:
+                "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+              url: "https://fadesandfacials.com",
+              priceRange: "$$",
+              sameAs: ["https://www.instagram.com/fadesandfacials"],
+            }),
+          }}
+        />
         <ThemePreferenceSync />
         <Navbar />
         <div className="flex min-h-0 flex-1 flex-col">
@@ -76927,10 +77037,11 @@ const NAV_LINKS = [
 ] as const;
 
 const MOBILE_LINKS = [
-  { href: "/services", label: "Services"         },
-  { href: "/gallery",  label: "Gallery"          },
+  { href: "/",         label: "Home"               },
+  { href: "/services", label: "Services"          },
+  { href: "/gallery",  label: "Gallery"           },
   { href: "/book",     label: "Book Appointment" },
-  { href: "/admin",    label: "Studio Dashboard" },
+  { href: "/admin",    label: "Studio Dashboard"  },
 ] as const;
 
 // ─────────────────────────────────────────
@@ -76940,7 +77051,7 @@ const MOBILE_LINKS = [
 //   Uses useMotionValue + useSpring so movement stays on the compositor layer
 //   (transform only — no layout/paint). Resets smoothly on mouse leave.
 // ─────────────────────────────────────────
-const MotionBookLink = motion(Link);
+const MotionBookLink = motion.create(Link);
 
 function MagneticBookNow({ isActive, reduced }: { isActive: boolean; reduced: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -76981,9 +77092,6 @@ function MagneticBookNow({ isActive, reduced }: { isActive: boolean; reduced: bo
         style={{ fontFamily: "var(--font-sans)" }}
         whileHover={reduced ? undefined : { scale: 1.05 }}
         whileTap={reduced ? undefined : { scale: 0.95 }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-        }}
       >
         Book Now
       </MotionBookLink>
@@ -77136,7 +77244,6 @@ export default function Navbar() {
                   <Link
                     href={link.href}
                     onClick={() => setMenuOpen(false)}
-                    onTouchEnd={(e) => { e.preventDefault(); setMenuOpen(false); }}
                     className="block py-5 text-2xl font-light border-b touch-manipulation transition-colors hover:text-[var(--theme-accent)]"
                     style={{
                       borderColor: "color-mix(in srgb, var(--theme-text) 10%, transparent)",
@@ -77158,149 +77265,6 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
-  );
-}
-</file>
-
-<file path="app/page.tsx">
-/**
- * @file app/page.tsx
- *
- * A+ RSC Refactor. Pure Server Component. All data fetching happens here.
- * Zero client-side useEffect. Zero hydration mismatch. Zero CLS on mobile.
- * Data is passed down to LayoutOrchestrator (the explicit client boundary).
- *
- * Agency win: change active_layout/global_hero_url in Supabase → instant
- * server-side re-render for every visitor on next request. No client state.
- *
- * Render order (always):
- *   1. GlobalHero + HeroTextReveal — media RSC; copy motion client
- *   2. LayoutOrchestrator — RevealOnScroll wraps featured + menu layout bands
- *   3. BookNowPill — fixed floating CTA (accent theme-5)
- *   4. VisitUsSection — RevealOnScroll wrap in this file; footer from root layout
- */
-
-import { createServerSupabaseClient } from "@/lib/supabase";
-import type { DbService } from "@/lib/supabase";
-import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
-import LayoutOrchestrator from "@/components/layouts/LayoutOrchestrator";
-import BookNowPill from "@/components/BookNowPill";
-import VisitUsSection from "@/components/VisitUsSection";
-import HeroTextReveal from "@/components/HeroTextReveal";
-import RevealOnScroll from "@/components/RevealOnScroll";
-
-const DEFAULT_GLOBAL_HERO_URL =
-  "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
-
-export default async function HomePage() {
-  const supabase = await createServerSupabaseClient();
-
-  const [servicesRes, featuredRes, configRes] = await Promise.all([
-    supabase
-      .from("services")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("site_config")
-      .select("value")
-      .eq("key", "featured_services")
-      .single(),
-    supabase
-      .from("site_config")
-      .select("key, value")
-      .in("key", ["active_layout", "global_hero_url"]),
-  ]);
-
-  const allServices: DbService[] = servicesRes.data ?? [];
-
-  // WHY: Featured pairs resolved server-side — no client computation, no
-  // loading state, no hydration mismatch between server and client renders.
-  let featuredPairs: FeaturedPair[] = [];
-  if (featuredRes.data?.value) {
-    try {
-      const rawPairs = JSON.parse(featuredRes.data.value) as Array<
-        number | null | { serviceId: number | null; mediaUrl: string | null }
-      >;
-      const serviceMap = new Map(allServices.map((s) => [s.id, s]));
-      featuredPairs = [0, 1, 2].flatMap((index) => {
-        const row = rawPairs[index];
-        const serviceId = typeof row === "number" ? row : (row?.serviceId ?? null);
-        const mediaUrl =
-          typeof row === "object" && row !== null ? (row.mediaUrl ?? null) : null;
-        if (serviceId === null) return [];
-        const service = serviceMap.get(serviceId);
-        if (!service) return [];
-        return [{ serviceId, mediaUrl, service }];
-      });
-    } catch (e) {
-      // Graceful degradation — featuredPairs stays empty, page renders without featured section
-    }
-  }
-
-  const activeLayoutRaw = configRes.data?.find((r) => r.key === "active_layout")?.value;
-  const activeLayout: Layout =
-    activeLayoutRaw === "cinematic" || activeLayoutRaw === "grid" || activeLayoutRaw === "editorial"
-      ? activeLayoutRaw
-      : "cinematic";
-
-  const globalHeroUrl =
-    configRes.data?.find((r) => r.key === "global_hero_url")?.value ?? DEFAULT_GLOBAL_HERO_URL;
-
-  return (
-    <>
-      {/* ── Global Identity Hero — server-rendered, zero flash ──
-          WHY: Rendered in the RSC so the hero image/video is in the initial HTML
-          payload — no layout shift, no GIF restart on hydration. */}
-      <section className="relative w-full h-[100svh] overflow-hidden bg-theme-4 text-theme-1">
-        {isVideoMedia(globalHeroUrl) ? (
-          <video
-            src={globalHeroUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: "center 15%" }}
-          />
-        ) : (
-          <img
-            src={globalHeroUrl}
-            alt="Fades and Facials atmosphere"
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: "center 15%" }}
-          />
-        )}
-        {/* Cinematic vignette — theme-4 mixes only (no hex); keeps copy legible over media. */}
-        <div
-          className="absolute inset-0 z-10"
-          style={{
-            background:
-              "linear-gradient(to bottom, color-mix(in srgb, var(--theme-4) 55%, transparent) 0%, color-mix(in srgb, var(--theme-4) 10%, transparent) 40%, color-mix(in srgb, var(--theme-4) 75%, transparent) 85%, color-mix(in srgb, var(--theme-4) 92%, transparent) 100%)",
-          }}
-        />
-        {/* WHY: HeroTextReveal is the client boundary — it adds staggered Framer Motion
-            entrance while the media + vignette stay server-rendered for zero CLS. */}
-        <HeroTextReveal />
-      </section>
-
-      {/* ── LayoutOrchestrator — explicit client boundary ──
-          Receives fully-resolved server data; owns FeaturedServicesSection
-          + the active layout component. No data fetching inside. */}
-      <LayoutOrchestrator
-        allServices={allServices}
-        featuredPairs={featuredPairs}
-        activeLayout={activeLayout}
-      />
-
-      <BookNowPill />
-
-      <div className="w-full bg-theme-1 text-theme-4">
-        <RevealOnScroll as="section" data-home-band="visit-wrap">
-          <VisitUsSection />
-        </RevealOnScroll>
-      </div>
     </>
   );
 }
@@ -77536,6 +77500,151 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+</file>
+
+<file path="app/page.tsx">
+/**
+ * @file app/page.tsx
+ *
+ * A+ RSC Refactor. Pure Server Component. All data fetching happens here.
+ * Zero client-side useEffect. Zero hydration mismatch. Zero CLS on mobile.
+ * Data is passed down to LayoutOrchestrator (the explicit client boundary).
+ *
+ * Agency win: change active_layout/global_hero_url in Supabase → instant
+ * server-side re-render for every visitor on next request. No client state.
+ *
+ * Render order (always):
+ *   1. GlobalHero + HeroTextReveal — media RSC; copy motion client
+ *   2. LayoutOrchestrator — RevealOnScroll wraps featured + menu layout bands
+ *   3. BookNowPill — fixed floating CTA (accent theme-5)
+ *   4. VisitUsSection — RevealOnScroll wrap in this file; footer from root layout
+ */
+
+import { createServerSupabaseClient } from "@/lib/supabase";
+import type { DbService } from "@/lib/supabase";
+import { isVideoMedia, type Layout, type FeaturedPair } from "@/lib/utils";
+import LayoutOrchestrator from "@/components/layouts/LayoutOrchestrator";
+import BookNowPill from "@/components/BookNowPill";
+import VisitUsSection from "@/components/VisitUsSection";
+import HeroTextReveal from "@/components/HeroTextReveal";
+import RevealOnScroll from "@/components/RevealOnScroll";
+
+const DEFAULT_GLOBAL_HERO_URL =
+  "https://raw.githubusercontent.com/source0999/Crash-Course/main/public/images/lele1.gif";
+
+export default async function HomePage() {
+  const supabase = await createServerSupabaseClient();
+
+  const [servicesRes, featuredRes, configRes] = await Promise.all([
+    supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "featured_services")
+      .single(),
+    supabase
+      .from("site_config")
+      .select("key, value")
+      .in("key", ["active_layout", "global_hero_url"]),
+  ]);
+
+  const allServices: DbService[] = servicesRes.data ?? [];
+
+  // WHY: Featured pairs resolved server-side — no client computation, no
+  // loading state, no hydration mismatch between server and client renders.
+  let featuredPairs: FeaturedPair[] = [];
+  if (featuredRes.data?.value) {
+    try {
+      const rawPairs = JSON.parse(featuredRes.data.value) as Array<
+        number | null | { serviceId: number | null; mediaUrl: string | null }
+      >;
+      const serviceMap = new Map(allServices.map((s) => [s.id, s]));
+      featuredPairs = [0, 1, 2].flatMap((index) => {
+        const row = rawPairs[index];
+        const serviceId = typeof row === "number" ? row : (row?.serviceId ?? null);
+        const mediaUrl =
+          typeof row === "object" && row !== null ? (row.mediaUrl ?? null) : null;
+        if (serviceId === null) return [];
+        const service = serviceMap.get(serviceId);
+        if (!service) return [];
+        return [{ serviceId, mediaUrl, service }];
+      });
+    } catch (e) {
+      // Graceful degradation — featuredPairs stays empty, page renders without featured section
+    }
+  }
+
+  const activeLayoutRaw = configRes.data?.find((r) => r.key === "active_layout")?.value;
+  const activeLayout: Layout =
+    activeLayoutRaw === "cinematic" || activeLayoutRaw === "grid" || activeLayoutRaw === "editorial"
+      ? activeLayoutRaw
+      : "cinematic";
+
+  const globalHeroUrl =
+    configRes.data?.find((r) => r.key === "global_hero_url")?.value ?? DEFAULT_GLOBAL_HERO_URL;
+
+  return (
+    <>
+      {/* ── Global Identity Hero — server-rendered, zero flash ──
+          WHY: Rendered in the RSC so the hero image/video is in the initial HTML
+          payload — no layout shift, no GIF restart on hydration. */}
+      <section className="relative w-full h-[100svh] overflow-hidden bg-theme-4 text-theme-1">
+        {isVideoMedia(globalHeroUrl) ? (
+          <video
+            src={globalHeroUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="none"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 15%" }}
+          />
+        ) : (
+          <img
+            src={globalHeroUrl}
+            alt="Fades and Facials atmosphere"
+            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 15%" }}
+          />
+        )}
+        {/* Cinematic vignette — theme-4 mixes only (no hex); keeps copy legible over media. */}
+        <div
+          className="absolute inset-0 z-10"
+          style={{
+            background:
+              "linear-gradient(to bottom, color-mix(in srgb, var(--theme-4) 55%, transparent) 0%, color-mix(in srgb, var(--theme-4) 10%, transparent) 40%, color-mix(in srgb, var(--theme-4) 75%, transparent) 85%, color-mix(in srgb, var(--theme-4) 92%, transparent) 100%)",
+          }}
+        />
+        {/* WHY: HeroTextReveal is the client boundary — it adds staggered Framer Motion
+            entrance while the media + vignette stay server-rendered for zero CLS. */}
+        <HeroTextReveal />
+      </section>
+
+      {/* ── LayoutOrchestrator — explicit client boundary ──
+          Receives fully-resolved server data; owns FeaturedServicesSection
+          + the active layout component. No data fetching inside. */}
+      <LayoutOrchestrator
+        allServices={allServices}
+        featuredPairs={featuredPairs}
+        activeLayout={activeLayout}
+      />
+
+      <BookNowPill />
+
+      <div className="w-full bg-theme-1 text-theme-4">
+        <RevealOnScroll as="section" data-home-band="visit-wrap">
+          <VisitUsSection />
+        </RevealOnScroll>
+      </div>
+    </>
+  );
 }
 </file>
 
