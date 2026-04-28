@@ -55,6 +55,7 @@ app/admin/gallery/page.tsx
 app/admin/layout.tsx
 app/admin/page.tsx
 app/admin/services/page.tsx
+app/api/debug-client-log/route.ts
 app/book/page.tsx
 app/favicon.ico
 app/gallery/GalleryGrid.tsx
@@ -76,6 +77,8 @@ components/layouts/GridLayout.tsx
 components/layouts/LayoutOrchestrator.tsx
 components/Navbar.tsx
 components/RevealOnScroll.tsx
+components/RouteChangeScrollToTop.tsx
+components/ScrollToTopOnMount.tsx
 components/SmoothScrolling.tsx
 components/ThemePreferenceSync.tsx
 components/VisitUsSection.tsx
@@ -141,6 +144,10 @@ public/images/lele1.gif
 public/images/lele2.gif
 public/images/logo.ico
 public/images/logo.png
+public/images/new/barbergif1.mp4
+public/images/new/facial.mp4
+public/images/new/fade.mp4
+public/images/new/lele1.mp4
 public/images/services/barbergif1.gif
 public/images/services/facial.gif
 public/images/services/fade.gif
@@ -151,6 +158,28 @@ tsconfig.json
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="app/api/debug-client-log/route.ts">
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  try {
+    const payload = await req.json();
+    await fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "9e3b5b",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Intentionally silent in debug relay path.
+  }
+
+  return NextResponse.json({ ok: true });
+}
+</file>
 
 <file path="_blueprints/designs/homey_luxury/design_system.md">
 # Design System: Homey Luxury
@@ -2012,6 +2041,277 @@ export default function RevealOnScroll({
       {children}
     </Tag>
   );
+}
+</file>
+
+<file path="components/RouteChangeScrollToTop.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: RouteChangeScrollToTop
+// WHAT: Resets native + Lenis scroll state whenever pathname changes.
+// WHY: App Router transitions can preserve scroll offset unless explicitly normalized.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
+
+export default function RouteChangeScrollToTop() {
+  const pathname = usePathname();
+  const isRouteSettlingRef = useRef(false);
+  const lastVisualViewportHeightRef = useRef<number | null>(null);
+  const settleClampRafRef = useRef<number | null>(null);
+
+  function logDebug(payload: {
+    runId: string;
+    hypothesisId: string;
+    location: string;
+    message: string;
+    data: Record<string, unknown>;
+  }) {
+    const body = JSON.stringify({
+      sessionId: "9e3b5b",
+      ...payload,
+      timestamp: Date.now(),
+    });
+
+    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9e3b5b" },
+      body,
+    }).catch(() => {
+      fetch("/api/debug-client-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }).catch(() => {});
+    });
+  }
+
+  useEffect(() => {
+    isRouteSettlingRef.current = pathname === "/";
+    lastVisualViewportHeightRef.current = window.visualViewport?.height ?? null;
+
+    // #region agent log
+    logDebug({
+      runId: "post-fix-2",
+      hypothesisId: "H1_H2_H3_H5_H6",
+      location: "components/RouteChangeScrollToTop.tsx:47",
+      message: "route-change effect start",
+      data: {
+        pathname,
+        scrollY: window.scrollY,
+        innerHeight: window.innerHeight,
+        clientHeight: document.documentElement.clientHeight,
+        visualViewportHeight: window.visualViewport?.height ?? null,
+      },
+    });
+    // #endregion
+
+    window.scrollTo(0, 0);
+    window.dispatchEvent(new Event("app:scroll-to-top"));
+
+    if (pathname === "/") {
+      let clampFrames = 0;
+      function clampWhileSettling() {
+        clampFrames += 1;
+
+        if (isRouteSettlingRef.current && window.scrollY !== 0) {
+          const driftedScrollY = window.scrollY;
+          window.scrollTo(0, 0);
+          window.dispatchEvent(new Event("app:scroll-to-top"));
+          // #region agent log
+          logDebug({
+            runId: "post-fix-10",
+            hypothesisId: "H10",
+            location: "components/RouteChangeScrollToTop.tsx:78",
+            message: "frame clamp corrected non-resize drift",
+            data: {
+              pathname,
+              clampFrame: clampFrames,
+              correctedFromScrollY: driftedScrollY,
+              correctedToScrollY: window.scrollY,
+            },
+          });
+          // #endregion
+        }
+
+        if (isRouteSettlingRef.current && clampFrames < 60) {
+          settleClampRafRef.current = requestAnimationFrame(clampWhileSettling);
+        }
+      }
+      settleClampRafRef.current = requestAnimationFrame(clampWhileSettling);
+    }
+
+    // #region agent log
+    logDebug({
+      runId: "post-fix-2",
+      hypothesisId: "H3_H4",
+      location: "components/RouteChangeScrollToTop.tsx:64",
+      message: "route-change reset fired",
+      data: {
+        pathname,
+        scrollYAfterNativeReset: window.scrollY,
+        innerHeight: window.innerHeight,
+        visualViewportHeight: window.visualViewport?.height ?? null,
+      },
+    });
+    // #endregion
+
+    function stopSettling(reason: "touchmove" | "wheel" | "keydown") {
+      if (!isRouteSettlingRef.current) return;
+      isRouteSettlingRef.current = false;
+      // #region agent log
+      logDebug({
+        runId: "post-fix-5",
+        hypothesisId: "H6",
+        location: "components/RouteChangeScrollToTop.tsx:82",
+        message: "route settling finished by interaction",
+        data: { pathname, reason, scrollY: window.scrollY },
+      });
+      // #endregion
+    }
+
+    const onTouchMove = () => {
+      if (window.scrollY > 120) stopSettling("touchmove");
+    };
+    const onWheel = () => stopSettling("wheel");
+    const onKeyDown = () => stopSettling("keydown");
+
+    if (pathname === "/") {
+      window.addEventListener("touchmove", onTouchMove, { passive: true });
+      window.addEventListener("wheel", onWheel, { passive: true });
+      window.addEventListener("keydown", onKeyDown);
+    }
+
+    return () => {
+      if (settleClampRafRef.current) cancelAnimationFrame(settleClampRafRef.current);
+      if (pathname === "/") {
+        window.removeEventListener("touchmove", onTouchMove);
+        window.removeEventListener("wheel", onWheel);
+        window.removeEventListener("keydown", onKeyDown);
+      }
+      isRouteSettlingRef.current = false;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+
+    let frame = 0;
+    let maxScrollY = window.scrollY;
+    let minScrollY = window.scrollY;
+    let rafId = 0;
+
+    function sample() {
+      frame += 1;
+      maxScrollY = Math.max(maxScrollY, window.scrollY);
+      minScrollY = Math.min(minScrollY, window.scrollY);
+
+      if (frame >= 45) {
+        // #region agent log
+        logDebug({
+          runId: "post-fix-8",
+          hypothesisId: "H9",
+          location: "components/RouteChangeScrollToTop.tsx:147",
+          message: "home route post-nav scroll profile",
+          data: {
+            frameCount: frame,
+            minScrollY,
+            maxScrollY,
+            finalScrollY: window.scrollY,
+            innerHeight: window.innerHeight,
+            visualViewportHeight: window.visualViewport?.height ?? null,
+          },
+        });
+        // #endregion
+        return;
+      }
+
+      rafId = requestAnimationFrame(sample);
+    }
+
+    rafId = requestAnimationFrame(sample);
+    return () => cancelAnimationFrame(rafId);
+  }, [pathname]);
+
+  useEffect(() => {
+    function handleViewportChange() {
+      // #region agent log
+      logDebug({
+        runId: "post-fix-10",
+        hypothesisId: "H2_H6",
+        location: "components/RouteChangeScrollToTop.tsx:113",
+        message: "viewport changed",
+        data: {
+          pathname,
+          eventType: "visualViewport.resize",
+          innerHeight: window.innerHeight,
+          clientHeight: document.documentElement.clientHeight,
+          visualViewportHeight: window.visualViewport?.height ?? null,
+          lastVisualViewportHeight: lastVisualViewportHeightRef.current,
+          scrollY: window.scrollY,
+          isRouteSettling: isRouteSettlingRef.current,
+        },
+      });
+      // #endregion
+
+      if (pathname === "/" && isRouteSettlingRef.current && window.scrollY !== 0) {
+        const previousScrollY = window.scrollY;
+        window.scrollTo(0, 0);
+        window.dispatchEvent(new Event("app:scroll-to-top"));
+        // #region agent log
+        logDebug({
+          runId: "post-fix-10",
+          hypothesisId: "H6",
+          location: "components/RouteChangeScrollToTop.tsx:133",
+          message: "applied resize correction while settling",
+          data: {
+            pathname,
+            correctedFromScrollY: previousScrollY,
+            correctedToScrollY: window.scrollY,
+            visualViewportHeight: window.visualViewport?.height ?? null,
+          },
+        });
+        // #endregion
+      }
+
+      lastVisualViewportHeightRef.current = window.visualViewport?.height ?? null;
+    }
+
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+    };
+  }, [pathname]);
+
+  return null;
+}
+</file>
+
+<file path="components/ScrollToTopOnMount.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: ScrollToTopOnMount
+// WHAT: Disables native scroll restoration and resets viewport on first mount.
+// WHY: iOS/Safari can restore stale offsets after refresh before Lenis takes over.
+// PHASE 4: No changes needed.
+// ─────────────────────────────────────────
+
+import { useEffect } from "react";
+
+export default function ScrollToTopOnMount() {
+  useEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    window.scrollTo(0, 0);
+  }, []);
+
+  return null;
 }
 </file>
 
@@ -68653,50 +68953,6 @@ export default function ServicesBody({ services, categories, layout, featuredSer
 Output only complete updated files with // WHY: comments.
 </file>
 
-<file path="components/SmoothScrolling.tsx">
-"use client";
-
-// ─────────────────────────────────────────
-// SECTION: SmoothScrolling
-// WHAT: Lenis smooth-scroll loop bound to requestAnimationFrame.
-// WHY: Webflow-grade inertial scroll site-wide without fighting Next layout.
-// PHASE 4: No DB.
-// ─────────────────────────────────────────
-
-import { useEffect } from "react";
-import Lenis from "@studio-freight/lenis";
-
-type Props = { children: React.ReactNode };
-
-export default function SmoothScrolling({ children }: Props) {
-  useEffect(() => {
-    // WHY iOS: Lenis only calls preventDefault on touch when isSmooth is true for that event;
-    // isSmooth = (syncTouch && touch) || (smoothWheel && wheel). Keep syncTouch false so
-    // touch scrolling stays native; wheel smoothing only (see node_modules @studio-freight/lenis onVirtualScroll).
-    const lenis = new Lenis({
-      smoothWheel: true,
-      syncTouch: false,
-      touchMultiplier: 1.15,
-      gestureOrientation: "vertical",
-    });
-
-    let rafId = 0;
-    function raf(time: number) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
-
-  return <>{children}</>;
-}
-</file>
-
 <file path="design/extracted/app__admin__services__page.tsx">
 "use client";
 // WHY: Force re-sync with DB and bypass Next.js caching to prevent ghost data.
@@ -71704,6 +71960,84 @@ export default function LayoutOrchestrator({ allServices, featuredPairs, activeL
       </RevealOnScroll>
     </>
   );
+}
+</file>
+
+<file path="components/SmoothScrolling.tsx">
+"use client";
+
+// ─────────────────────────────────────────
+// SECTION: SmoothScrolling
+// WHAT: Lenis smooth-scroll loop bound to requestAnimationFrame.
+// WHY: Webflow-grade inertial scroll site-wide without fighting Next layout.
+// PHASE 4: No DB.
+// ─────────────────────────────────────────
+
+import { useEffect, useRef } from "react";
+import Lenis from "@studio-freight/lenis";
+
+type Props = { children: React.ReactNode };
+
+export default function SmoothScrolling({ children }: Props) {
+  const lenisRef = useRef<Lenis | null>(null);
+
+  useEffect(() => {
+    // WHY iOS: Lenis only calls preventDefault on touch when isSmooth is true for that event;
+    // isSmooth = (syncTouch && touch) || (smoothWheel && wheel). Keep syncTouch false so
+    // touch scrolling stays native; wheel smoothing only (see node_modules @studio-freight/lenis onVirtualScroll).
+    const lenis = new Lenis({
+      smoothWheel: true,
+      syncTouch: false,
+      touchMultiplier: 1.15,
+      gestureOrientation: "vertical",
+    });
+    lenisRef.current = lenis;
+    // #region agent log
+    fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9e3b5b" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3", location: "components/SmoothScrolling.tsx:29", message: "lenis initialized", data: { hasLenis: Boolean(lenisRef.current), innerHeight: window.innerHeight, clientHeight: document.documentElement.clientHeight, bodyScrollHeight: document.body.scrollHeight, scrollY: window.scrollY }, timestamp: Date.now() }) }).catch(() => { fetch("/api/debug-client-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3", location: "components/SmoothScrolling.tsx:29", message: "lenis initialized [relay]", data: { hasLenis: Boolean(lenisRef.current), innerHeight: window.innerHeight, clientHeight: document.documentElement.clientHeight, bodyScrollHeight: document.body.scrollHeight, scrollY: window.scrollY }, timestamp: Date.now() }) }).catch(() => {}); });
+    // #endregion
+
+    window.scrollTo(0, 0);
+    lenis.scrollTo(0, { immediate: true });
+
+    let rafId = 0;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenisRef.current = null;
+      lenis.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleScrollReset() {
+      // #region agent log
+      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9e3b5b" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3", location: "components/SmoothScrolling.tsx:52", message: "lenis reset event received", data: { hasLenis: Boolean(lenisRef.current), scrollYBeforeLenisReset: window.scrollY }, timestamp: Date.now() }) }).catch(() => { fetch("/api/debug-client-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3", location: "components/SmoothScrolling.tsx:52", message: "lenis reset event received [relay]", data: { hasLenis: Boolean(lenisRef.current), scrollYBeforeLenisReset: window.scrollY }, timestamp: Date.now() }) }).catch(() => {}); });
+      // #endregion
+      lenisRef.current?.scrollTo(0, { immediate: true });
+      window.scrollTo(0, 0);
+      // #region agent log
+      fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9e3b5b" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3_H4", location: "components/SmoothScrolling.tsx:56", message: "lenis reset applied", data: { hasLenis: Boolean(lenisRef.current), scrollYAfterLenisReset: window.scrollY }, timestamp: Date.now() }) }).catch(() => { fetch("/api/debug-client-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "baseline", hypothesisId: "H3_H4", location: "components/SmoothScrolling.tsx:56", message: "lenis reset applied [relay]", data: { hasLenis: Boolean(lenisRef.current), scrollYAfterLenisReset: window.scrollY }, timestamp: Date.now() }) }).catch(() => {}); });
+      // #endregion
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        // #region agent log
+        fetch("http://127.0.0.1:7551/ingest/42fbca1b-95a9-49f3-9134-3f4cc9c8a413", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9e3b5b" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "post-fix-6", hypothesisId: "H7", location: "components/SmoothScrolling.tsx:62", message: "native top enforced on next frame", data: { scrollYAfterNextFrameEnforce: window.scrollY }, timestamp: Date.now() }) }).catch(() => { fetch("/api/debug-client-log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: "9e3b5b", runId: "post-fix-6", hypothesisId: "H7", location: "components/SmoothScrolling.tsx:62", message: "native top enforced on next frame [relay]", data: { scrollYAfterNextFrameEnforce: window.scrollY }, timestamp: Date.now() }) }).catch(() => {}); });
+        // #endregion
+      });
+    }
+
+    window.addEventListener("app:scroll-to-top", handleScrollReset);
+    return () => {
+      window.removeEventListener("app:scroll-to-top", handleScrollReset);
+    };
+  }, []);
+
+  return <>{children}</>;
 }
 </file>
 
@@ -76888,121 +77222,6 @@ export default function AdminServicesPage() {
 }
 </file>
 
-<file path="app/layout.tsx">
-/** @file app/layout.tsx */
-
-// ─────────────────────────────────────────
-// SECTION: RootLayout
-// WHAT: HTML shell that wraps every page — mounts fonts, active theme, Navbar, and Footer.
-// WHY: active_theme is fetched server-side so [data-theme] is correct on the very
-//   first byte of HTML — zero flash of unstyled theme, no client-side hydration gap.
-// PHASE 4: No changes needed — site_config.active_theme row is already live.
-// Lenis: SmoothScrolling wraps layout {children} only so main scroll is inertial; chrome stays outside.
-// ─────────────────────────────────────────
-
-import type { Metadata } from "next";
-import { Syne, Inter } from "next/font/google";
-import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import ThemePreferenceSync from "@/components/ThemePreferenceSync";
-import SmoothScrolling from "@/components/SmoothScrolling";
-import { createServerSupabaseClient } from "@/lib/supabase";
-import { normalizeThemeFromDb } from "@/lib/theme";
-
-// ── Syne — bold geometric display face for headlines ─────────────────────────
-const syne = Syne({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-// ── Inter — clean neutral sans-serif for body text ───────────────────────────
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  display: "swap",
-});
-
-export const metadata: Metadata = {
-  title: {
-    default: "Fades & Facials — Premium Barber & Skincare Studio",
-    template: "%s | Fades & Facials",
-  },
-  description:
-    "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments in a relaxed, upscale studio.",
-  keywords: ["barber", "fades", "facials", "beard care", "hot shave", "barbershop", "haircut", "skincare"],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    title: "Fades & Facials — Premium Barber & Skincare Studio",
-    description: "Expert fades, hot shaves, beard care, and luxury skincare treatments.",
-    siteName: "Fades & Facials",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Fades & Facials",
-    description: "Premium barber and facial services.",
-  },
-};
-
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const supabase = await createServerSupabaseClient();
-  let themeRaw: string | null = null;
-
-  try {
-    const { data } = await supabase
-      .from("site_config")
-      .select("value")
-      .eq("key", "active_theme")
-      .single();
-    if (data?.value) themeRaw = data.value;
-  } catch {
-    // Falls back via normalizeThemeFromDb.
-  }
-
-  const theme = normalizeThemeFromDb(themeRaw);
-
-  return (
-    <html
-      lang="en"
-      data-theme={theme}
-      className={`${syne.variable} ${inter.variable} h-auto antialiased`}
-    >
-      <body className="min-h-screen flex flex-col overflow-y-auto">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "HairSalon",
-              name: "Fades & Facials",
-              description:
-                "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments.",
-              url: "https://fadesandfacials.com",
-              priceRange: "$$",
-              sameAs: ["https://www.instagram.com/fadesandfacials"],
-            }),
-          }}
-        />
-        <ThemePreferenceSync />
-        <Navbar />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <SmoothScrolling>{children}</SmoothScrolling>
-        </div>
-        <Footer />
-      </body>
-    </html>
-  );
-}
-</file>
-
 <file path="components/Navbar.tsx">
 "use client";
 
@@ -77245,7 +77464,9 @@ export default function Navbar() {
                 >
                   <Link
                     href={link.href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                    }}
                     className="block py-5 text-2xl font-light border-b touch-manipulation transition-colors hover:text-[var(--theme-accent)]"
                     style={{
                       borderColor: "color-mix(in srgb, var(--theme-text) 10%, transparent)",
@@ -77268,6 +77489,127 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+</file>
+
+<file path="app/layout.tsx">
+/** @file app/layout.tsx */
+
+// ─────────────────────────────────────────
+// SECTION: RootLayout
+// WHAT: HTML shell that wraps every page — mounts fonts, active theme, Navbar, and Footer.
+// WHY: active_theme is fetched server-side so [data-theme] is correct on the very
+//   first byte of HTML — zero flash of unstyled theme, no client-side hydration gap.
+// PHASE 4: No changes needed — site_config.active_theme row is already live.
+// Lenis: SmoothScrolling wraps layout {children} only so main scroll is inertial; chrome stays outside.
+// ─────────────────────────────────────────
+
+import type { Metadata } from "next";
+import { Syne, Inter } from "next/font/google";
+import "./globals.css";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import ThemePreferenceSync from "@/components/ThemePreferenceSync";
+import SmoothScrolling from "@/components/SmoothScrolling";
+import ScrollToTopOnMount from "@/components/ScrollToTopOnMount";
+import RouteChangeScrollToTop from "@/components/RouteChangeScrollToTop";
+import { createServerSupabaseClient } from "@/lib/supabase";
+import { normalizeThemeFromDb } from "@/lib/theme";
+
+// ── Syne — bold geometric display face for headlines ─────────────────────────
+const syne = Syne({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+// ── Inter — clean neutral sans-serif for body text ───────────────────────────
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: "Fades & Facials — Premium Barber & Skincare Studio",
+    template: "%s | Fades & Facials",
+  },
+  description:
+    "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments in a relaxed, upscale studio.",
+  keywords: ["barber", "fades", "facials", "beard care", "hot shave", "barbershop", "haircut", "skincare"],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    title: "Fades & Facials — Premium Barber & Skincare Studio",
+    description: "Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+    siteName: "Fades & Facials",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fades & Facials",
+    description: "Premium barber and facial services.",
+  },
+};
+
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const supabase = await createServerSupabaseClient();
+  let themeRaw: string | null = null;
+
+  try {
+    const { data } = await supabase
+      .from("site_config")
+      .select("value")
+      .eq("key", "active_theme")
+      .single();
+    if (data?.value) themeRaw = data.value;
+  } catch {
+    // Falls back via normalizeThemeFromDb.
+  }
+
+  const theme = normalizeThemeFromDb(themeRaw);
+
+  return (
+    <html
+      lang="en"
+      data-theme={theme}
+      className={`${syne.variable} ${inter.variable} h-auto antialiased`}
+    >
+      <body className="min-h-screen flex flex-col overflow-y-auto">
+        <ScrollToTopOnMount />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "HairSalon",
+              name: "Fades & Facials",
+              description:
+                "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+              url: "https://fadesandfacials.com",
+              priceRange: "$$",
+              sameAs: ["https://www.instagram.com/fadesandfacials"],
+            }),
+          }}
+        />
+        <ThemePreferenceSync />
+        <Navbar />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SmoothScrolling>
+            <RouteChangeScrollToTop />
+            {children}
+          </SmoothScrolling>
+        </div>
+        <Footer />
+      </body>
+    </html>
   );
 }
 </file>
@@ -77463,10 +77805,17 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+html {
+  scroll-behavior: auto !important;
+  background-color: var(--theme-bg);
+  overscroll-behavior-y: none;
+}
+
 body {
   background-color: var(--theme-bg);
   color: var(--theme-text);
   -webkit-font-smoothing: antialiased;
+  position: relative;
 }
 
 * {

@@ -239,7 +239,9 @@ export default function Navbar() {
                 >
                   <Link
                     href={link.href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                    }}
                     className="block py-5 text-2xl font-light border-b touch-manipulation transition-colors hover:text-[var(--theme-accent)]"
                     style={{
                       borderColor: "color-mix(in srgb, var(--theme-text) 10%, transparent)",

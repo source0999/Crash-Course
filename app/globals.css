@@ -190,6 +190,8 @@ body {
 
 html {
   scroll-behavior: auto !important;
+  background-color: var(--theme-bg);
+  overscroll-behavior-y: none;
 }
 
 body {
