@@ -9,6 +9,7 @@
 // PHASE 4: featuredPairs still resolved server-side in app/page.tsx.
 // ─────────────────────────────────────────
 
+import Image from "next/image";
 import { isVideoMedia, formatServicePrice, type Layout, type FeaturedPair } from "@/lib/utils";
 
 const INK = "var(--ink-on-light-surface)";
@@ -42,15 +43,19 @@ export default function FeaturedServicesSection({
           muted
           loop
           playsInline
+          preload="none"
           className={className}
         />
       );
     }
     return (
-      <img
+      <Image
         src={pair.mediaUrl}
         alt={pair.service.name}
-        className={className}
+        fill
+        sizes="(max-width: 768px) 100vw, 50vw"
+        quality={75}
+        className="object-cover"
       />
     );
   }

@@ -8,6 +8,7 @@
 // PHASE 4: allServices from DB.
 // ─────────────────────────────────────────
 
+import Image from "next/image";
 import { formatServicePrice, type LayoutProps } from "@/lib/utils";
 
 const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
@@ -42,7 +43,14 @@ export default function GridLayout({ allServices }: LayoutProps) {
             >
               {s.image && (
                 <div className="relative aspect-video w-full overflow-hidden">
-                  <img src={s.image} alt={s.name} className="object-cover w-full h-full" loading="lazy" />
+                  <Image
+                    src={s.image}
+                    alt={s.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={75}
+                    className="object-cover"
+                  />
                 </div>
               )}
               <div className="p-6 md:p-8 text-theme-4">

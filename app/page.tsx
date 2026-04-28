@@ -95,6 +95,7 @@ export default async function HomePage() {
             muted
             loop
             playsInline
+            preload="none"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: "center 15%" }}
           />
@@ -102,6 +103,7 @@ export default async function HomePage() {
           <img
             src={globalHeroUrl}
             alt="Fades and Facials atmosphere"
+            fetchPriority="high"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ objectPosition: "center 15%" }}
           />

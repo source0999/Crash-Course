@@ -9,6 +9,7 @@
 // PHASE 4: allServices from DB.
 // ─────────────────────────────────────────
 
+import Image from "next/image";
 import { formatServicePrice, type LayoutProps } from "@/lib/utils";
 
 const MUTED = "color-mix(in srgb, var(--theme-4) 40%, transparent)";
@@ -39,12 +40,14 @@ export default function CinematicLayout({ allServices }: LayoutProps) {
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 {s.image && (
-                  <div className="w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-xl overflow-hidden">
-                    <img
+                  <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-xl overflow-hidden">
+                    <Image
                       src={s.image}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
                       alt={s.name}
+                      fill
+                      sizes="80px"
+                      quality={75}
+                      className="object-cover"
                     />
                   </div>
                 )}

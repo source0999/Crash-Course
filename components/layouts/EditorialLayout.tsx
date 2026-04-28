@@ -8,6 +8,7 @@
 // PHASE 4: allServices from DB.
 // ─────────────────────────────────────────
 
+import Image from "next/image";
 import { formatServicePrice, type LayoutProps } from "@/lib/utils";
 
 const M = (a: number) => `color-mix(in srgb, var(--theme-4) ${a}%, transparent)`;
@@ -56,8 +57,15 @@ export default function EditorialLayout({ allServices }: LayoutProps) {
             >
               <div className="flex items-start gap-4">
                 {s.image && (
-                  <div className="w-20 h-28 shrink-0 overflow-hidden rounded-lg">
-                    <img src={s.image} className="w-full h-full object-cover" loading="lazy" alt={s.name} />
+                  <div className="relative w-20 h-28 shrink-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={s.image}
+                      alt={s.name}
+                      fill
+                      sizes="80px"
+                      quality={75}
+                      className="object-cover"
+                    />
                   </div>
                 )}
                 <div>

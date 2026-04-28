@@ -36,8 +36,25 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Fades and Facials",
-  description: "It's an experience",
+  title: {
+    default: "Fades & Facials — Premium Barber & Skincare Studio",
+    template: "%s | Fades & Facials",
+  },
+  description:
+    "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments in a relaxed, upscale studio.",
+  keywords: ["barber", "fades", "facials", "beard care", "hot shave", "barbershop", "haircut", "skincare"],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    title: "Fades & Facials — Premium Barber & Skincare Studio",
+    description: "Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+    siteName: "Fades & Facials",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fades & Facials",
+    description: "Premium barber and facial services.",
+  },
 };
 
 export default async function RootLayout({
@@ -68,6 +85,21 @@ export default async function RootLayout({
       className={`${syne.variable} ${inter.variable} h-auto antialiased`}
     >
       <body className="min-h-screen flex flex-col overflow-y-auto">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "HairSalon",
+              name: "Fades & Facials",
+              description:
+                "Premium barber and facial services. Expert fades, hot shaves, beard care, and luxury skincare treatments.",
+              url: "https://fadesandfacials.com",
+              priceRange: "$$",
+              sameAs: ["https://www.instagram.com/fadesandfacials"],
+            }),
+          }}
+        />
         <ThemePreferenceSync />
         <Navbar />
         <div className="flex min-h-0 flex-1 flex-col">
