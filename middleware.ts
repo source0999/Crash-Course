@@ -8,8 +8,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { createMiddlewareSupabaseClient } from "@/lib/supabase";
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
   const { pathname } = request.nextUrl;
+
+  // Case-insensitive /admin prefix → canonical lowercase (App Router paths are lowercase).
+  const adminMatch = pathname.match(/^\/admin(.*)$/i);
+  if (adminMatch && pathname !== `/admin${adminMatch[1]}`) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/admin${adminMatch[1]}`;
+    return NextResponse.redirect(url);
+  }
+
+  const response = NextResponse.next();
 
   // Always allow the callback route through — it sets the session
   if (pathname === "/admin/callback") {
@@ -36,5 +45,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Include /admin (no subpath): "/admin/:path*" alone does not match the login route on some Next versions.
+  matcher: [
+    "/admin",
+    "/Admin",
+    "/ADMIN",
+    "/admin/:path*",
+    "/Admin/:path*",
+    "/ADMIN/:path*",
+  ],
 };

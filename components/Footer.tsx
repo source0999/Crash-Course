@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────
 // SECTION: Footer
 // WHAT: `.site-footer` bar + inherited light/dark fg (earth/neon inversion in globals.css).
-// WHY: Client for onTouchEnd; avoids hard-coded theme-4 bar on palettes where slot 4 is light.
+// WHY: Client bar; Footer links omit touchEnd preventDefault so iOS forwards click to SPA/external nav.
 // PHASE 4: Static content.
 // ─────────────────────────────────────────
 
@@ -82,9 +82,6 @@ export default function Footer() {
                     fontFamily: "var(--font-sans)",
                     borderBottom: "1px solid color-mix(in srgb, currentColor 14%, transparent)",
                   }}
-                  onTouchEnd={(e) => {
-                    e.preventDefault();
-                  }}
                 >
                   {label}
                 </Link>
@@ -105,9 +102,6 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="text-sm touch-manipulation min-h-[44px] flex items-center gap-2 group transition-opacity duration-200 hover:opacity-80"
               style={{ fontFamily: "var(--font-sans)" }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-              }}
             >
               <svg
                 width="14"

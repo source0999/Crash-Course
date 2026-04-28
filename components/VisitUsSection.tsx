@@ -99,9 +99,6 @@ export default function VisitUsSection() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 mt-1 text-xs uppercase tracking-widest transition-opacity hover:opacity-70 touch-manipulation min-h-[44px]"
               style={{ color: "var(--theme-4)", fontFamily: "'Manrope', sans-serif" }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-              }}
             >
               Get Directions
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

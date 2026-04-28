@@ -33,10 +33,11 @@ const NAV_LINKS = [
 ] as const;
 
 const MOBILE_LINKS = [
-  { href: "/services", label: "Services"         },
-  { href: "/gallery",  label: "Gallery"          },
+  { href: "/",         label: "Home"               },
+  { href: "/services", label: "Services"          },
+  { href: "/gallery",  label: "Gallery"           },
   { href: "/book",     label: "Book Appointment" },
-  { href: "/admin",    label: "Studio Dashboard" },
+  { href: "/admin",    label: "Studio Dashboard"  },
 ] as const;
 
 // ─────────────────────────────────────────
@@ -46,7 +47,7 @@ const MOBILE_LINKS = [
 //   Uses useMotionValue + useSpring so movement stays on the compositor layer
 //   (transform only — no layout/paint). Resets smoothly on mouse leave.
 // ─────────────────────────────────────────
-const MotionBookLink = motion(Link);
+const MotionBookLink = motion.create(Link);
 
 function MagneticBookNow({ isActive, reduced }: { isActive: boolean; reduced: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -87,9 +88,6 @@ function MagneticBookNow({ isActive, reduced }: { isActive: boolean; reduced: bo
         style={{ fontFamily: "var(--font-sans)" }}
         whileHover={reduced ? undefined : { scale: 1.05 }}
         whileTap={reduced ? undefined : { scale: 0.95 }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-        }}
       >
         Book Now
       </MotionBookLink>
@@ -242,7 +240,6 @@ export default function Navbar() {
                   <Link
                     href={link.href}
                     onClick={() => setMenuOpen(false)}
-                    onTouchEnd={(e) => { e.preventDefault(); setMenuOpen(false); }}
                     className="block py-5 text-2xl font-light border-b touch-manipulation transition-colors hover:text-[var(--theme-accent)]"
                     style={{
                       borderColor: "color-mix(in srgb, var(--theme-text) 10%, transparent)",

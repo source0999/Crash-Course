@@ -22,7 +22,7 @@ type Props = {
   featuredServices: DbService[];
 };
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 const BOOK_CTA_CLASS =
   "inline-flex items-center justify-center rounded-lg px-4 py-2 text-[11px] uppercase tracking-[0.12em] font-semibold shadow-md transition-colors duration-200 touch-manipulation min-h-[44px] bg-theme-4 text-theme-1 hover:bg-theme-5 hover:text-black";
@@ -61,9 +61,6 @@ function BookNowLink({ reducedMotion }: { reducedMotion: boolean }) {
       style={{ fontFamily: "var(--font-sans)" }}
       whileHover={reducedMotion ? undefined : { scale: 1.05 }}
       whileTap={reducedMotion ? undefined : { scale: 0.95 }}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-      }}
     >
       Book Now
     </MotionLink>

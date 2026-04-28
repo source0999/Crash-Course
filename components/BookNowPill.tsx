@@ -3,15 +3,14 @@
 // ─────────────────────────────────────────
 // SECTION: BookNowPill
 // WHAT: Persistent floating CTA anchored to viewport bottom-center with spring float.
-// WHY: Keeps booking reachable at all scroll positions. Float animation uses translate3d
-//   only — compositor layer, zero repaints. Framer Motion respects prefers-reduced-motion.
+// WHY: Never preventDefault on touchEnd for Links — Safari needs default for synthesized click (SPA/iOS routing).
 // PHASE 4: No changes needed — links to /book internal route.
 // ─────────────────────────────────────────
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 export default function BookNowPill() {
   const reduced = useReducedMotion();
@@ -36,9 +35,6 @@ export default function BookNowPill() {
           style={{ fontFamily: "var(--font-sans)" }}
           whileHover={reduced ? undefined : { scale: 1.05 }}
           whileTap={reduced ? undefined : { scale: 0.95 }}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-          }}
         >
           <span className="relative z-10">Book Now</span>
         </MotionLink>

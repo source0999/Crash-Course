@@ -14,9 +14,14 @@ type Props = { children: React.ReactNode };
 
 export default function SmoothScrolling({ children }: Props) {
   useEffect(() => {
+    // WHY iOS: Lenis only calls preventDefault on touch when isSmooth is true for that event;
+    // isSmooth = (syncTouch && touch) || (smoothWheel && wheel). Keep syncTouch false so
+    // touch scrolling stays native; wheel smoothing only (see node_modules @studio-freight/lenis onVirtualScroll).
     const lenis = new Lenis({
       smoothWheel: true,
+      syncTouch: false,
       touchMultiplier: 1.15,
+      gestureOrientation: "vertical",
     });
 
     let rafId = 0;
